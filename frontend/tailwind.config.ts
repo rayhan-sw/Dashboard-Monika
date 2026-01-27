@@ -1,91 +1,71 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  darkMode: ["class"],
+import type { Config } from "tailwindcss"
+
+const config: Config = {
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    container: {
-      center: true,
-      padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "#FEB800",
-          foreground: "#FFFFFF",
-        },
-        secondary: {
-          DEFAULT: "#E27200",
-          foreground: "#FFFFFF",
-        },
-        accent: {
-          DEFAULT: "#BB4D00",
-          purple: "#AC52FF",
-        },
-        success: "#10B981",
-        error: "#EF4444",
-        warning: "#F59E0B",
-        info: "#3B82F6",
-        gray: {
-          1: "#8E8E93",
-          2: "#AEAEB2",
-          3: "#C7C7CC",
-          4: "#D1D1D6",
-          5: "#E5E5EA",
-          6: "#F9FAFB",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "13px",
-        md: "11px",
-        sm: "7px",
+        // BPK Brand Colors
+        'bpk-gold': '#FEB800',
+        'bpk-orange': '#E27200',
+        'bpk-orange-light': '#FE9A00',
+        'bpk-dark-orange': '#BB4D00',
+        
+        // Status Colors
+        'success': '#10B981',
+        'error': '#EF4444',
+        'warning': '#F59E0B',
+        'info': '#3B82F6',
+        
+        // Grays
+        'gray-1': '#8E8E93',
+        'gray-2': '#AEAEB2',
+        'gray-3': '#C7C7CC',
+        'gray-4': '#D1D1D6',
+        'gray-5': '#E5E5EA',
+        'gray-6': '#F9FAFB',
+        
+        // Backgrounds
+        'bg-yellow': '#FFFAEB',
+        'bg-green': '#EBFDF5',
+        'bg-blue': '#EEF6FF',
+        'bg-red': '#FEF2F2',
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'sans-serif'],
       },
-      keyframes: {
-        "accordion-down": {
-          from: { height: 0 },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: 0 },
-        },
+      fontSize: {
+        'overline': '10px',
+        'caption': '12px',
+        'body-2': '14px',
+        'subtitle': '16px',
+        'body-1': '18px',
+        'h6': '20px',
+        'h4': '28px',
+        'h3': '32px',
       },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+      borderRadius: {
+        'sm-bpk': '7px',
+        'md-bpk': '11px',
+        'lg-bpk': '13px',
+      },
+      boxShadow: {
+        'card': '0px 2px 4px rgba(0, 0, 0, 0.15)',
+      },
+      spacing: {
+        'sidebar': '320px',
+        'header': '80px',
+      },
+      backgroundImage: {
+        'gradient-bpk': 'linear-gradient(163.18deg, #FEB800 3.75%, #E27200 100%)',
+        'gradient-bpk-alt': 'linear-gradient(135.27deg, #FEB800 3.75%, #E27200 100%)',
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [],
 }
+export default config

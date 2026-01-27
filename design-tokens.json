@@ -1,0 +1,206 @@
+{
+  "metadata": {
+    "source": "Figma - BPK Dashboard Dev Mode",
+    "figma_file_key": "yHuEwRXxFOAhq600fRXWzp",
+    "extracted_date": "2026-01-27",
+    "design_system": "BPK Dashboard Design System"
+  },
+
+  "colors": {
+    "primary": {
+      "gold": "#FEB800",
+      "orange": "#E27200",
+      "darkorange": "#BB4D00",
+      "lightorange": "#FE9A00",
+      "paleOrange": "#FDC233",
+      "cream": "#FEF3C6",
+      "lightCream": "#FFFAEB",
+      "extraLightCream": "#F4EBC4"
+    },
+    "success": {
+      "main": "#10B981",
+      "dark": "#007A55",
+      "darker": "#376054",
+      "light": "#A9EBD3",
+      "lighter": "#CAE8DC",
+      "lightest": "#EBFDF5",
+      "ultraLight": "#A4F4CF"
+    },
+    "error": {
+      "main": "#EF4444",
+      "dark": "#C10007",
+      "light": "#FF696B",
+      "lighter": "#EBD9D9",
+      "lightest": "#FEF2F2"
+    },
+    "info": {
+      "main": "#3B83F1",
+      "light": "#7C86FF",
+      "lighter": "#D7E0EF",
+      "lightest": "#EEF6FF",
+      "ultraLight": "#DBE8FD"
+    },
+    "purple": {
+      "dark": "#5E4077",
+      "main": "#AC52FF",
+      "light": "#DAB2FF",
+      "lighter": "#F6EEFF",
+      "lightest": "#F9F4FF",
+      "extraLight": "#F3E8FF"
+    },
+    "neutral": {
+      "black": "#000000",
+      "darkGray": "#8E8E93",
+      "mediumGray": "#AEAEB2",
+      "lightGray": "#D1D1D6",
+      "lighterGray": "#E5E5EA",
+      "paleGray": "#F9FAFB",
+      "white": "#FFFFFF"
+    },
+    "cluster": {
+      "pencarian": "#3B83F1",
+      "pemda": "#10B981",
+      "pusat": "#FEB800"
+    }
+  },
+
+  "typography": {
+    "fontFamily": {
+      "primary": "Plus Jakarta Sans, Inter, system-ui, sans-serif"
+    },
+    "fontSize": {
+      "h1": "36px",
+      "h2": "19px",
+      "h3": "13px",
+      "body": "13px",
+      "small": "11px",
+      "tiny": "10px"
+    },
+    "fontWeight": {
+      "bold": "700",
+      "semiBold": "600",
+      "medium": "500",
+      "regular": "400"
+    },
+    "lineHeight": {
+      "heading": "1.2",
+      "body": "1.5"
+    }
+  },
+
+  "spacing": {
+    "xs": "8px",
+    "sm": "12px",
+    "md": "16px",
+    "lg": "24px",
+    "xl": "32px",
+    "2xl": "48px",
+    "3xl": "64px"
+  },
+
+  "borderRadius": {
+    "small": "8px",
+    "medium": "10px",
+    "large": "13px",
+    "pill": "9999px"
+  },
+
+  "shadows": {
+    "card": "0 2px 8px rgba(0, 0, 0, 0.08)",
+    "cardHover": "0 4px 12px rgba(0, 0, 0, 0.12)",
+    "header": "0 1px 3px rgba(0, 0, 0, 0.06)"
+  },
+
+  "layout": {
+    "maxWidth": "1440px",
+    "sidebarWidth": "320px",
+    "headerHeight": "80px",
+    "contentPadding": "24px"
+  },
+
+  "components": {
+    "statCard": {
+      "width": "248px",
+      "height": "168px",
+      "borderRadius": "13px",
+      "padding": "24px",
+      "iconSize": "43px",
+      "iconBorderRadius": "10px"
+    },
+    "chartCard": {
+      "borderRadius": "13px",
+      "padding": "24px",
+      "headerIconSize": "43px"
+    },
+    "sidebar": {
+      "width": "320px",
+      "logoHeight": "83px",
+      "menuItemHeight": "48px",
+      "menuItemBorderRadius": "10px"
+    },
+    "header": {
+      "height": "80px",
+      "searchBarHeight": "48px",
+      "searchBarBorderRadius": "13px"
+    },
+    "button": {
+      "borderRadius": "10px",
+      "height": "40px",
+      "paddingX": "16px"
+    },
+    "badge": {
+      "borderRadius": "9px",
+      "height": "25px",
+      "paddingX": "12px"
+    }
+  },
+
+  "animations": {
+    "transition": {
+      "fast": "150ms",
+      "normal": "200ms",
+      "slow": "300ms"
+    },
+    "easing": {
+      "default": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "in": "cubic-bezier(0.4, 0, 1, 1)",
+      "out": "cubic-bezier(0, 0, 0.2, 1)",
+      "inOut": "cubic-bezier(0.4, 0, 0.2, 1)"
+    }
+  },
+
+  "breakpoints": {
+    "mobile": "640px",
+    "tablet": "768px",
+    "laptop": "1024px",
+    "desktop": "1280px",
+    "wide": "1536px"
+  },
+
+  "figmaNodes": {
+    "dashboardUser": "479:2104",
+    "dashboardAdmin": "392:465",
+    "analisisRegional": "796:772",
+    "sidebar": "479:2329",
+    "header": "479:2344",
+    "colorPalette": "803:2396"
+  },
+
+  "notes": {
+    "designConsistency": [
+      "All card components use 13px border radius",
+      "Icon containers use 43px x 43px with 10px border radius",
+      "Stat cards are 248px wide x 168px tall",
+      "Primary gold color: #FEB800",
+      "Primary orange color: #E27200",
+      "Success green color: #10B981",
+      "Info blue color: #3B83F1"
+    ],
+    "componentHierarchy": [
+      "Sidebar: Fixed left, 320px width",
+      "Header: 80px height with search bar",
+      "Main content: Max width 1440px",
+      "Card layout: Grid with consistent spacing"
+    ]
+  }
+}

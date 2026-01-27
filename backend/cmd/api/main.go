@@ -4,43 +4,68 @@ import (
 	"log"
 	"os"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/handler"
+	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"github.com/rs/zerolog"
 )
 
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+		log.Println("No .env file found, using system environment")
 	}
 
-	// Setup logger
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
-
-	// Setup Gin
-	if os.Getenv("GIN_MODE") == "release" {
-		gin.SetMode(gin.ReleaseMode)
+	// Initialize database connection
+	if err := database.InitDB(); err != nil {
+		log.Fatal("Failed to connect to database:", err)
 	}
+	defer database.CloseDB()
 
-	router := gin.Default()
+	log.Println("✓ Connected to database:", os.Getenv("DB_NAME"))
 
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
+	// Initialize Gin router
+	r := gin.Default()
+
+	// CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+
+	// Health check
+	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":  "ok",
-			"service": "BPK Dashboard API",
+			"service": "Dashboard BPK API",
 			"version": "1.0.0",
 		})
 	})
 
-	// API v1 group
-	v1 := router.Group("/api/v1")
+	// API routes
+	api := r.Group("/api")
 	{
-		v1.GET("/ping", func(c *gin.Context) {
-			c.JSON(200, gin.H{"message": "pong"})
-		})
+		// Dashboard routes
+		dashboard := api.Group("/dashboard")
+		{
+			dashboard.GET("/stats", handler.GetDashboardStats)
+			dashboard.GET("/activities", handler.GetActivities)
+			dashboard.GET("/charts/:type", handler.GetChartData)
+			dashboard.GET("/access-success", handler.GetAccessSuccessRate)
+		}
+
+		// Regional routes
+		regional := api.Group("/regional")
+		{
+			regional.GET("/provinces", handler.GetProvinces)
+			regional.GET("/units", handler.GetUnits)
+		}
 	}
 
 	// Start server
@@ -49,8 +74,8 @@ func main() {
 		port = "8080"
 	}
 
-	logger.Info().Str("port", port).Msg("Starting BPK Dashboard API Server")
-	if err := router.Run(":" + port); err != nil {
-		logger.Fatal().Err(err).Msg("Failed to start server")
+	log.Printf("🚀 Server starting on port %s", port)
+	if err := r.Run(":" + port); err != nil {
+		log.Fatal("Failed to start server:", err)
 	}
 }

@@ -17,6 +17,7 @@ Dashboard monitoring aktivitas pengguna BIDICS (BPK Integrated Data and Informat
 ## 🚀 Tech Stack
 
 ### Frontend
+
 - **Framework**: Next.js 14+ (App Router)
 - **Language**: TypeScript
 - **UI Library**: Shadcn UI + Tailwind CSS
@@ -26,6 +27,7 @@ Dashboard monitoring aktivitas pengguna BIDICS (BPK Integrated Data and Informat
 - **Date Handling**: date-fns
 
 ### Backend
+
 - **Language**: Golang 1.21+
 - **Framework**: Gin
 - **Database**: PostgreSQL 15+
@@ -68,6 +70,7 @@ Dashboard-BPK/
 ## 📊 Fase 1 - Fitur Utama
 
 ### Dashboard User Monitor (Route: `/`)
+
 1. **Card Analisis Sistem** - Warning banner untuk kesalahan logout
 2. **4 Stats Cards**:
    - Total Pengguna
@@ -82,6 +85,7 @@ Dashboard-BPK/
 8. **Pemantauan Kesalahan Logout** - Tabel error flags
 
 ### Analisis Regional & Unit (Route: `/regional`)
+
 - Peta Indonesia dengan filter provinsi
 - Tabel aktivitas per regional
 - Statistik per unit organisasi
@@ -109,11 +113,11 @@ Dashboard-BPK/
 
 ## 🛠️ Development Setup
 
-*(Akan diisi pada fase setup)*
+_(Akan diisi pada fase setup)_
 
 ## 📝 Environment Variables
 
-*(Akan diisi pada fase setup)*
+_(Akan diisi pada fase setup)_
 
 ## 🗓️ Development Timeline
 
