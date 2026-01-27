@@ -1,0 +1,310 @@
+{
+  "$schema": "https://raw.githubusercontent.com/design-tokens/community-group/main/technical-reports/format/schemas/v4/tokens-strict.json",
+  "version": "1.0.0",
+  "source": "Figma Design System - BPK Dashboard",
+  "fileKey": "yHuEwRXxFOAhq600fRXWzp",
+  "nodeId": "392-465",
+  "colors": {
+    "primary": {
+      "bpk-gold": {
+        "value": "#FEB800",
+        "type": "color",
+        "description": "Primary brand color for BPK"
+      }
+    },
+    "secondary": {
+      "orange": {
+        "value": "#E27200",
+        "type": "color",
+        "description": "Secondary accent color"
+      },
+      "orange-light": {
+        "value": "#FE9A00",
+        "type": "color",
+        "description": "Light orange variant"
+      }
+    },
+    "accent": {
+      "dark-orange": {
+        "value": "#BB4D00",
+        "type": "color",
+        "description": "Dark accent color"
+      },
+      "purple": {
+        "value": "#AC52FF",
+        "type": "color",
+        "description": "Purple accent for analytics"
+      }
+    },
+    "status": {
+      "success": {
+        "value": "#10B981",
+        "type": "color",
+        "description": "Success state color"
+      },
+      "error": {
+        "value": "#EF4444",
+        "type": "color",
+        "description": "Error state color"
+      },
+      "warning": {
+        "value": "#F59E0B",
+        "type": "color",
+        "description": "Warning state color"
+      },
+      "info": {
+        "value": "#3B82F6",
+        "type": "color",
+        "description": "Info state color"
+      },
+      "info-alt": {
+        "value": "#3B83F1",
+        "type": "color",
+        "description": "Alternative info color"
+      }
+    },
+    "grays": {
+      "gray-1": {
+        "value": "#8E8E93",
+        "type": "color",
+        "description": "Gray text color"
+      },
+      "gray-2": {
+        "value": "#AEAEB2",
+        "type": "color",
+        "description": "Gray border color"
+      },
+      "gray-3": {
+        "value": "#C7C7CC",
+        "type": "color",
+        "description": "Light gray border"
+      },
+      "gray-4": {
+        "value": "#D1D1D6",
+        "type": "color",
+        "description": "Disabled gray"
+      },
+      "gray-5": {
+        "value": "#E5E5EA",
+        "type": "color",
+        "description": "Lighter gray border"
+      },
+      "gray-6": {
+        "value": "#F9FAFB",
+        "type": "color",
+        "description": "Background gray"
+      }
+    },
+    "backgrounds": {
+      "white": {
+        "value": "#FFFFFF",
+        "type": "color",
+        "description": "Pure white"
+      },
+      "gray": {
+        "value": "#F9FAFB",
+        "type": "color",
+        "description": "Main background color"
+      },
+      "yellow-light": {
+        "value": "#FFFAEB",
+        "type": "color",
+        "description": "Light yellow background"
+      },
+      "green-light": {
+        "value": "#EBFDF5",
+        "type": "color",
+        "description": "Light green background"
+      },
+      "blue-light": {
+        "value": "#EEF6FF",
+        "type": "color",
+        "description": "Light blue background"
+      },
+      "red-light": {
+        "value": "#FEF2F2",
+        "type": "color",
+        "description": "Light red background"
+      }
+    }
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": {
+        "value": "Plus Jakarta Sans",
+        "type": "fontFamily"
+      }
+    },
+    "fontWeights": {
+      "regular": {
+        "value": 400,
+        "type": "fontWeight"
+      },
+      "medium": {
+        "value": 500,
+        "type": "fontWeight"
+      },
+      "semibold": {
+        "value": 600,
+        "type": "fontWeight"
+      },
+      "bold": {
+        "value": 700,
+        "type": "fontWeight"
+      },
+      "extrabold": {
+        "value": 800,
+        "type": "fontWeight"
+      }
+    },
+    "fontSizes": {
+      "overline": {
+        "value": "10px",
+        "type": "fontSize",
+        "description": "Smallest text size"
+      },
+      "caption": {
+        "value": "12px",
+        "type": "fontSize",
+        "description": "Caption text"
+      },
+      "body-2": {
+        "value": "14px",
+        "type": "fontSize",
+        "description": "Small body text"
+      },
+      "subtitle": {
+        "value": "16px",
+        "type": "fontSize",
+        "description": "Subtitle text"
+      },
+      "body-1": {
+        "value": "18px",
+        "type": "fontSize",
+        "description": "Regular body text"
+      },
+      "h6": {
+        "value": "20px",
+        "type": "fontSize",
+        "description": "Heading 6"
+      },
+      "h4": {
+        "value": "28px",
+        "type": "fontSize",
+        "description": "Heading 4"
+      },
+      "h3": {
+        "value": "32px",
+        "type": "fontSize",
+        "description": "Heading 3"
+      }
+    },
+    "lineHeights": {
+      "tight": {
+        "value": "100%",
+        "type": "lineHeight",
+        "description": "Used for all text in this design"
+      },
+      "normal": {
+        "value": "normal",
+        "type": "lineHeight"
+      }
+    }
+  },
+  "spacing": {
+    "sidebar-width": {
+      "value": "320px",
+      "type": "dimension",
+      "description": "Sidebar fixed width"
+    },
+    "header-height": {
+      "value": "80px",
+      "type": "dimension",
+      "description": "Header height (72px + 8px accent)"
+    },
+    "card-padding": {
+      "value": "24px",
+      "type": "dimension",
+      "description": "Standard card padding"
+    },
+    "gap-small": {
+      "value": "8px",
+      "type": "dimension"
+    },
+    "gap-medium": {
+      "value": "16px",
+      "type": "dimension"
+    },
+    "gap-large": {
+      "value": "24px",
+      "type": "dimension"
+    }
+  },
+  "borderRadius": {
+    "small": {
+      "value": "7px",
+      "type": "borderRadius",
+      "description": "Small components"
+    },
+    "medium": {
+      "value": "11px",
+      "type": "borderRadius",
+      "description": "Medium components"
+    },
+    "large": {
+      "value": "13px",
+      "type": "borderRadius",
+      "description": "Cards and large components"
+    },
+    "full": {
+      "value": "9999px",
+      "type": "borderRadius",
+      "description": "Pills and badges"
+    }
+  },
+  "shadows": {
+    "card": {
+      "value": "0px 2px 4px rgba(0, 0, 0, 0.15)",
+      "type": "shadow",
+      "description": "Standard card shadow"
+    }
+  },
+  "gradients": {
+    "primary": {
+      "value": "linear-gradient(163.18deg, #FEB800 3.75%, #E27200 100%)",
+      "type": "gradient",
+      "description": "Primary brand gradient"
+    },
+    "secondary": {
+      "value": "linear-gradient(135.27deg, #FEB800 3.75%, #E27200 100%)",
+      "type": "gradient",
+      "description": "Secondary gradient variant"
+    }
+  },
+  "components": {
+    "statsCard": {
+      "width": "248px",
+      "height": "168px",
+      "borderRadius": "13px",
+      "padding": "24px",
+      "shadow": "0px 2px 4px rgba(0, 0, 0, 0.15)"
+    },
+    "chartCard": {
+      "width": "341px",
+      "height": "336px",
+      "borderRadius": "13px",
+      "padding": "24px",
+      "shadow": "0px 2px 4px rgba(0, 0, 0, 0.15)"
+    },
+    "button": {
+      "height": "40px",
+      "borderRadius": "7px",
+      "padding": "10px 32px"
+    },
+    "searchInput": {
+      "height": "48px",
+      "borderRadius": "11px",
+      "padding": "12px 16px"
+    }
+  }
+}
