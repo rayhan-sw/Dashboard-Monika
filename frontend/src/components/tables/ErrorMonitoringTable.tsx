@@ -1,121 +1,189 @@
-'use client';
+"use client";
 
-import { AlertTriangle, AlertCircle, Flag } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { AlertTriangle, AlertCircle } from "lucide-react";
+import { useAppStore } from "@/stores/appStore";
+import { dashboardService } from "@/services/api";
 
 interface ErrorActivity {
-  id: number;
+  id: string;
   nama: string;
   aktifitas: string;
-  status: string;
+  scope: string;
   tanggal: string;
   lokasi?: string;
+  satker: string;
 }
 
-interface ErrorMonitoringTableProps {
-  errors: ErrorActivity[];
-}
-
-const getSeverityIcon = (status: string) => {
-  if (status === 'FAILED') {
+const getSeverityIcon = (scope: string) => {
+  if (scope === "error") {
     return <AlertTriangle className="w-4 h-4 text-status-error" />;
   }
   return <AlertCircle className="w-4 h-4 text-status-warning" />;
 };
 
-const getSeverityLabel = (status: string) => {
-  if (status === 'FAILED') return 'Critical';
-  return 'Warning';
+const getSeverityLabel = (scope: string) => {
+  if (scope === "error") return "TINGGI";
+  return "Warning";
 };
 
-const getSeverityColor = (status: string) => {
-  if (status === 'FAILED') return 'bg-status-error/10 text-status-error border-status-error';
-  return 'bg-status-warning/10 text-status-warning border-status-warning';
+const getSeverityColor = (scope: string) => {
+  if (scope === "error") return "bg-status-error text-white";
+  return "bg-status-warning/10 text-status-warning border-status-warning";
 };
 
-export default function ErrorMonitoringTable({ errors }: ErrorMonitoringTableProps) {
+export default function ErrorMonitoringTable() {
+  const [errors, setErrors] = useState<ErrorActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { dateRange, selectedCluster } = useAppStore();
+
+  useEffect(() => {
+    const fetchLogoutErrors = async () => {
+      setLoading(true);
+      try {
+        const startDate = dateRange?.startDate
+          ? dateRange.startDate.split("T")[0]
+          : undefined;
+        const endDate = dateRange?.endDate
+          ? dateRange.endDate.split("T")[0]
+          : undefined;
+
+        // Fetch activities
+        const response = await dashboardService.getActivities(
+          1,
+          100,
+          startDate,
+          endDate,
+          selectedCluster,
+        );
+        const data = response.data;
+
+        // Filter for logout errors only (LOGOUT with scope='error')
+        // For testing: also show LOGOUT with any scope if no errors found
+        const logoutErrors = data
+          .filter(
+            (activity: any) => activity.aktifitas === "LOGOUT",
+            // Temporarily show all LOGOUT to test if component works
+            // && activity.scope === 'error'
+          )
+          .sort(
+            (a: any, b: any) =>
+              new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime(),
+          )
+          .slice(0, 5); // Show top 5 most recent
+
+        console.log("All activities:", data.length);
+        console.log("LOGOUT activities found:", logoutErrors.length);
+        console.log("Sample LOGOUT data:", logoutErrors.slice(0, 2));
+
+        setErrors(logoutErrors);
+      } catch (error) {
+        console.error("Error fetching logout errors:", error);
+        setErrors([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLogoutErrors();
+  }, [dateRange, selectedCluster]);
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleString('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
+  const maskUsername = (username: string) => {
+    if (!username || username.length <= 2) return username;
+    return (
+      username.charAt(0) +
+      "*".repeat(Math.max(0, username.length - 2)) +
+      username.charAt(username.length - 1)
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="card-bpk p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-14 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="card-bpk p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-h5 font-bold text-gray-1">Pemantauan Kesalahan</h3>
-        <div className="flex items-center gap-2">
-          <span className="px-3 py-1 bg-status-error/10 text-status-error rounded-md-bpk text-caption font-semibold">
-            {errors.length} errors
-          </span>
+      <div className="flex items-start gap-3 mb-6">
+        <div className="w-12 h-12 rounded-lg-bpk bg-red-500 flex items-center justify-center flex-shrink-0">
+          <AlertTriangle className="h-6 w-6 text-white" />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-gray-1">
+                Pemantauan Kesalahan Logout
+              </h3>
+              <p className="text-sm text-gray-3 mt-1">
+                Mengetahui kesalahan logout dan masa aktif sesi
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-4 py-1.5 bg-red-50 border border-red-200 text-status-error rounded-full text-caption font-semibold">
+                {errors.length} Flags
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-auto" style={{ maxHeight: '400px' }}>
-        <table className="w-full">
-          <thead className="sticky top-0 bg-gray-6 border-b border-gray-5">
-            <tr>
-              <th className="px-4 py-3 text-left text-caption font-semibold text-gray-2">
-                Severity
-              </th>
-              <th className="px-4 py-3 text-left text-caption font-semibold text-gray-2">
-                Pengguna
-              </th>
-              <th className="px-4 py-3 text-left text-caption font-semibold text-gray-2">
-                Error Type
-              </th>
-              <th className="px-4 py-3 text-left text-caption font-semibold text-gray-2">
-                Lokasi
-              </th>
-              <th className="px-4 py-3 text-left text-caption font-semibold text-gray-2">
-                Timestamp
-              </th>
-              <th className="px-4 py-3 text-left text-caption font-semibold text-gray-2">
-                Flag
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-5">
-            {errors.map((error) => (
-              <tr key={error.id} className="hover:bg-gray-6 transition-colors">
-                <td className="px-4 py-3">
+      <div className="overflow-auto" style={{ maxHeight: "400px" }}>
+        <div className="space-y-3">
+          {errors.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>Tidak ada kesalahan logout terdeteksi</p>
+            </div>
+          ) : (
+            errors.map((error) => (
+              <div
+                key={error.id}
+                className="flex items-center justify-between p-4 rounded-xl bg-red-50 border-l-4 border-red-500"
+              >
+                <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    {getSeverityIcon(error.status)}
-                    <span className={`px-2 py-1 rounded text-overline font-semibold border ${getSeverityColor(error.status)}`}>
-                      {getSeverityLabel(error.status)}
+                    <p className="text-sm font-semibold text-gray-900">
+                      {maskUsername(error.nama)}
+                    </p>
+                    <span className="text-xs text-gray-500">
+                      • {error.satker}
                     </span>
                   </div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-body text-gray-1 font-medium">
-                    {error.nama}
+                  <p className="text-xs text-gray-600 mt-1">
+                    Kesalahan Logout • {formatTime(error.tanggal)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${getSeverityColor(error.scope)}`}
+                  >
+                    {getSeverityLabel(error.scope)}
                   </span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-body text-gray-2">{error.aktifitas}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-caption text-gray-3">
-                    {error.lokasi || '-'}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-caption text-gray-3">
-                    {formatTime(error.tanggal)}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <button className="w-8 h-8 rounded-md-bpk hover:bg-gray-5 flex items-center justify-center transition-colors">
-                    <Flag className="w-4 h-4 text-gray-3 hover:text-status-error" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

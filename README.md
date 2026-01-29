@@ -26,14 +26,14 @@ Dashboard monitoring aktivitas pengguna BIDICS (BPK Integrated Data and Informat
 - **Maps**: Leaflet + OpenStreetMap
 - **Date Handling**: date-fns
 
-### Backend
+### Backend ✅
 
-- **Language**: Golang 1.21+
+- **Language**: Golang 1.23+
 - **Framework**: Gin
 - **Database**: PostgreSQL 15+
 - **ORM**: GORM
-- **Authentication**: JWT + RBAC
-- **Logging**: Zerolog
+- **Environment**: godotenv
+- **UUID**: google/uuid
 
 ## 📁 Struktur Proyek
 
@@ -113,18 +113,83 @@ Dashboard-BPK/
 
 ## 🛠️ Development Setup
 
-_(Akan diisi pada fase setup)_
+### Prerequisites
+
+- Node.js 18+ & npm
+- Golang 1.23+
+- PostgreSQL 15+
+- DBeaver (untuk database management)
+
+### Backend Setup
+
+1. **Create Database**:
+
+   ```bash
+   # Open DBeaver, connect to PostgreSQL
+   # Run: backend/setup-database.sql
+   ```
+
+2. **Configure Environment**:
+
+   ```bash
+   cd backend
+   cp .env.example .env
+   # Edit .env if needed (default password: 12345678)
+   ```
+
+3. **Install Dependencies**:
+
+   ```bash
+   go mod tidy
+   ```
+
+4. **Build**:
+
+   ```bash
+   go build -o bin/server.exe cmd/api/main.go
+   ```
+
+5. **Import CSV Data**:
+
+   ```bash
+   go run cmd/import/main.go "path/to/actLog_202601091608.csv"
+   ```
+
+6. **Run Server**:
+
+   ```bash
+   .\bin\server.exe
+   # Server runs on http://localhost:8080
+   ```
+
+7. **Test API**:
+   ```bash
+   .\test-api.ps1
+   ```
+
+### Frontend Setup
+
+_(Will be added in FASE 3)_
 
 ## 📝 Environment Variables
 
-_(Akan diisi pada fase setup)_
+### Backend (.env)
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=12345678
+DB_NAME=dashboard_bpk
+PORT=8080
+```
 
 ## 🗓️ Development Timeline
 
 - **Fase 0A**: ✅ Extract Figma Design
 - **Fase 0B**: ✅ Create Workspace Folder
-- **Fase 1**: ⏳ Setup Project Structure
-- **Fase 2**: ⏳ Implement Database & Backend API
+- **Fase 1**: ✅ Setup Project Structure & Migrations
+- **Fase 2**: ✅ Implement Database & Backend API
 - **Fase 3**: ⏳ Build Frontend Components
 - **Fase 4**: ⏳ Integration & Testing
 - **Fase 5**: ⏳ Deployment Configuration
@@ -142,5 +207,5 @@ Internal Project - Badan Pemeriksa Keuangan RI
 
 ---
 
-**Status Terakhir**: Fase 0B Completed - Workspace Initialized
-**Tanggal**: 27 Januari 2026
+**Status Terakhir**: ✅ FASE 2 COMPLETED - Backend API Ready
+**Tanggal**: 9 Januari 2025

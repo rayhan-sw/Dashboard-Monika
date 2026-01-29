@@ -1,51 +1,118 @@
-'use client';
+"use client";
 
-import { Users, LogIn, Activity, AlertTriangle } from 'lucide-react';
-import StatCard from '../ui/StatCard';
+import { useEffect, useState } from "react";
+import StatCard from "@/components/ui/StatCard";
+import { Users, LogIn, Activity, AlertCircle } from "lucide-react";
+import { dashboardService } from "@/services/api";
+import { formatNumber } from "@/lib/utils";
+import { useAppStore } from "@/stores/appStore";
+import type { DashboardStats as DashboardStatsType } from "@/types/api";
 
-interface DashboardStatsProps {
-  stats: {
-    totalUsers: number;
-    successLogins: number;
-    totalActivity: number;
-    logoutErrors: number;
+export default function DashboardStats() {
+  const { dateRange, selectedCluster } = useAppStore();
+  const [stats, setStats] = useState<DashboardStatsType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadStats();
+  }, [dateRange, selectedCluster]);
+
+  const loadStats = async () => {
+    setLoading(true);
+    console.log("=== DashboardStats - loadStats ===");
+    console.log("dateRange:", dateRange);
+    console.log("selectedCluster:", selectedCluster);
+    console.log("Calling API with:", {
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
+      cluster: selectedCluster,
+    });
+    try {
+      const data = await dashboardService.getStats(
+        dateRange.startDate,
+        dateRange.endDate,
+        selectedCluster,
+      );
+      console.log("DashboardStats - Received data:", data);
+      setStats(data);
+      setError(null);
+    } catch (err) {
+      console.error("DashboardStats - Error:", err);
+      setError(err instanceof Error ? err.message : "Failed to load stats");
+    } finally {
+      setLoading(false);
+    }
   };
-}
 
-export default function DashboardStats({ stats }: DashboardStatsProps) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={i}
+            className="h-32 bg-gray-100 animate-pulse rounded-[13px]"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-[13px] p-4 text-red-600">
+        <AlertCircle className="inline mr-2 h-5 w-5" />
+        {error}
+      </div>
+    );
+  }
+
+  if (!stats) return null;
+
+  // Check if all stats are zero - might indicate no data for selected filters
+  const hasNoData = stats.total_activities === 0 && stats.total_users === 0;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <StatCard
-        title="Total Pengguna"
-        value={stats.totalUsers}
-        icon={Users}
-        color="gold"
-        trend={{ value: 12.5, isPositive: true }}
-      />
-      
-      <StatCard
-        title="Login Berhasil"
-        value={stats.successLogins}
-        icon={LogIn}
-        color="blue"
-        trend={{ value: 8.2, isPositive: true }}
-      />
-      
-      <StatCard
-        title="Total Aktivitas"
-        value={stats.totalActivity}
-        icon={Activity}
-        color="orange"
-        trend={{ value: 15.7, isPositive: true }}
-      />
-      
-      <StatCard
-        title="Kesalahan Logout"
-        value={stats.logoutErrors}
-        icon={AlertTriangle}
-        color="red"
-        trend={{ value: 3.4, isPositive: false }}
-      />
+    <div className="space-y-4">
+      {hasNoData && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-[13px] p-4 text-yellow-700 flex items-center gap-2">
+          <AlertCircle className="h-5 w-5" />
+          <span className="text-caption">
+            Tidak ada data untuk filter yang dipilih. Coba pilih periode tanggal
+            yang lebih luas atau cluster lain.
+          </span>
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Pengguna"
+          value={formatNumber(stats.total_users)}
+          icon={<Users className="h-6 w-6" />}
+          trend={{ value: 0, isPositive: true }}
+          color="blue"
+        />
+        <StatCard
+          title="Login Berhasil"
+          value={formatNumber(stats.success_logins)}
+          icon={<LogIn className="h-6 w-6" />}
+          trend={{ value: 0, isPositive: true }}
+          color="green"
+        />
+        <StatCard
+          title="Total Aktivitas"
+          value={formatNumber(stats.total_activities)}
+          icon={<Activity className="h-6 w-6" />}
+          trend={{ value: 0, isPositive: true }}
+          color="amber"
+        />
+        <StatCard
+          title="Kesalahan Logout"
+          value={formatNumber(stats.logout_errors)}
+          icon={<AlertCircle className="h-6 w-6" />}
+          trend={{ value: 0, isPositive: false }}
+          color="red"
+        />
+      </div>
     </div>
   );
 }

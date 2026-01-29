@@ -2,175 +2,375 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/bpk-ri/dashboard-monitoring/internal/repository"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
 )
 
-// GetDashboardStats returns dashboard statistics from real database
+// GetDashboardStats returns dashboard statistics
 func GetDashboardStats(c *gin.Context) {
 	repo := repository.NewActivityLogRepository(database.GetDB())
-	
-	// Get total activities
-	totalActivity, err := repo.GetTotalCount()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	
-	// Get success logins (status = "SUCCESS")
-	successLogins, err := repo.GetCountByStatus("SUCCESS")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	
-	// Get unique users count
-	totalUsers, err := repo.GetUniqueUsersCount()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	
-	// Get logout errors
-	logoutErrors, err := repo.GetCountByStatus("FAILED")
-	if err != nil {
-		logoutErrors = 0
-	}
-	
-	// Get busiest hour
-	busiestHour, err := repo.GetBusiestHour()
-	if err != nil {
-		busiestHour = map[string]interface{}{
-			"start": 13,
-			"end":   14,
-			"count": 0,
-		}
-	}
-	
-	stats := gin.H{
-		"totalUsers":    totalUsers,
-		"successLogins": successLogins,
-		"totalActivity": totalActivity,
-		"logoutErrors":  logoutErrors,
-		"busiestHour":   busiestHour,
-	}
-	c.JSON(http.StatusOK, stats)
-}
 
-// GetActivities returns recent activities from database
-func GetActivities(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	// Parse date range and cluster from query params
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	cluster := c.Query("cluster")
 	
-	// Get recent 50 activities
-	activities, err := repo.GetRecentActivities(50)
+	var startPtr, endPtr, clusterPtr *string
+	if startDate != "" {
+		startPtr = &startDate
+	}
+	if endDate != "" {
+		endPtr = &endDate
+	}
+	if cluster != "" {
+		clusterPtr = &cluster
+	}
+
+	// Get total users (unique tokens)
+	totalUsers, err := repo.GetUniqueUsersCount(startPtr, endPtr, clusterPtr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
+	// Get successful logins
+	successLogins, err := repo.GetCountByStatus("SUCCESS", startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get total activities
+	totalActivities, err := repo.GetTotalCount(startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get logout errors
+	logoutErrors, err := repo.GetCountByStatus("FAILED", startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get busiest hour
+	busiestHour, count, err := repo.GetBusiestHour(startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"data":  activities,
-		"total": len(activities),
+		"total_users":      totalUsers,
+		"success_logins":   successLogins,
+		"total_activities": totalActivities,
+		"logout_errors":    logoutErrors,
+		"busiest_hour": gin.H{
+			"hour":  busiestHour,
+			"count": count,
+		},
 	})
 }
 
-// GetChartData returns chart data based on type from real database
+// GetActivities returns paginated activity logs
+func GetActivities(c *gin.Context) {
+	repo := repository.NewActivityLogRepository(database.GetDB())
+
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	// Allow larger page sizes for data analysis (max 10000)
+	if pageSize > 10000 {
+		pageSize = 10000
+	}
+
+	// Parse date range and cluster from query params
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	cluster := c.Query("cluster")
+	
+	var startPtr, endPtr, clusterPtr *string
+	if startDate != "" {
+		startPtr = &startDate
+	}
+	if endDate != "" {
+		endPtr = &endDate
+	}
+	if cluster != "" {
+		clusterPtr = &cluster
+	}
+
+	// Get recent activities
+	activities, err := repo.GetRecentActivities(page, pageSize, startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get total count
+	total, err := repo.GetTotalCount(startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":        activities,
+		"page":        page,
+		"page_size":   pageSize,
+		"total":       total,
+		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
+	})
+}
+
+// GetChartData returns chart data based on type
 func GetChartData(c *gin.Context) {
 	chartType := c.Param("type")
 	repo := repository.NewActivityLogRepository(database.GetDB())
 
-	var data interface{}
+	// Parse date range and cluster from query params
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	cluster := c.Query("cluster")
+	
+	var startPtr, endPtr, clusterPtr *string
+	if startDate != "" {
+		startPtr = &startDate
+	}
+	if endDate != "" {
+		endPtr = &endDate
+	}
+	if cluster != "" {
+		clusterPtr = &cluster
+	}
+
 	switch chartType {
-	case "interaction":
-		scopeCounts, err := repo.GetActivityCountByScope()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		data = scopeCounts
-		
 	case "hourly":
-		hourCounts, err := repo.GetActivityCountByHour()
+		data, err := repo.GetActivityCountByHour(startPtr, endPtr, clusterPtr)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		
-		var hourlyData []gin.H
-		for hour := 0; hour < 24; hour++ {
-			count := hourCounts[hour]
-			hourlyData = append(hourlyData, gin.H{
-				"hour":  hour,
-				"count": count,
-			})
+		c.JSON(http.StatusOK, gin.H{"data": data})
+
+	case "cluster":
+		data, err := repo.GetActivityCountByScope(startPtr, endPtr, clusterPtr)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
 		}
-		data = hourlyData
-		
+		c.JSON(http.StatusOK, gin.H{"data": data})
+
+	case "province":
+		data, err := repo.GetActivityCountByProvince(startPtr, endPtr, clusterPtr)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": data})
+
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chart type"})
-		return
 	}
-	
-	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-// GetProvinces returns provinces data from database
-func GetProvinces(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
-	
-	provinceCounts, err := repo.GetActivityCountByProvince()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	
-	var provinces []gin.H
-	i := 1
-	for province, count := range provinceCounts {
-		provinces = append(provinces, gin.H{
-			"id":            i,
-			"name":          province,
-			"activityCount": count,
-		})
-		i++
-	}
-	c.JSON(http.StatusOK, gin.H{"data": provinces})
-}
-
-// GetUnits returns organizational units data from database
-func GetUnits(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
-	
-	unitCounts, err := repo.GetActivityCountByUnit()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	
-	var units []gin.H
-	i := 1
-	for unit, count := range unitCounts {
-		units = append(units, gin.H{
-			"id":            i,
-			"name":          unit,
-			"activityCount": count,
-		})
-		i++
-	}
-	c.JSON(http.StatusOK, gin.H{"data": units})
-}
-
-// GetAccessSuccessRate returns access success rate by scope
+// GetAccessSuccessRate returns access success rate over time
 func GetAccessSuccessRate(c *gin.Context) {
 	repo := repository.NewActivityLogRepository(database.GetDB())
-	
-	data, err := repo.GetAccessSuccessRateByScope()
+
+	// Get date range and cluster from query params
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	cluster := c.Query("cluster")
+
+	var startPtr, endPtr, clusterPtr *string
+	if startDate != "" {
+		startPtr = &startDate
+	}
+	if endDate != "" {
+		endPtr = &endDate
+	}
+	if cluster != "" {
+		clusterPtr = &cluster
+	}
+
+	// Get success/failed counts by date
+	data, err := repo.GetAccessSuccessRateByDate(startPtr, endPtr, clusterPtr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
+
+// GetProvinces returns provincial statistics
+func GetProvinces(c *gin.Context) {
+	repo := repository.NewActivityLogRepository(database.GetDB())
+
+	// Parse date range and cluster from query params
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	cluster := c.Query("cluster")
+	
+	var startPtr, endPtr, clusterPtr *string
+	if startDate != "" {
+		startPtr = &startDate
+	}
+	if endDate != "" {
+		endPtr = &endDate
+	}
+	if cluster != "" {
+		clusterPtr = &cluster
+	}
+
+	data, err := repo.GetActivityCountByProvince(startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": data})
+}
+
+// GetLokasi returns location statistics based on lokasi field
+func GetLokasi(c *gin.Context) {
+	repo := repository.NewActivityLogRepository(database.GetDB())
+
+	// Parse date range and cluster from query params
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	cluster := c.Query("cluster")
+	
+	var startPtr, endPtr, clusterPtr *string
+	if startDate != "" {
+		startPtr = &startDate
+	}
+	if endDate != "" {
+		endPtr = &endDate
+	}
+	if cluster != "" {
+		clusterPtr = &cluster
+	}
+
+	data, err := repo.GetActivityCountByLokasi(startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": data})
+}
+
+// GetUnits returns unit/satker statistics
+func GetUnits(c *gin.Context) {
+	repo := repository.NewActivityLogRepository(database.GetDB())
+
+	// Parse pagination
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	// Parse date range and cluster from query params
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	cluster := c.Query("cluster")
+	
+	var startPtr, endPtr, clusterPtr *string
+	if startDate != "" {
+		startPtr = &startDate
+	}
+	if endDate != "" {
+		endPtr = &endDate
+	}
+	if cluster != "" {
+		clusterPtr = &cluster
+	}
+
+	data, err := repo.GetActivityCountBySatker(page, pageSize, startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get total count
+	total, err := repo.GetTotalCount(startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":        data,
+		"page":        page,
+		"page_size":   pageSize,
+		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
+	})
+}
+
+// GetClusters returns list of unique clusters
+func GetClusters(c *gin.Context) {
+	repo := repository.NewActivityLogRepository(database.GetDB())
+
+	clusters, err := repo.GetUniqueClusters()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": clusters})
+}
+
+// GetHourlyDataForSatker returns hourly activity distribution for a specific satker
+func GetHourlyDataForSatker(c *gin.Context) {
+	repo := repository.NewActivityLogRepository(database.GetDB())
+	
+	// Get satker from query parameter
+	satker := c.Query("satker")
+	if satker == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "satker parameter is required"})
+		return
+	}
+
+	// Parse date range and cluster from query params
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	cluster := c.Query("cluster")
+	
+	var startPtr, endPtr, clusterPtr *string
+	if startDate != "" {
+		startPtr = &startDate
+	}
+	if endDate != "" {
+		endPtr = &endDate
+	}
+	if cluster != "" {
+		clusterPtr = &cluster
+	}
+
+	data, err := repo.GetActivityCountByHourForSatker(satker, startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": data})
+}
+

@@ -48,8 +48,13 @@ func InitDB() error {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	log.Println("✓ Database connected successfully")
+	log.Println("✅ Database connected successfully")
 	return nil
+}
+
+// GetDB returns the database instance
+func GetDB() *gorm.DB {
+	return DB
 }
 
 // CloseDB closes the database connection
@@ -62,9 +67,4 @@ func CloseDB() error {
 		return sqlDB.Close()
 	}
 	return nil
-}
-
-// GetDB returns the database instance
-func GetDB() *gorm.DB {
-	return DB
 }

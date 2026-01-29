@@ -14,7 +14,9 @@
 
   body {
     @apply bg-gray-6 text-gray-1 font-sans;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
   }
 }
 
@@ -22,11 +24,11 @@
   .card-bpk {
     @apply bg-white border border-gray-5 rounded-lg-bpk shadow-card;
   }
-  
+
   .btn-primary {
     @apply bg-gradient-bpk text-white font-semibold rounded-sm-bpk px-8 py-2.5 shadow-card hover:opacity-90 transition-opacity;
   }
-  
+
   .stat-card {
     @apply card-bpk p-6 min-h-[168px] w-full sm:w-[248px];
   }
@@ -35,5 +37,15 @@
 @layer utilities {
   .text-gradient-bpk {
     @apply bg-gradient-bpk bg-clip-text text-transparent;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

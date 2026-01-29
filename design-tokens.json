@@ -1,206 +1,258 @@
 {
-  "metadata": {
-    "source": "Figma - BPK Dashboard Dev Mode",
-    "figma_file_key": "yHuEwRXxFOAhq600fRXWzp",
-    "extracted_date": "2026-01-27",
-    "design_system": "BPK Dashboard Design System"
-  },
+  "design_source": "Figma - BPK Dashboard Design System",
+  "figma_file_key": "yHuEwRXxFOAhq600fRXWzp",
+  "figma_node_id": "392-465",
+  "extracted_date": "2026-01-27",
 
   "colors": {
     "primary": {
-      "gold": "#FEB800",
-      "orange": "#E27200",
-      "darkorange": "#BB4D00",
-      "lightorange": "#FE9A00",
-      "paleOrange": "#FDC233",
-      "cream": "#FEF3C6",
-      "lightCream": "#FFFAEB",
-      "extraLightCream": "#F4EBC4"
+      "default": "#FEB800",
+      "dark": "#E27200",
+      "darker": "#BB4D00"
     },
-    "success": {
-      "main": "#10B981",
-      "dark": "#007A55",
-      "darker": "#376054",
-      "light": "#A9EBD3",
-      "lighter": "#CAE8DC",
-      "lightest": "#EBFDF5",
-      "ultraLight": "#A4F4CF"
+    "secondary": {
+      "orange": "#FE9A00",
+      "gold": "#FDC233"
     },
-    "error": {
-      "main": "#EF4444",
-      "dark": "#C10007",
-      "light": "#FF696B",
-      "lighter": "#EBD9D9",
-      "lightest": "#FEF2F2"
-    },
-    "info": {
-      "main": "#3B83F1",
-      "light": "#7C86FF",
-      "lighter": "#D7E0EF",
-      "lightest": "#EEF6FF",
-      "ultraLight": "#DBE8FD"
-    },
-    "purple": {
-      "dark": "#5E4077",
-      "main": "#AC52FF",
-      "light": "#DAB2FF",
-      "lighter": "#F6EEFF",
-      "lightest": "#F9F4FF",
-      "extraLight": "#F3E8FF"
+    "status": {
+      "success": "#10B981",
+      "success_light": "#EBFDF5",
+      "success_border": "#CAE8DC",
+      "error": "#EF4444",
+      "error_light": "#FEF2F2",
+      "error_bg": "#FFF3F3",
+      "error_text": "#E7000B",
+      "warning": "#F59E0B",
+      "warning_light": "#FEF3C6",
+      "warning_bg": "#FFFAEB",
+      "info": "#3B82F6",
+      "info_light": "#EEF6FF",
+      "info_border": "#D7E0EF"
     },
     "neutral": {
       "black": "#000000",
-      "darkGray": "#8E8E93",
-      "mediumGray": "#AEAEB2",
-      "lightGray": "#D1D1D6",
-      "lighterGray": "#E5E5EA",
-      "paleGray": "#F9FAFB",
+      "gray_dark": "#616161",
+      "gray": "#8E8E93",
+      "gray_light": "#AEAEB2",
+      "gray_lighter": "#C7C7CC",
+      "gray_lightest": "#D1D1D6",
+      "gray_border": "#E5E5EA",
+      "gray_bg": "#F9FAFB",
       "white": "#FFFFFF"
     },
     "cluster": {
-      "pencarian": "#3B83F1",
+      "pencarian": "#3B82F6",
       "pemda": "#10B981",
-      "pusat": "#FEB800"
+      "pusat": "#F59E0B"
+    },
+    "gradient": {
+      "primary": "linear-gradient(163.18deg, #FEB800 3.75%, #E27200 100%)",
+      "secondary": "linear-gradient(135.27deg, #FEB800 3.75%, #E27200 100%)"
     }
   },
 
   "typography": {
     "fontFamily": {
-      "primary": "Plus Jakarta Sans, Inter, system-ui, sans-serif"
+      "primary": "Plus Jakarta Sans",
+      "fallback": "Inter, system-ui, sans-serif"
     },
-    "fontSize": {
-      "h1": "36px",
-      "h2": "19px",
-      "h3": "13px",
-      "body": "13px",
-      "small": "11px",
-      "tiny": "10px"
+    "fontWeights": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700,
+      "extrabold": 800
     },
-    "fontWeight": {
-      "bold": "700",
-      "semiBold": "600",
-      "medium": "500",
-      "regular": "400"
+    "fontSizes": {
+      "overline": "10px",
+      "caption": "12px",
+      "body2": "14px",
+      "subtitle": "16px",
+      "body1": "18px",
+      "h6": "20px",
+      "h4": "28px",
+      "h3": "32px"
     },
-    "lineHeight": {
-      "heading": "1.2",
-      "body": "1.5"
+    "lineHeights": {
+      "tight": "100%",
+      "normal": "normal"
+    },
+    "textStyles": {
+      "h3_bold": {
+        "fontSize": "32px",
+        "fontWeight": 700,
+        "lineHeight": "100%"
+      },
+      "h4_bold": {
+        "fontSize": "28px",
+        "fontWeight": 700,
+        "lineHeight": "100%"
+      },
+      "h6_extrabold": {
+        "fontSize": "20px",
+        "fontWeight": 800,
+        "lineHeight": "100%"
+      },
+      "h6_semibold": {
+        "fontSize": "20px",
+        "fontWeight": 600,
+        "lineHeight": "100%"
+      },
+      "body1_semibold": {
+        "fontSize": "18px",
+        "fontWeight": 600,
+        "lineHeight": "100%"
+      },
+      "body1_regular": {
+        "fontSize": "18px",
+        "fontWeight": 400,
+        "lineHeight": "100%"
+      },
+      "subtitle_semibold": {
+        "fontSize": "16px",
+        "fontWeight": 600,
+        "lineHeight": "100%"
+      },
+      "subtitle_regular": {
+        "fontSize": "16px",
+        "fontWeight": 400,
+        "lineHeight": "100%"
+      },
+      "body2_semibold": {
+        "fontSize": "14px",
+        "fontWeight": 600,
+        "lineHeight": "100%"
+      },
+      "body2_medium": {
+        "fontSize": "14px",
+        "fontWeight": 500,
+        "lineHeight": "100%"
+      },
+      "caption_semibold": {
+        "fontSize": "12px",
+        "fontWeight": 600,
+        "lineHeight": "100%"
+      },
+      "caption_medium": {
+        "fontSize": "12px",
+        "fontWeight": 500,
+        "lineHeight": "100%"
+      },
+      "caption_regular": {
+        "fontSize": "12px",
+        "fontWeight": 400,
+        "lineHeight": "100%"
+      },
+      "overline_semibold": {
+        "fontSize": "10px",
+        "fontWeight": 600,
+        "lineHeight": "100%"
+      }
     }
   },
 
   "spacing": {
-    "xs": "8px",
-    "sm": "12px",
-    "md": "16px",
-    "lg": "24px",
-    "xl": "32px",
-    "2xl": "48px",
-    "3xl": "64px"
+    "xs": "4px",
+    "sm": "8px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "24px",
+    "2xl": "32px",
+    "3xl": "48px",
+    "4xl": "64px"
   },
 
   "borderRadius": {
-    "small": "8px",
-    "medium": "10px",
+    "small": "4px",
+    "medium": "7px",
+    "card": "11px",
     "large": "13px",
-    "pill": "9999px"
+    "rounded": "9999px"
   },
 
   "shadows": {
-    "card": "0 2px 8px rgba(0, 0, 0, 0.08)",
-    "cardHover": "0 4px 12px rgba(0, 0, 0, 0.12)",
-    "header": "0 1px 3px rgba(0, 0, 0, 0.06)"
+    "card": "0px 2px 4px 0px rgba(0, 0, 0, 0.15)"
   },
 
   "layout": {
-    "maxWidth": "1440px",
-    "sidebarWidth": "320px",
-    "headerHeight": "80px",
-    "contentPadding": "24px"
+    "sidebar": {
+      "width": "320px",
+      "backgroundColor": "#FFFFFF",
+      "borderColor": "#E5E5EA"
+    },
+    "header": {
+      "height": "72px",
+      "topBarHeight": "8px",
+      "backgroundColor": "#FFFFFF",
+      "topBarGradient": "#FE9A00"
+    },
+    "content": {
+      "maxWidth": "1440px",
+      "backgroundColor": "#F9FAFB",
+      "padding": "24px"
+    }
   },
 
   "components": {
     "statCard": {
-      "width": "248px",
       "height": "168px",
+      "width": "248px",
       "borderRadius": "13px",
-      "padding": "24px",
+      "backgroundColor": "#FFFFFF",
+      "border": "0.5px solid #E5E5EA",
+      "shadow": "0px 2px 4px 0px rgba(0, 0, 0, 0.15)",
       "iconSize": "43px",
-      "iconBorderRadius": "10px"
-    },
-    "chartCard": {
-      "borderRadius": "13px",
-      "padding": "24px",
-      "headerIconSize": "43px"
-    },
-    "sidebar": {
-      "width": "320px",
-      "logoHeight": "83px",
-      "menuItemHeight": "48px",
-      "menuItemBorderRadius": "10px"
-    },
-    "header": {
-      "height": "80px",
-      "searchBarHeight": "48px",
-      "searchBarBorderRadius": "13px"
+      "iconBorderRadius": "11px"
     },
     "button": {
-      "borderRadius": "10px",
       "height": "40px",
-      "paddingX": "16px"
+      "borderRadius": "7px",
+      "gradient": "linear-gradient(163.18deg, #FEB800 3.75%, #E27200 100%)",
+      "fontSize": "14px",
+      "fontWeight": 600
     },
-    "badge": {
-      "borderRadius": "9px",
-      "height": "25px",
-      "paddingX": "12px"
+    "searchBar": {
+      "height": "48px",
+      "borderRadius": "11px",
+      "backgroundColor": "#F9FAFB",
+      "border": "0.5px solid #AEAEB2"
+    },
+    "statusBadge": {
+      "height": "40px",
+      "borderRadius": "20px",
+      "fontSize": "14px",
+      "fontWeight": 500
     }
   },
 
-  "animations": {
-    "transition": {
-      "fast": "150ms",
-      "normal": "200ms",
-      "slow": "300ms"
-    },
-    "easing": {
-      "default": "cubic-bezier(0.4, 0, 0.2, 1)",
-      "in": "cubic-bezier(0.4, 0, 1, 1)",
-      "out": "cubic-bezier(0, 0, 0.2, 1)",
-      "inOut": "cubic-bezier(0.4, 0, 0.2, 1)"
+  "icons": {
+    "size": {
+      "small": "20px",
+      "medium": "24px",
+      "large": "32px",
+      "xlarge": "43px"
     }
-  },
-
-  "breakpoints": {
-    "mobile": "640px",
-    "tablet": "768px",
-    "laptop": "1024px",
-    "desktop": "1280px",
-    "wide": "1536px"
-  },
-
-  "figmaNodes": {
-    "dashboardUser": "479:2104",
-    "dashboardAdmin": "392:465",
-    "analisisRegional": "796:772",
-    "sidebar": "479:2329",
-    "header": "479:2344",
-    "colorPalette": "803:2396"
   },
 
   "notes": {
-    "designConsistency": [
-      "All card components use 13px border radius",
-      "Icon containers use 43px x 43px with 10px border radius",
-      "Stat cards are 248px wide x 168px tall",
-      "Primary gold color: #FEB800",
-      "Primary orange color: #E27200",
-      "Success green color: #10B981",
-      "Info blue color: #3B83F1"
+    "design_system": "BPK Dashboard Design System from Figma",
+    "extracted_from": "Node ID 392-465",
+    "component_structure": "Sidebar + Header + Main Content Area",
+    "key_features": [
+      "4 stat cards (Total Pengguna, Login Berhasil, Total Aktivitas, Kesalahan Logout)",
+      "Riwayat Aktivitas feed",
+      "Mode Interaksi Pengguna pie chart",
+      "Rata-rata Jam Tersibuk highlighted card",
+      "Analisis Tingkat Keberhasilan Akses bar chart",
+      "Distribusi Aktivitas line chart",
+      "Pemantauan Kesalahan Logout table"
     ],
-    "componentHierarchy": [
-      "Sidebar: Fixed left, 320px width",
-      "Header: 80px height with search bar",
-      "Main content: Max width 1440px",
-      "Card layout: Grid with consistent spacing"
+    "consistency_rules": [
+      "Use exact colors from design tokens",
+      "Match border radius: cards 13px, buttons 7px/10px, badges 20px",
+      "Match spacing and layout from Figma",
+      "Typography: Plus Jakarta Sans with specified weights",
+      "Component structure follows Figma hierarchy"
     ]
   }
 }

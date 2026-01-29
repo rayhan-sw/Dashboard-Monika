@@ -58,13 +58,17 @@ func main() {
 			dashboard.GET("/activities", handler.GetActivities)
 			dashboard.GET("/charts/:type", handler.GetChartData)
 			dashboard.GET("/access-success", handler.GetAccessSuccessRate)
+			dashboard.GET("/date-range", handler.GetDateRange)
+			dashboard.GET("/clusters", handler.GetClusters)
 		}
 
 		// Regional routes
 		regional := api.Group("/regional")
 		{
 			regional.GET("/provinces", handler.GetProvinces)
+			regional.GET("/locations", handler.GetLokasi)
 			regional.GET("/units", handler.GetUnits)
+			regional.GET("/units/hourly", handler.GetHourlyDataForSatker)
 		}
 	}
 

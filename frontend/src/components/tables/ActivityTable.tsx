@@ -1,104 +1,115 @@
-'use client';
+"use client";
 
-import { Clock } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { dashboardService } from "@/services/api";
+import { formatDateTime } from "@/lib/utils";
+import { useAppStore } from "@/stores/appStore";
+import type { ActivityLog } from "@/types/api";
+import { Radio, Maximize2, X } from "lucide-react";
 
-interface Activity {
-  id: number;
-  nama: string;
-  aktifitas: string;
-  status: string;
-  tanggal: string;
-}
+export default function ActivityTable() {
+  const { dateRange, selectedCluster } = useAppStore();
+  const [activities, setActivities] = useState<ActivityLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-interface ActivityTableProps {
-  activities: Activity[];
-}
+  useEffect(() => {
+    loadActivities();
+  }, [dateRange, selectedCluster]);
 
-const statusColors = {
-  SUCCESS: 'bg-status-success text-white',
-  FAILED: 'bg-status-error text-white',
-  LOGOUT: 'bg-gray-3 text-white',
-  default: 'bg-gray-4 text-gray-1'
-};
-
-export default function ActivityTable({ activities }: ActivityTableProps) {
-  const getStatusColor = (status: string) => {
-    return statusColors[status as keyof typeof statusColors] || statusColors.default;
+  const loadActivities = async () => {
+    setLoading(true);
+    try {
+      // Hanya ambil 5 log terakhir yang terbaru
+      const response = await dashboardService.getActivities(
+        1,
+        5,
+        dateRange.startDate,
+        dateRange.endDate,
+        selectedCluster,
+      );
+      setActivities(response.data);
+    } catch (error) {
+      console.error("Failed to load activities:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('id-ID', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
-    });
+  const getActivityBadge = (activity: string) => {
+    const colors: Record<string, string> = {
+      LOGIN: "bg-green-100 text-green-700",
+      LOGOUT: "bg-blue-100 text-blue-700",
+      VIEW: "bg-gray-100 text-gray-700",
+      EDIT: "bg-amber-100 text-amber-700",
+      DELETE: "bg-red-100 text-red-700",
+    };
+    return colors[activity] || "bg-gray-100 text-gray-700";
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
+  if (loading) {
+    return (
+      <div className="h-[450px] bg-gray-100 animate-pulse rounded-[13px]" />
+    );
+  }
 
   return (
-    <div className="card-bpk p-6">
+    <div className="bg-white rounded-lg-bpk p-6 shadow-md border border-gray-5 h-[450px] flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-h5 font-bold text-gray-1">Riwayat Aktivitas</h3>
-        <span className="text-caption text-gray-3">
-          {activities.length} aktivitas terbaru
-        </span>
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 rounded-lg-bpk bg-red-500 flex items-center justify-center flex-shrink-0">
+            <Radio className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-1">Riwayat Aktivitas</h3>
+            <p className="text-sm text-gray-3 mt-1">
+              Aktivitas Pengguna Terbaru
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsExpanded(true)}
+            className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+            title="Lihat detail"
+          >
+            <Maximize2 className="h-4 w-4 text-gray-600" />
+          </button>
+        </div>
       </div>
 
-      <div className="overflow-auto" style={{ maxHeight: '400px' }}>
+      <div className="flex-1 overflow-auto scrollbar-hide">
         <table className="w-full">
-          <thead className="sticky top-0 bg-gray-6 border-b border-gray-5">
-            <tr>
-              <th className="px-4 py-3 text-left text-caption font-semibold text-gray-2">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Pengguna
               </th>
-              <th className="px-4 py-3 text-left text-caption font-semibold text-gray-2">
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Satker
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Aktivitas
-              </th>
-              <th className="px-4 py-3 text-left text-caption font-semibold text-gray-2">
-                Waktu
-              </th>
-              <th className="px-4 py-3 text-left text-caption font-semibold text-gray-2">
-                Status
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-5">
-            {activities.map((activity) => (
-              <tr key={activity.id} className="hover:bg-gray-6 transition-colors">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-bpk flex items-center justify-center">
-                      <span className="text-white text-overline font-bold">
-                        {activity.nama.substring(0, 2).toUpperCase()}
-                      </span>
-                    </div>
-                    <span className="text-body text-gray-1 font-medium">
-                      {activity.nama}
-                    </span>
-                  </div>
+          <tbody className="divide-y divide-gray-100">
+            {activities?.map((activity) => (
+              <tr
+                key={activity.id}
+                className="hover:bg-gray-50 transition-colors"
+              >
+                <td className="py-2 px-3 text-xs text-gray-900">
+                  {activity.nama}
                 </td>
-                <td className="px-4 py-3">
-                  <span className="text-body text-gray-2">{activity.aktifitas}</span>
+                <td className="py-2 px-3 text-xs text-gray-600">
+                  {activity.satker || "-"}
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1 text-caption text-gray-3">
-                    <Clock className="w-3 h-3" />
-                    <span>{formatTime(activity.tanggal)}</span>
-                    <span className="text-overline">• {formatDate(activity.tanggal)}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`px-3 py-1 rounded-md-bpk text-overline font-semibold ${getStatusColor(activity.status)}`}>
-                    {activity.status}
+                <td className="py-2 px-3">
+                  <span
+                    className={`inline-flex px-2 py-0.5 text-[10px] font-medium rounded ${getActivityBadge(activity.aktifitas)}`}
+                  >
+                    {activity.aktifitas}
                   </span>
                 </td>
               </tr>
@@ -106,6 +117,86 @@ export default function ActivityTable({ activities }: ActivityTableProps) {
           </tbody>
         </table>
       </div>
+
+      {/* Expanded Modal */}
+      {isExpanded && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-[13px] w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg-bpk bg-red-500 flex items-center justify-center">
+                  <Radio className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-h4 font-bold text-gray-1">
+                    Riwayat Aktivitas
+                  </h3>
+                  <span className="text-caption text-gray-3">
+                    Aktivitas Pengguna Terbaru
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <table className="w-full">
+                <thead className="sticky top-0 bg-white">
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">
+                      Pengguna
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">
+                      Satker
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">
+                      Aktivitas
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">
+                      Cluster
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">
+                      Waktu
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {activities?.map((activity) => (
+                    <tr
+                      key={activity.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="py-3 px-4 text-sm text-gray-900">
+                        {activity.nama}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {activity.satker || "-"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded ${getActivityBadge(activity.aktifitas)}`}
+                        >
+                          {activity.aktifitas}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {activity.cluster}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {formatDateTime(activity.tanggal)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
