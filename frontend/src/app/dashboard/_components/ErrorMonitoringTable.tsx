@@ -1,39 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, AlertCircle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useAppStore } from "@/stores/appStore";
 import { dashboardService } from "@/services/api";
 
-interface ErrorActivity {
-  id: string;
-  nama: string;
-  aktifitas: string;
-  scope: string;
-  tanggal: string;
-  lokasi?: string;
-  satker: string;
+interface LogoutError {
+  rank: number;
+  username: string;
+  error_count: number;
+  latest_error: string;
 }
 
-const getSeverityIcon = (scope: string) => {
-  if (scope === "error") {
-    return <AlertTriangle className="w-4 h-4 text-status-error" />;
-  }
-  return <AlertCircle className="w-4 h-4 text-status-warning" />;
-};
-
-const getSeverityLabel = (scope: string) => {
-  if (scope === "error") return "TINGGI";
-  return "Warning";
-};
-
-const getSeverityColor = (scope: string) => {
-  if (scope === "error") return "bg-status-error text-white";
-  return "bg-status-warning/10 text-status-warning border-status-warning";
-};
-
 export default function ErrorMonitoringTable() {
-  const [errors, setErrors] = useState<ErrorActivity[]>([]);
+  const [errors, setErrors] = useState<LogoutError[]>([]);
   const [loading, setLoading] = useState(true);
   const { dateRange, selectedCluster } = useAppStore();
 
@@ -48,35 +28,14 @@ export default function ErrorMonitoringTable() {
           ? dateRange.endDate.split("T")[0]
           : undefined;
 
-        // Fetch activities
-        const response = await dashboardService.getActivities(
-          1,
-          100,
+        const response = await dashboardService.getLogoutErrors(
+          10,
           startDate,
           endDate,
           selectedCluster,
         );
-        const data = response.data;
 
-        // Filter for logout errors only (LOGOUT with scope='error')
-        // For testing: also show LOGOUT with any scope if no errors found
-        const logoutErrors = data
-          .filter(
-            (activity: any) => activity.aktifitas === "LOGOUT",
-            // Temporarily show all LOGOUT to test if component works
-            // && activity.scope === 'error'
-          )
-          .sort(
-            (a: any, b: any) =>
-              new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime(),
-          )
-          .slice(0, 5); // Show top 5 most recent
-
-        console.log("All activities:", data.length);
-        console.log("LOGOUT activities found:", logoutErrors.length);
-        console.log("Sample LOGOUT data:", logoutErrors.slice(0, 2));
-
-        setErrors(logoutErrors);
+        setErrors(response.data || []);
       } catch (error) {
         console.error("Error fetching logout errors:", error);
         setErrors([]);
@@ -97,15 +56,6 @@ export default function ErrorMonitoringTable() {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const maskUsername = (username: string) => {
-    if (!username || username.length <= 2) return username;
-    return (
-      username.charAt(0) +
-      "*".repeat(Math.max(0, username.length - 2)) +
-      username.charAt(username.length - 1)
-    );
   };
 
   if (loading) {
@@ -157,27 +107,33 @@ export default function ErrorMonitoringTable() {
           ) : (
             errors.map((error) => (
               <div
-                key={error.id}
-                className="flex items-center justify-between p-4 rounded-xl bg-red-50 border-l-4 border-red-500"
+                key={error.rank}
+                className="flex items-center justify-between p-4 rounded-xl bg-red-50 border-l-4 border-red-500 hover:bg-red-100 transition-colors"
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {maskUsername(error.nama)}
-                    </p>
-                    <span className="text-xs text-gray-500">
-                      • {error.satker}
+                <div className="flex items-center gap-4 flex-1">
+                  {/* Ranking Badge */}
+                  <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-bold text-red-700">
+                      {error.rank}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    Kesalahan Logout • {formatTime(error.tanggal)}
-                  </p>
+
+                  {/* User Info */}
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {error.username}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Kesalahan Logout • Terakhir:{" "}
+                      {formatTime(error.latest_error)}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${getSeverityColor(error.scope)}`}
-                  >
-                    {getSeverityLabel(error.scope)}
+
+                {/* Error Count Badge */}
+                <div className="flex-shrink-0 ml-4">
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-red-500 text-white">
+                    {error.error_count} kesalahan
                   </span>
                 </div>
               </div>

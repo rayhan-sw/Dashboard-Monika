@@ -63,18 +63,17 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
     <aside
       className={`${
         sidebarCollapsed ? "w-20" : "w-80"
-      } h-screen bg-white border-r border-gray-5 flex flex-col fixed left-0 top-0 z-[45]`}
+      } h-screen bg-white border-r border-gray-5 flex flex-col fixed left-0 top-0 z-[110] overflow-visible`}
       style={{
-        transition: "width 600ms cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: "width 500ms cubic-bezier(0.4, 0, 0.2, 1)",
       }}
     >
-      {/* Logo Area */}
       <div
         className={`h-24 flex items-center justify-center border-b border-gray-5 relative ${
           sidebarCollapsed ? "px-4" : "px-6"
         }`}
         style={{
-          transition: "padding 600ms cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: "padding 500ms cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
         <div
@@ -85,7 +84,7 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
           <img
             src="/images/logo-monika.svg"
             alt="Logo Monika"
-            className={`absolute inset-0 m-auto object-contain transition-all duration-600 ease-in-out ${
+            className={`absolute inset-0 m-auto object-contain transition-all duration-500 ease-in-out ${
               sidebarCollapsed
                 ? "opacity-0 scale-75 pointer-events-none"
                 : "opacity-100 scale-100"
@@ -102,7 +101,7 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
           <img
             src="/images/logo-M.svg"
             alt="Logo M"
-            className={`absolute inset-0 m-auto object-contain transition-all duration-600 ease-in-out ${
+            className={`absolute inset-0 m-auto object-contain transition-all duration-500 ease-in-out ${
               sidebarCollapsed
                 ? "opacity-100 scale-100"
                 : "opacity-0 scale-125 pointer-events-none"
@@ -119,23 +118,18 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
         {/* Toggle Button */}
         <button
           onClick={handleToggle}
-          className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border border-gray-5 rounded-full flex items-center justify-center hover:bg-gray-6 hover:border-bpk-orange hover:scale-110 shadow-sm z-[110]"
+          className="absolute -right-4 bottom-0 translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-[120] border-4 border-white hover:scale-110"
           style={{
-            transition: "all 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+            background: "linear-gradient(135deg, #FEB800 0%, #E27200 100%)",
+            transition: "all 500ms cubic-bezier(0.4, 0, 0.2, 1)",
           }}
           aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <div
-            style={{
-              transition: "transform 400ms cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="w-4 h-4 text-gray-2" />
-            ) : (
-              <ChevronLeft className="w-4 h-4 text-gray-2" />
-            )}
-          </div>
+          <ChevronLeft 
+            className={`w-4 h-4 text-white transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+              sidebarCollapsed ? "rotate-180" : "rotate-0"
+            }`} 
+          />
         </button>
       </div>
 

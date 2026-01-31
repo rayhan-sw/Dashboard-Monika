@@ -374,3 +374,81 @@ func GetHourlyDataForSatker(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
+// GetTopContributors returns top contributors (users with most activities)
+func GetTopContributors(c *gin.Context) {
+	repo := repository.NewActivityLogRepository(database.GetDB())
+
+	// Parse limit from query params (default 10)
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100 // Max 100
+	}
+
+	// Parse date range and cluster from query params
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	cluster := c.Query("cluster")
+
+	var startPtr, endPtr, clusterPtr *string
+	if startDate != "" {
+		startPtr = &startDate
+	}
+	if endDate != "" {
+		endPtr = &endDate
+	}
+	if cluster != "" {
+		clusterPtr = &cluster
+	}
+
+	data, err := repo.GetTopContributors(limit, startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": data})
+}
+
+// GetLogoutErrors returns users with most logout errors (sorted by latest error)
+func GetLogoutErrors(c *gin.Context) {
+	repo := repository.NewActivityLogRepository(database.GetDB())
+
+	// Parse limit from query params (default 10)
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100 // Max 100
+	}
+
+	// Parse date range and cluster from query params
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	cluster := c.Query("cluster")
+
+	var startPtr, endPtr, clusterPtr *string
+	if startDate != "" {
+		startPtr = &startDate
+	}
+	if endDate != "" {
+		endPtr = &endDate
+	}
+	if cluster != "" {
+		clusterPtr = &cluster
+	}
+
+	data, err := repo.GetLogoutErrors(limit, startPtr, endPtr, clusterPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": data})
+}
+

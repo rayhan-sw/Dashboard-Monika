@@ -46,4 +46,4 @@ Test-Endpoint -Name "Provinces" -Url "$baseUrl/api/regional/provinces"
 Test-Endpoint -Name "Units" -Url "$baseUrl/api/regional/units"
 
 Write-Host "═══════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "✅ API Testing Complete!" -ForegroundColor Green
+Write-Host "API Testing Complete!" -ForegroundColor Green

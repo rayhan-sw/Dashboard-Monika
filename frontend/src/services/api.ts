@@ -153,6 +153,29 @@ export const dashboardService = {
     fetchApi<{ min_date: string; max_date: string }>(
       "/api/dashboard/date-range",
     ),
+
+  getLogoutErrors: (
+    limit = 10,
+    startDate?: string,
+    endDate?: string,
+    cluster?: string,
+  ) => {
+    const params = new URLSearchParams();
+    params.append("limit", limit.toString());
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
+    return fetchApi<
+      ApiResponse<
+        {
+          rank: number;
+          username: string;
+          error_count: number;
+          latest_error: string;
+        }[]
+      >
+    >(`/api/dashboard/logout-errors?${params.toString()}`);
+  },
 };
 
 // Regional API
@@ -203,6 +226,24 @@ export const regionalService = {
     return fetchApi<ApiResponse<HourlyData[]>>(
       `/api/regional/units/hourly?${params.toString()}`,
     );
+  },
+
+  getTopContributors: (
+    limit = 10,
+    startDate?: string,
+    endDate?: string,
+    cluster?: string,
+  ) => {
+    const params = new URLSearchParams();
+    params.append("limit", limit.toString());
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
+    return fetchApi<
+      ApiResponse<
+        { rank: number; username: string; unit: string; requests: number }[]
+      >
+    >(`/api/regional/top-contributors?${params.toString()}`);
   },
 };
 

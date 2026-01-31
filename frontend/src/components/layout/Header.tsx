@@ -180,7 +180,7 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
 
   return (
     <header
-      className={`h-20 bg-white border-b border-gray-5 fixed top-0 right-0 z-[100] transition-all duration-300 ${sidebarCollapsed ? 'left-20' : 'left-80'}`}
+      className={`h-20 bg-white border-b border-gray-5 fixed top-0 right-0 z-[100] transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'left-20' : 'left-80'}`}
     >
       <div className="h-full px-6 flex items-center justify-between">
         {/* Search Bar */}

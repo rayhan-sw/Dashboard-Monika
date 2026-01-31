@@ -91,7 +91,7 @@ CREATE TRIGGER update_activity_logs_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 ```
 
-## ✅ Verify Setup
+## Verify Setup
 
 Setelah setup, test connection dengan command:
 
@@ -103,13 +103,13 @@ go run test-db-connection.go
 **Expected Output:**
 
 ```
-✅ Database connection successful!
-📊 PostgreSQL Version: PostgreSQL 15.x
-✅ Table 'activity_logs' exists
-📝 Records in activity_logs: 0
+Database connection successful!
+ PostgreSQL Version: PostgreSQL 15.x
+ Table 'activity_logs' exists
+ Records in activity_logs: 0
 ```
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### Error: "database does not exist"
 
@@ -128,7 +128,7 @@ go run test-db-connection.go
 - Skip error ini, artinya table sudah dibuat sebelumnya
 - Check dengan query: `SELECT * FROM activity_logs LIMIT 1;`
 
-## 📊 Database Schema
+##  Database Schema
 
 Table: **activity_logs**
 

@@ -22,7 +22,7 @@ func main() {
 	}
 	defer database.CloseDB()
 
-	log.Println("✓ Connected to database:", os.Getenv("DB_NAME"))
+	log.Println("Connected to database:", os.Getenv("DB_NAME"))
 
 	// Initialize Gin router
 	r := gin.Default()
@@ -60,6 +60,7 @@ func main() {
 			dashboard.GET("/access-success", handler.GetAccessSuccessRate)
 			dashboard.GET("/date-range", handler.GetDateRange)
 			dashboard.GET("/clusters", handler.GetClusters)
+			dashboard.GET("/logout-errors", handler.GetLogoutErrors)
 		}
 
 		// Regional routes
@@ -69,6 +70,7 @@ func main() {
 			regional.GET("/locations", handler.GetLokasi)
 			regional.GET("/units", handler.GetUnits)
 			regional.GET("/units/hourly", handler.GetHourlyDataForSatker)
+			regional.GET("/top-contributors", handler.GetTopContributors)
 		}
 	}
 
@@ -78,7 +80,7 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("🚀 Server starting on port %s", port)
+	log.Printf("Server starting on port %s", port)
 	if err := r.Run(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}

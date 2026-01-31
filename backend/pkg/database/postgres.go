@@ -48,7 +48,7 @@ func InitDB() error {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	log.Println("✅ Database connected successfully")
+	log.Println("Database connected successfully")
 	return nil
 }
 

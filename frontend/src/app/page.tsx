@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
-import DashboardStats from "@/components/dashboard/DashboardStats";
+import DashboardStats from "./dashboard/_components/DashboardStats";
 import InteractionChart from "@/components/charts/InteractionChart";
 import HourlyActivityChart from "@/components/charts/HourlyActivityChart";
 import AccessSuccessChart from "@/components/charts/AccessSuccessChart";
-import ActivityTable from "@/components/tables/ActivityTable";
-import BusiestHourCard from "@/components/dashboard/BusiestHourCard";
-import ErrorMonitoringTable from "@/components/tables/ErrorMonitoringTable";
+import ActivityTable from "./dashboard/_components/ActivityTable";
+import BusiestHourCard from "./dashboard/_components/BusiestHourCard";
+import ErrorMonitoringTable from "./dashboard/_components/ErrorMonitoringTable";
+import Footer from "@/components/layout/Footer";
 
 export default function Home() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -19,12 +20,12 @@ export default function Home() {
       <Sidebar onCollapsedChange={setSidebarCollapsed} />
 
       <div
-        className={`flex-1 transition-all duration-300 ${
+        className={`flex-1 flex flex-col min-h-screen transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
           sidebarCollapsed ? "ml-20" : "ml-80"
         }`}
       >
         <Header sidebarCollapsed={sidebarCollapsed} />
-        <main className="pt-20 p-8">
+        <main className="pt-20 p-8 flex-1">
           <div className="max-w-[1800px] mx-auto space-y-8">
             {/* Page Title */}
             <div>
@@ -56,6 +57,7 @@ export default function Home() {
             <ErrorMonitoringTable />
           </div>
         </main>
+        <Footer />
       </div>
     </div>
   );

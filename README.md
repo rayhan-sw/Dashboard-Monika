@@ -2,11 +2,11 @@
 
 > **Fase 1**: Dashboard User Monitor & Analisis Regional
 
-## 📋 Deskripsi Proyek
+##  Deskripsi Proyek
 
 Dashboard monitoring aktivitas pengguna BIDICS (BPK Integrated Data and Information Center System) untuk Badan Pemeriksa Keuangan Republik Indonesia. Sistem ini menyediakan visualisasi real-time aktivitas pengguna, analisis regional, dan pemantauan kesalahan sistem.
 
-## 🎨 Design System
+##  Design System
 
 - **File Figma**: [BPK-DASHBOARD--Dev-Mode](https://www.figma.com/design/yHuEwRXxFOAhq600fRXWzp/BPK-DASHBOARD--Dev-Mode-?node-id=392-465)
 - **Design Tokens**: Tersedia di `design-tokens.json`
@@ -14,7 +14,7 @@ Dashboard monitoring aktivitas pengguna BIDICS (BPK Integrated Data and Informat
 - **Primary Color**: #FEB800 (BPK Gold)
 - **Secondary Color**: #E27200 (Orange)
 
-## 🚀 Tech Stack
+## Tech Stack
 
 ### Frontend
 
@@ -26,7 +26,7 @@ Dashboard monitoring aktivitas pengguna BIDICS (BPK Integrated Data and Informat
 - **Maps**: Leaflet + OpenStreetMap
 - **Date Handling**: date-fns
 
-### Backend ✅
+### Backend 
 
 - **Language**: Golang 1.23+
 - **Framework**: Gin
@@ -35,7 +35,7 @@ Dashboard monitoring aktivitas pengguna BIDICS (BPK Integrated Data and Informat
 - **Environment**: godotenv
 - **UUID**: google/uuid
 
-## 📁 Struktur Proyek
+##  Struktur Proyek
 
 ```
 Dashboard-BPK/
@@ -67,7 +67,7 @@ Dashboard-BPK/
     └── go.mod
 ```
 
-## 📊 Fase 1 - Fitur Utama
+##  Fase 1 - Fitur Utama
 
 ### Dashboard User Monitor (Route: `/`)
 
@@ -90,28 +90,28 @@ Dashboard-BPK/
 - Tabel aktivitas per regional
 - Statistik per unit organisasi
 
-## 🔐 Autentikasi & Otorisasi
+##  Autentikasi & Otorisasi
 
 - **JWT Token** dengan refresh mechanism
 - **Role-Based Access Control (RBAC)**:
   - Admin BPK (Full Access)
   - Regional User (Limited Access)
 
-## 📦 Data Source
+##  Data Source
 
 - **File CSV**: `actLog_202601091608.csv`
 - **Delimiter**: Semicolon (`;`)
 - **Encoding**: UTF-8
 - **Log Fields**: Timestamp, Username, Action, IP Address, Status, etc.
 
-## 🎯 Deployment
+##  Deployment
 
 - **NO DOCKER** - Direct deployment
 - **Frontend**: Vercel / Manual VPS
 - **Backend**: VPS dengan systemd service
 - **Database**: PostgreSQL 15+ (Manual setup)
 
-## 🛠️ Development Setup
+##  Development Setup
 
 ### Prerequisites
 
@@ -171,7 +171,7 @@ Dashboard-BPK/
 
 _(Will be added in FASE 3)_
 
-## 📝 Environment Variables
+##  Environment Variables
 
 ### Backend (.env)
 
@@ -186,14 +186,14 @@ PORT=8080
 
 ## 🗓️ Development Timeline
 
-- **Fase 0A**: ✅ Extract Figma Design
-- **Fase 0B**: ✅ Create Workspace Folder
-- **Fase 1**: ✅ Setup Project Structure & Migrations
-- **Fase 2**: ✅ Implement Database & Backend API
-- **Fase 3**: ⏳ Build Frontend Components
-- **Fase 4**: ⏳ Integration & Testing
-- **Fase 5**: ⏳ Deployment Configuration
-- **Fase 6**: ⏳ Final Testing & Documentation
+- **Fase 0A**:  Extract Figma Design
+- **Fase 0B**:  Create Workspace Folder
+- **Fase 1**:  Setup Project Structure & Migrations
+- **Fase 2**:  Implement Database & Backend API
+- **Fase 3**:  Build Frontend Components
+- **Fase 4**:  Integration & Testing
+- **Fase 5**:  Deployment Configuration
+- **Fase 6**:  Final Testing & Documentation
 
 ## 👥 Tim Development
 
@@ -201,11 +201,11 @@ PORT=8080
 - **Development**: [Your Team]
 - **Design System**: Figma Design Team
 
-## 📄 License
+##  License
 
 Internal Project - Badan Pemeriksa Keuangan RI
 
 ---
 
-**Status Terakhir**: ✅ FASE 2 COMPLETED - Backend API Ready
+**Status Terakhir**: FASE 2 COMPLETED - Backend API Ready
 **Tanggal**: 9 Januari 2025

@@ -25,7 +25,7 @@ func main() {
 	}
 	defer database.CloseDB()
 
-	log.Println("✅ Database connected")
+	log.Println("Database connected")
 
 	// Check if CSV file path is provided
 	if len(os.Args) < 2 {
@@ -33,7 +33,7 @@ func main() {
 	}
 
 	csvPath := os.Args[1]
-	log.Printf("📁 Reading CSV file: %s\n", csvPath)
+	log.Printf("Reading CSV file: %s\n", csvPath)
 
 	// Open CSV file
 	file, err := os.Open(csvPath)
@@ -58,7 +58,7 @@ func main() {
 		log.Fatal("CSV file is empty or has no data")
 	}
 
-	log.Printf("📊 Found %d records (including header)\n", len(records))
+	log.Printf("Found %d records (including header)\n", len(records))
 
 	// Parse header
 	header := records[0]
@@ -90,7 +90,7 @@ func main() {
 		// Parse UUID fields
 		idTrans, err := uuid.Parse(strings.TrimSpace(record[colMap["id_trans"]]))
 		if err != nil {
-			log.Printf("⚠️  Row %d: Invalid id_trans UUID: %v\n", i+1, err)
+			log.Printf("Row %d: Invalid id_trans UUID: %v\n", i+1, err)
 			skipped++
 			continue
 		}
@@ -100,7 +100,7 @@ func main() {
 		if tokenStr != "" && tokenStr != "NULL" {
 			token, err = uuid.Parse(tokenStr)
 			if err != nil {
-				log.Printf("⚠️  Row %d: Invalid token UUID, using nil\n", i+1)
+				log.Printf("Row %d: Invalid token UUID, using nil\n", i+1)
 			}
 		}
 
@@ -111,7 +111,7 @@ func main() {
 			// Try alternative format
 			tanggal, err = time.Parse("02/01/2006 15:04", tanggalStr)
 			if err != nil {
-				log.Printf("⚠️  Row %d: Invalid date format: %s\n", i+1, tanggalStr)
+				log.Printf("Row %d: Invalid date format: %s\n", i+1, tanggalStr)
 				skipped++
 				continue
 			}
@@ -142,10 +142,10 @@ func main() {
 		// Insert batch when size is reached
 		if len(batch) >= batchSize {
 			if err := db.Create(&batch).Error; err != nil {
-				log.Printf("❌ Failed to insert batch: %v\n", err)
+				log.Printf("Failed to insert batch: %v\n", err)
 			} else {
 				totalInserted += len(batch)
-				log.Printf("✅ Inserted %d records (Total: %d)\n", len(batch), totalInserted)
+				log.Printf("Inserted %d records (Total: %d)\n", len(batch), totalInserted)
 			}
 			batch = []entity.ActivityLog{}
 		}
@@ -154,18 +154,18 @@ func main() {
 	// Insert remaining batch
 	if len(batch) > 0 {
 		if err := db.Create(&batch).Error; err != nil {
-			log.Printf("❌ Failed to insert final batch: %v\n", err)
+			log.Printf("Failed to insert final batch: %v\n", err)
 		} else {
 			totalInserted += len(batch)
-			log.Printf("✅ Inserted %d records (Total: %d)\n", len(batch), totalInserted)
+			log.Printf("Inserted %d records (Total: %d)\n", len(batch), totalInserted)
 		}
 	}
 
-	log.Println("\n📈 Import Summary:")
+	log.Println("\n  Import Summary:")
 	log.Printf("  Total records: %d\n", len(records)-1)
 	log.Printf("  Successfully imported: %d\n", totalInserted)
 	log.Printf("  Skipped: %d\n", skipped)
-	log.Println("\n✅ CSV import completed!")
+	log.Println("\n CSV import completed!")
 }
 
 // extractProvince extracts province name from satker string

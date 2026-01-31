@@ -19,6 +19,8 @@ type ActivityLogRepository interface {
 	GetAccessSuccessRateByDate(startDate, endDate *string, cluster *string) ([]map[string]interface{}, error)
 	GetUniqueUsersCount(startDate, endDate *string, cluster *string) (int64, error)
 	GetUniqueClusters() ([]string, error)
+	GetTopContributors(limit int, startDate, endDate *string, cluster *string) ([]map[string]interface{}, error)
+	GetLogoutErrors(limit int, startDate, endDate *string, cluster *string) ([]map[string]interface{}, error)
 }
 
 type activityLogRepository struct {
@@ -411,3 +413,81 @@ func (r *activityLogRepository) GetUniqueClusters() ([]string, error) {
 		Pluck("cluster", &clusters).Error
 	return clusters, err
 }
+
+// GetTopContributors returns top N users by activity count with their satker
+func (r *activityLogRepository) GetTopContributors(limit int, startDate, endDate *string, cluster *string) ([]map[string]interface{}, error) {
+	type Result struct {
+		Rank     int
+		Nama     string
+		Satker   string
+		Requests int64
+	}
+
+	var results []Result
+	query := r.db.Model(&entity.ActivityLog{})
+	query = r.applyDateFilter(query, startDate, endDate)
+	query = r.applyClusterFilter(query, cluster)
+	
+	err := query.
+		Select("ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) as rank, nama, satker, COUNT(*) as requests").
+		Where("nama != '' AND nama IS NOT NULL AND satker != '' AND satker IS NOT NULL").
+		Group("nama, satker").
+		Order("requests DESC").
+		Limit(limit).
+		Scan(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var data []map[string]interface{}
+	for _, r := range results {
+		data = append(data, map[string]interface{}{
+			"rank":     r.Rank,
+			"username": r.Nama,
+			"unit":     r.Satker,
+			"requests": r.Requests,
+		})
+	}
+	return data, nil
+}
+
+// GetLogoutErrors returns top N users with logout errors, sorted by latest error time
+func (r *activityLogRepository) GetLogoutErrors(limit int, startDate, endDate *string, cluster *string) ([]map[string]interface{}, error) {
+	type Result struct {
+		Nama         string
+		ErrorCount   int64
+		LatestError  string
+	}
+
+	var results []Result
+	query := r.db.Model(&entity.ActivityLog{})
+	query = r.applyDateFilter(query, startDate, endDate)
+	query = r.applyClusterFilter(query, cluster)
+	
+	// Filter: aktifitas = LOGOUT AND scope = error
+	err := query.
+		Select("nama, COUNT(*) as error_count, MAX(tanggal) as latest_error").
+		Where("aktifitas = ? AND scope = ?", "LOGOUT", "error").
+		Where("nama != '' AND nama IS NOT NULL").
+		Group("nama").
+		Order("latest_error DESC").
+		Limit(limit).
+		Scan(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var data []map[string]interface{}
+	for i, r := range results {
+		data = append(data, map[string]interface{}{
+			"rank":         i + 1,
+			"username":     r.Nama,
+			"error_count":  r.ErrorCount,
+			"latest_error": r.LatestError,
+		})
+	}
+	return data, nil
+}
+
