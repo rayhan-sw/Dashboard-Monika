@@ -122,19 +122,29 @@ Dashboard-BPK/
 
 ### Backend Setup
 
-1. **Create Database**:
+**Quick Start (Recommended):**
+
+1. **Setup Database Otomatis**:
 
    ```bash
-   # Open DBeaver, connect to PostgreSQL
-   # Run: backend/setup-database.sql
+   cd backend/scripts
+   .\setup_database.ps1
    ```
+
+   Script akan otomatis:
+   - ✅ Create database `actlog`
+   - ✅ Run migrations (create tables)
+   - ✅ Seed default data
+   - ✅ Verify setup
+
+   📖 **Untuk anggota tim baru**: Lihat [TEAM_SETUP_GUIDE.md](TEAM_SETUP_GUIDE.md)
 
 2. **Configure Environment**:
 
    ```bash
    cd backend
    cp .env.example .env
-   # Edit .env if needed (default password: 12345678)
+   # Edit .env dengan password PostgreSQL kamu
    ```
 
 3. **Install Dependencies**:
@@ -143,29 +153,29 @@ Dashboard-BPK/
    go mod tidy
    ```
 
-4. **Build**:
-
-   ```bash
-   go build -o bin/server.exe cmd/api/main.go
-   ```
-
-5. **Import CSV Data**:
+4. **Import CSV Data** (Opsional):
 
    ```bash
    go run cmd/import/main.go "path/to/actLog_202601091608.csv"
    ```
 
-6. **Run Server**:
+5. **Run Server**:
 
    ```bash
-   .\bin\server.exe
+   cd cmd/api
+   .\run.ps1
    # Server runs on http://localhost:8080
    ```
 
-7. **Test API**:
+6. **Test API**:
    ```bash
+   cd ..\..
    .\test-api.ps1
    ```
+
+**Manual Setup:**
+
+Lihat dokumentasi lengkap di [backend/DATABASE_README.md](backend/DATABASE_README.md)
 
 ### Frontend Setup
 

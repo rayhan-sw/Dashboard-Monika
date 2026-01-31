@@ -47,31 +47,41 @@ go mod download  # ✅ DONE - All modules verified
 
 ## 🗄️ Database Setup (PostgreSQL)
 
-### 1. Install PostgreSQL 15+
-Download dari: https://www.postgresql.org/download/windows/
+### Quick Setup (Recommended)
 
-### 2. Create Database
-```sql
--- Login ke PostgreSQL
-psql -U postgres
+**Automated setup dengan 1 command:**
 
--- Create database
-CREATE DATABASE dashboard_bpk;
-
--- Create user (optional)
-CREATE USER bpk_admin WITH PASSWORD 'your_secure_password';
-GRANT ALL PRIVILEGES ON DATABASE dashboard_bpk TO bpk_admin;
-```
-
-### 3. Run Migration
 ```powershell
-# Option 1: Manual (Copy-paste SQL)
-psql -U postgres -d dashboard_bpk -f backend/migrations/001_create_tables.up.sql
-
-# Option 2: Using psql directly
-psql -U postgres -d dashboard_bpk
-\i C:/Users/Rayhansw/KULIAH/MagangBPK/Dashboard-BPK/backend/migrations/001_create_tables.up.sql
+cd backend\scripts
+.\setup_database.ps1
 ```
+
+Script akan otomatis:
+- ✅ Create database `actlog`
+- ✅ Run migrations (create tables)
+- ✅ Seed default data
+- ✅ Verify setup
+
+📖 **Detail lengkap**: Lihat [DATABASE_SETUP.md](DATABASE_SETUP.md) atau [backend/DATABASE_README.md](backend/DATABASE_README.md)
+
+### Manual Setup
+
+1. **Install PostgreSQL 15+**
+   Download dari: https://www.postgresql.org/download/windows/
+
+2. **Create Database**
+   ```sql
+   -- Login ke PostgreSQL
+   psql -U postgres
+   
+   -- Create database
+   CREATE DATABASE actlog;
+   ```
+
+3. **Run Migration**
+   ```powershell
+   psql -U postgres -d actlog -f backend/migrations/001_create_tables.up.sql
+   ```
 
 **Migration Creates:**
 - ✅ `activity_logs` table (main data)
@@ -103,7 +113,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=your_password_here  # ⚠️ UBAH INI!
-DB_NAME=dashboard_bpk
+DB_NAME=actlog
 JWT_SECRET=your_jwt_secret_key  # ⚠️ UBAH INI!
 ```
 

@@ -76,6 +76,16 @@ logs/
 *.sqlite
 *.sqlite3
 
+# Database Backups (large files)
+*.dump
+backup_*.sql
+*_backup.sql
+database_backup.sql
+
+# Keep seed files but ignore large data files (optional)
+# Uncomment if actlog_data.sql is too large (>10MB):
+# backend/seeds/actlog_data.sql
+
 # Temporary files
 *.tmp
 .temp/

@@ -1,154 +1,170 @@
-# 🚀 Database Setup Instructions
+# �️ Database Setup - Dashboard BPK
 
-## Step-by-Step Guide untuk Setup Database
+**Quick setup guide untuk PostgreSQL database project Dashboard BPK.**
+
+---
+
+## ⚡ Quick Setup (Recommended)
+
+Untuk setup cepat, gunakan automated script:
+
+```powershell
+cd backend\scripts
+.\setup_database.ps1
+```
+
+Script akan otomatis:
+- ✅ Create database `actlog`
+- ✅ Run migrations (create tables)
+- ✅ Seed default data (users, provinces, units)
+- ✅ Verify setup
+
+📖 **Tutorial lengkap**: Lihat [TEAM_SETUP_GUIDE.md](TEAM_SETUP_GUIDE.md) atau [backend/DATABASE_README.md](backend/DATABASE_README.md)
+
+---
+
+## 📋 Manual Setup
+
+Jika ingin setup manual step-by-step:
 
 ### Option 1: Using DBeaver (RECOMMENDED)
 
 1. **Buka DBeaver**
    - Connect ke PostgreSQL server (localhost:5432)
    - User: `postgres`
-   - Password: `12345678`
+   - Password: (your PostgreSQL password)
 
 2. **Create Database**
    - Klik kanan pada "Databases" → "Create New Database"
-   - Database name: `dashboard_bpk`
+   - Database name: `actlog`
    - Encoding: `UTF8`
    - Klik "OK"
 
 3. **Run Migration Script**
-   - Buka database `dashboard_bpk`
+   - Buka database `actlog`
    - Klik "SQL Editor" (atau tekan F3)
-   - Copy paste isi file: `setup-database.sql`
+   - Copy paste isi file: `backend/migrations/001_create_tables.up.sql`
    - Execute script (Ctrl+Enter atau tombol Play ▶️)
-   - Verify: Lihat message "Database setup completed successfully!"
+   - Verify: Cek di message log bahwa tables berhasil dibuat
 
 4. **Verify Tables**
-   - Expand "dashboard_bpk" → "Schemas" → "public" → "Tables"
-   - Harus ada table `activity_logs`
+   - Expand `actlog` → `Schemas` → `public` → `Tables`
+   - Harus ada tabel: `activity_logs`, `users`, `provinces`, `organizational_units`
 
 ### Option 2: Using psql Command Line
 
 ```bash
 # Create database
-psql -U postgres -c "CREATE DATABASE dashboard_bpk;"
+psql -U postgres -c "CREATE DATABASE actlog;"
 
 # Run migration
-psql -U postgres -d dashboard_bpk -f setup-database.sql
+psql -U postgres -d actlog -f backend/migrations/001_create_tables.up.sql
+
+# Verify
+psql -U postgres -d actlog -c "\dt"
 ```
 
-### Option 3: Jalankan Script di DBeaver secara Manual
+### Option 3: Using Automated Script
 
-**Script SQL** (copy paste ke SQL Editor DBeaver):
+**Paling mudah - jalankan setup script:**
 
-```sql
--- 1. Create database (jika belum ada)
--- Jalankan ini di database 'postgres' default
-CREATE DATABASE dashboard_bpk
-    WITH
-    ENCODING = 'UTF8'
-    TEMPLATE = template0;
-
--- 2. Switch ke database dashboard_bpk
--- (klik kanan connection → Switch Database → dashboard_bpk)
-
--- 3. Create table activity_logs
-CREATE TABLE IF NOT EXISTS activity_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_trans UUID UNIQUE NOT NULL,
-    nama VARCHAR(255) NOT NULL,
-    satker VARCHAR(255),
-    aktifitas VARCHAR(100) NOT NULL,
-    scope TEXT,
-    lokasi VARCHAR(255),
-    cluster VARCHAR(50) NOT NULL,
-    tanggal TIMESTAMPTZ NOT NULL,
-    token UUID,
-    province VARCHAR(100),
-    region VARCHAR(50),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- 4. Create indexes
-CREATE INDEX idx_activity_logs_tanggal ON activity_logs(tanggal);
-CREATE INDEX idx_activity_logs_cluster ON activity_logs(cluster);
-CREATE INDEX idx_activity_logs_satker ON activity_logs(satker);
-CREATE INDEX idx_activity_logs_aktifitas ON activity_logs(aktifitas);
-
--- 5. Create trigger function
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 6. Create trigger
-CREATE TRIGGER update_activity_logs_updated_at
-    BEFORE UPDATE ON activity_logs
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+```powershell
+cd backend\scripts
+.\setup_database.ps1
 ```
 
-## Verify Setup
+Script akan handle semua langkah otomatis.
 
-Setelah setup, test connection dengan command:
+---
+
+## ✅ Verify Setup
+
+Setelah setup, test connection:
 
 ```bash
 cd backend
-go run test-db-connection.go
+go run cmd/api/main.go
+# Atau jalankan: cd cmd/api && .\run.ps1
 ```
 
 **Expected Output:**
 
 ```
-Database connection successful!
- PostgreSQL Version: PostgreSQL 15.x
- Table 'activity_logs' exists
- Records in activity_logs: 0
+✓ Connected to database: actlog
+Server starting on :8080
+```
+
+Atau test dengan psql:
+
+```bash
+psql -U postgres -d actlog -c "SELECT COUNT(*) FROM activity_logs;"
 ```
 
 ##  Troubleshooting
 
 ### Error: "database does not exist"
 
-- Pastikan sudah create database `dashboard_bpk`
-- Check di DBeaver: Database list harus ada `dashboard_bpk`
+Run setup script:
+```powershell
+cd backend\scripts
+.\setup_database.ps1
+```
 
 ### Error: "password authentication failed"
 
-- Update password di file `backend/.env`:
-  ```
-  DB_PASSWORD=12345678
-  ```
+Update password di file `backend/.env`:
+```env
+DB_PASSWORD=your_actual_password
+```
 
-### Error: "table already exists"
+### Error: "psql command not found"
 
-- Skip error ini, artinya table sudah dibuat sebelumnya
-- Check dengan query: `SELECT * FROM activity_logs LIMIT 1;`
-
-##  Database Schema
-
-Table: **activity_logs**
-
-| Column     | Type         | Description                      |
-| ---------- | ------------ | -------------------------------- |
-| id         | UUID         | Primary key (auto-generated)     |
-| id_trans   | UUID         | Transaction ID dari CSV (unique) |
-| nama       | VARCHAR(255) | Masked username                  |
-| satker     | VARCHAR(255) | Unit kerja                       |
-| aktifitas  | VARCHAR(100) | Activity type                    |
-| scope      | TEXT         | Activity details                 |
-| lokasi     | VARCHAR(255) | Location                         |
-| cluster    | VARCHAR(50)  | pencarian/pemda/pusat            |
-| tanggal    | TIMESTAMPTZ  | Activity timestamp               |
-| token      | UUID         | Session token                    |
-| province   | VARCHAR(100) | Province (extracted from satker) |
-| region     | VARCHAR(50)  | Region grouping                  |
-| created_at | TIMESTAMPTZ  | Record creation time             |
-| updated_at | TIMESTAMPTZ  | Last update time                 |
+Tambahkan PostgreSQL bin ke PATH:
+- Windows: `C:\Program Files\PostgreSQL\16\bin`
+- Restart PowerShell setelah edit PATH
 
 ---
 
-**Next Step**: Import CSV data (actLog_202601091608.csv)
+## 📚 Dokumentasi Lengkap
+
+Untuk panduan lebih detail, lihat:
+- **Team Setup Guide**: [TEAM_SETUP_GUIDE.md](TEAM_SETUP_GUIDE.md)
+- **Database Documentation**: [backend/DATABASE_README.md](backend/DATABASE_README.md)
+- **Scripts Guide**: [backend/scripts/README.md](backend/scripts/README.md)
+
+---
+
+##  Database Schema
+
+Database: **actlog**
+
+### Tables:
+
+#### 1. **activity_logs**
+Menyimpan log aktivitas user dari sistem BIDICS.
+
+| Column     | Type         | Description                      |
+| ---------- | ------------ | -------------------------------- |
+| id         | BIGSERIAL    | Primary key (auto-generated)     |
+| username   | VARCHAR(255) | Username pengguna                |
+| action     | VARCHAR(100) | Activity type (LOGIN, LOGOUT, etc)|
+| target     | VARCHAR(500) | Target dari aksi                 |
+| ip_address | VARCHAR(45)  | IP address                       |
+| user_agent | TEXT         | Browser/device info              |
+| status     | VARCHAR(50)  | Status aksi                      |
+| province_id| VARCHAR(10)  | ID provinsi                      |
+| unit_id    | VARCHAR(50)  | ID unit organisasi               |
+| session_id | VARCHAR(255) | Session ID                       |
+| timestamp  | TIMESTAMP    | Activity timestamp               |
+
+#### 2. **users**
+User authentication data.
+
+#### 3. **provinces**
+Referensi provinsi Indonesia (13 provinsi sample).
+
+#### 4. **organizational_units**
+Struktur organisasi BPK (5 unit sample).
+
+#### 5. **act_log** (Optional - dari CSV import)
+Data logging import dari sistem BIDICS.

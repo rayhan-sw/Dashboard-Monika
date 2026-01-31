@@ -242,45 +242,80 @@ GetUniqueUsersCount() (int64, error)  // Distinct token count
 
 ---
 
-## Next Steps (User Action Required)
+## Database Setup Instructions
 
-### Before Running the Server:
+### Quick Setup (Recommended)
 
-1. **Create Database** (using DBeaver):
-   - Open DBeaver
-   - Connect to PostgreSQL (localhost:5432, user: postgres, password: 12345678)
-   - Open SQL Editor
-   - Run `backend/setup-database.sql` script
-   - Verify database "dashboard_bpk" exists
+**Automated setup dengan 1 command:**
 
-2. **Import CSV Data**:
+```powershell
+cd backend\scripts
+.\setup_database.ps1
+```
+
+Script akan otomatis:
+- ✅ Create database `actlog`
+- ✅ Run migrations (create all tables)
+- ✅ Seed default data (users, provinces, organizational units)
+- ✅ Verify setup berhasil
+
+### Manual Setup
+
+1. **Create Database**:
+   ```powershell
+   psql -U postgres -c "CREATE DATABASE actlog;"
+   ```
+
+2. **Run Migration**:
+   ```powershell
+   psql -U postgres -d actlog -f migrations/001_create_tables.up.sql
+   ```
+
+3. **Verify**:
+   ```powershell
+   psql -U postgres -d actlog -c "\dt"
+   ```
+
+📖 **Dokumentasi lengkap**: Lihat [DATABASE_README.md](DATABASE_README.md) atau [TEAM_SETUP_GUIDE.md](../TEAM_SETUP_GUIDE.md)
+
+---
+
+## Running the Server
+
+### Import CSV Data (Optional)
+
+Jika ada data CSV yang perlu di-import:
 
    ```powershell
    cd backend
-   go run cmd/import/main.go "../path/to/actLog_202601091608.csv"
+   go run cmd/import/main.go "path/to/actLog_202601091608.csv"
    ```
 
-3. **Run Backend Server**:
+### Run Backend Server
 
-   ```powershell
-   cd backend
-   .\bin\server.exe
-   ```
+```powershell
+cd backend/cmd/api
+.\run.ps1
 
-   Server akan berjalan di `http://localhost:8080`
+# Atau build dulu:
+# go build -o ../../bin/server.exe cmd/api/main.go
+# .\bin\server.exe
+```
 
-4. **Test API**:
+Server akan berjalan di `http://localhost:8080`
 
-   ```powershell
-   # Health check
-   curl http://localhost:8080/health
+### Test API
 
-   # Dashboard stats
-   curl http://localhost:8080/api/dashboard/stats
+```powershell
+# Health check
+curl http://localhost:8080/health
 
-   # Recent activities
-   curl "http://localhost:8080/api/dashboard/activities?page=1&page_size=10"
-   ```
+# Dashboard stats
+curl http://localhost:8080/api/dashboard/stats
+
+# Recent activities
+curl "http://localhost:8080/api/dashboard/activities?page=1&page_size=10"
+```
 
 ---
 
