@@ -36,12 +36,12 @@ try {
     $rowCount = $rowCount.Trim()
     
     if ($rowCount -eq "72034") {
-        Write-Host "✓ Total rows: $rowCount (CORRECT)" -ForegroundColor Green
+        Write-Host "[OK] Total rows: $rowCount (CORRECT)" -ForegroundColor Green
     } else {
-        Write-Host "⚠ Total rows: $rowCount (Expected: 72034)" -ForegroundColor Yellow
+        Write-Host "[WARN] Total rows: $rowCount (Expected: 72034)" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "✗ Failed to check row count" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to check row count" -ForegroundColor Red
 }
 
 # Check 2: Clusters
@@ -51,12 +51,12 @@ try {
     $clusters = $clusters.Trim()
     
     if ($clusters -eq "13") {
-        Write-Host "✓ Total clusters: $clusters (CORRECT)" -ForegroundColor Green
+        Write-Host "[OK] Total clusters: $clusters (CORRECT)" -ForegroundColor Green
     } else {
-        Write-Host "⚠ Total clusters: $clusters (Expected: 13)" -ForegroundColor Yellow
+        Write-Host "[WARN] Total clusters: $clusters (Expected: 13)" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "✗ Failed to check clusters" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to check clusters" -ForegroundColor Red
 }
 
 # Check 3: Columns
@@ -66,12 +66,12 @@ try {
     $columns = $columns.Trim()
     
     if ($columns -eq "18") {
-        Write-Host "✓ Total columns: $columns (CORRECT)" -ForegroundColor Green
+        Write-Host "[OK] Total columns: $columns (CORRECT)" -ForegroundColor Green
     } else {
-        Write-Host "⚠ Total columns: $columns (Expected: 18)" -ForegroundColor Yellow
+        Write-Host "[WARN] Total columns: $columns (Expected: 18)" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "✗ Failed to check columns" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to check columns" -ForegroundColor Red
 }
 
 # Check 4: Date Range
@@ -79,7 +79,7 @@ Write-Host "`n[4/5] Checking date range..." -ForegroundColor Yellow
 try {
     psql -U $dbUser -h $dbHost -p $dbPort -d $dbName -c "SELECT MIN(tanggal) as earliest, MAX(tanggal) as latest FROM act_log;" 2>$null
 } catch {
-    Write-Host "✗ Failed to check date range" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to check date range" -ForegroundColor Red
 }
 
 # Check 5: Cluster Distribution
@@ -87,7 +87,7 @@ Write-Host "`n[5/5] Cluster distribution..." -ForegroundColor Yellow
 try {
     psql -U $dbUser -h $dbHost -p $dbPort -d $dbName -c "SELECT cluster, COUNT(*) as total FROM act_log GROUP BY cluster ORDER BY total DESC;" 2>$null
 } catch {
-    Write-Host "✗ Failed to check cluster distribution" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to check cluster distribution" -ForegroundColor Red
 }
 
 Write-Host "`n=== Verification Completed ===" -ForegroundColor Cyan
