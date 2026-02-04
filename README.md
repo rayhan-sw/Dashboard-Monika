@@ -186,6 +186,15 @@ cd backend\scripts
 # Database akan sama persis dengan owner
 ```
 
+**Verify Data Consistency:**
+
+```bash
+# Run verification script
+.\verify-database.ps1
+```
+
+Atau lihat [VERIFY_DATA.md](VERIFY_DATA.md) untuk command manual dan troubleshooting.
+
 **Manual Setup:**
 
 Lihat dokumentasi lengkap di [backend/DATABASE_README.md](backend/DATABASE_README.md)
