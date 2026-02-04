@@ -4,9 +4,9 @@
 -- Date: 2026-02-01
 
 -- Drop indexes first
-DROP INDEX IF EXISTS idx_activity_logs_status;
-DROP INDEX IF EXISTS idx_activity_logs_detail_aktifitas;
+DROP INDEX IF EXISTS idx_act_log_status;
+DROP INDEX IF EXISTS idx_act_log_detail_aktifitas;
 
 -- Drop columns
-ALTER TABLE activity_logs DROP COLUMN IF EXISTS status;
-ALTER TABLE activity_logs DROP COLUMN IF EXISTS detail_aktifitas;
+ALTER TABLE act_log DROP COLUMN IF EXISTS status;
+ALTER TABLE act_log DROP COLUMN IF EXISTS detail_aktifitas;
