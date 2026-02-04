@@ -24,8 +24,8 @@ CREATE DATABASE daring_bpk
 -- Then execute the rest below
 -- ==================================================
 
--- STEP 2: Create activity_logs table (run in 'daring_bpk')
-CREATE TABLE IF NOT EXISTS activity_logs (
+-- STEP 2: Create act_log table (run in 'daring_bpk')
+CREATE TABLE IF NOT EXISTS act_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_trans UUID UNIQUE NOT NULL,
     nama VARCHAR(255) NOT NULL,
@@ -43,18 +43,18 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 );
 
 -- 4. Create indexes
-CREATE INDEX IF NOT EXISTS idx_activity_logs_tanggal ON activity_logs(tanggal);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_cluster ON activity_logs(cluster);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_satker ON activity_logs(satker);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_aktifitas ON activity_logs(aktifitas);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_nama ON activity_logs(nama);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_token ON activity_logs(token);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_province ON activity_logs(province);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_region ON activity_logs(region);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_id_trans ON activity_logs(id_trans);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_tanggal_cluster ON activity_logs(tanggal, cluster);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_tanggal_aktifitas ON activity_logs(tanggal, aktifitas);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_satker_tanggal ON activity_logs(satker, tanggal);
+CREATE INDEX IF NOT EXISTS idx_act_log_tanggal ON act_log(tanggal);
+CREATE INDEX IF NOT EXISTS idx_act_log_cluster ON act_log(cluster);
+CREATE INDEX IF NOT EXISTS idx_act_log_satker ON act_log(satker);
+CREATE INDEX IF NOT EXISTS idx_act_log_aktifitas ON act_log(aktifitas);
+CREATE INDEX IF NOT EXISTS idx_act_log_nama ON act_log(nama);
+CREATE INDEX IF NOT EXISTS idx_act_log_token ON act_log(token);
+CREATE INDEX IF NOT EXISTS idx_act_log_province ON act_log(province);
+CREATE INDEX IF NOT EXISTS idx_act_log_region ON act_log(region);
+CREATE INDEX IF NOT EXISTS idx_act_log_id_trans ON act_log(id_trans);
+CREATE INDEX IF NOT EXISTS idx_act_log_tanggal_cluster ON act_log(tanggal, cluster);
+CREATE INDEX IF NOT EXISTS idx_act_log_tanggal_aktifitas ON act_log(tanggal, aktifitas);
+CREATE INDEX IF NOT EXISTS idx_act_log_satker_tanggal ON act_log(satker, tanggal);
 
 -- 5. Create update trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -66,12 +66,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 6. Create trigger
-DROP TRIGGER IF EXISTS update_activity_logs_updated_at ON activity_logs;
-CREATE TRIGGER update_activity_logs_updated_at
-    BEFORE UPDATE ON activity_logs
+DROP TRIGGER IF EXISTS update_act_log_updated_at ON act_log;
+CREATE TRIGGER update_act_log_updated_at
+    BEFORE UPDATE ON act_log
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
 -- 7. Verify setup
 SELECT 'Database setup completed successfully!' AS status;
-SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_name = 'activity_logs';
+SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_name = 'act_log';

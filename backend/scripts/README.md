@@ -53,7 +53,7 @@ cd backend
 
 **What it does:**
 - ✅ Reads database config from `.env`
-- ✅ Exports `activity_logs` table using `pg_dump`
+- ✅ Exports `act_log` table using `pg_dump`
 - ✅ Creates `seeds/actlog_data_new.sql`
 - ✅ Shows statistics (file size, line count)
 
@@ -171,3 +171,4 @@ Script will prompt to drop and recreate. Type `yes` to proceed.
 ## 📖 More Info
 
 See full documentation: `backend/DATABASE_README.md`
+

@@ -49,7 +49,7 @@ cd backend\scripts
 
 Script akan otomatis:
 - ✅ Membuat database `actlog`
-- ✅ Membuat semua tabel (users, provinces, organizational_units, activity_logs)
+- ✅ Membuat semua tabel (users, provinces, organizational_units, act_log)
 - ✅ Insert data default (admin user, provinces, units)
 - ✅ Verifikasi setup
 
@@ -164,7 +164,7 @@ git push
 
 ### Tables
 
-#### 1. **activity_logs**
+#### 1. **act_log**
 Menyimpan log aktivitas user dari sistem BIDICS.
 
 | Column | Type | Description |
@@ -182,12 +182,12 @@ Menyimpan log aktivitas user dari sistem BIDICS.
 | timestamp | TIMESTAMP | Waktu aktivitas |
 
 **Indexes:**
-- `idx_activity_logs_username`
-- `idx_activity_logs_timestamp`
-- `idx_activity_logs_province_id`
-- `idx_activity_logs_unit_id`
-- `idx_activity_logs_action`
-- `idx_activity_logs_status`
+- `idx_act_log_username`
+- `idx_act_log_timestamp`
+- `idx_act_log_province_id`
+- `idx_act_log_unit_id`
+- `idx_act_log_action`
+- `idx_act_log_status`
 
 #### 2. **users**
 Data user untuk authentication.
@@ -361,3 +361,4 @@ Jika ada masalah:
 
 **Last Updated:** 2026-01-31  
 **Maintained by:** Rayhan SW
+

@@ -36,7 +36,7 @@ cd backend\scripts
 
 Script ini akan:
 - ✅ Membuat database `actlog`
-- ✅ Membuat semua tabel (users, provinces, organizational_units, activity_logs)
+- ✅ Membuat semua tabel (users, provinces, organizational_units, act_log)
 - ✅ Insert data default (admin user, provinces, organizational units)
 - ✅ Verifikasi bahwa semuanya berhasil
 
@@ -207,7 +207,7 @@ Setelah setup, kamu akan punya tabel:
 ### 3. **organizational_units**
 - 5 unit organisasi BPK sample
 
-### 4. **activity_logs**
+### 4. **act_log**
 - Kosong (akan terisi dari tracking user activity)
 
 ### 5. **act_log** (jika di-import)
@@ -244,3 +244,4 @@ psql -U postgres -d actlog -f ..\migrations\002_new_migration.up.sql
 **Dibuat oleh:** Rayhan SW  
 **Tanggal:** 31 Januari 2026  
 **Repository:** https://github.com/rayhan-sw/Dashboard-BPK
+

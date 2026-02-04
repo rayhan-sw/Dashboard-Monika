@@ -49,7 +49,7 @@ Jika ingin setup manual step-by-step:
 
 4. **Verify Tables**
    - Expand `actlog` → `Schemas` → `public` → `Tables`
-   - Harus ada tabel: `activity_logs`, `users`, `provinces`, `organizational_units`
+   - Harus ada tabel: `act_log`, `users`, `provinces`, `organizational_units`
 
 ### Option 2: Using psql Command Line
 
@@ -97,7 +97,7 @@ Server starting on :8080
 Atau test dengan psql:
 
 ```bash
-psql -U postgres -d actlog -c "SELECT COUNT(*) FROM activity_logs;"
+psql -U postgres -d actlog -c "SELECT COUNT(*) FROM act_log;"
 ```
 
 ##  Troubleshooting
@@ -140,7 +140,7 @@ Database: **actlog**
 
 ### Tables:
 
-#### 1. **activity_logs**
+#### 1. **act_log**
 Menyimpan log aktivitas user dari sistem BIDICS.
 
 | Column     | Type         | Description                      |
@@ -168,3 +168,4 @@ Struktur organisasi BPK (5 unit sample).
 
 #### 5. **act_log** (Optional - dari CSV import)
 Data logging import dari sistem BIDICS.
+

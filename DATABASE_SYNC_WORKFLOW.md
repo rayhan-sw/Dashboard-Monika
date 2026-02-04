@@ -27,7 +27,7 @@ Database: dashboard_bpk
 Host: localhost:5432
 User: postgres
 
-Exporting activity_logs data using pg_dump...
+Exporting act_log data using pg_dump...
 Running pg_dump...
 
 ✓ Success! Data exported
@@ -72,7 +72,7 @@ Move-Item seeds\actlog_data_new.sql seeds\actlog_data.sql -Force
 .\scripts\setup_database.ps1
 
 # Verify data
-psql -U postgres -d dashboard_bpk -c "SELECT COUNT(*) FROM activity_logs;"
+psql -U postgres -d dashboard_bpk -c "SELECT COUNT(*) FROM act_log;"
 ```
 
 ### Step 5: Commit & Push
@@ -130,10 +130,10 @@ Ketik `yes` dan Enter.
 
 ```powershell
 # Check row count
-psql -U postgres -d dashboard_bpk -c "SELECT COUNT(*) FROM activity_logs;"
+psql -U postgres -d dashboard_bpk -c "SELECT COUNT(*) FROM act_log;"
 
 # Check sample data
-psql -U postgres -d dashboard_bpk -c "SELECT nama, lokasi FROM activity_logs LIMIT 5;"
+psql -U postgres -d dashboard_bpk -c "SELECT nama, lokasi FROM act_log LIMIT 5;"
 ```
 
 ### Step 4: Test Frontend
@@ -180,7 +180,7 @@ Warning: pg_dump not found in PATH
 **Possible causes:**
 - Database connection gagal
 - Credentials salah di `.env`
-- Table `activity_logs` kosong
+- Table `act_log` kosong
 
 **Fix:**
 ```powershell
@@ -188,14 +188,14 @@ Warning: pg_dump not found in PATH
 psql -h localhost -U postgres -d dashboard_bpk -c "\dt"
 
 # Check data ada
-psql -h localhost -U postgres -d dashboard_bpk -c "SELECT COUNT(*) FROM activity_logs;"
+psql -h localhost -U postgres -d dashboard_bpk -c "SELECT COUNT(*) FROM act_log;"
 ```
 
 ### Seed import failed
 
 **Error:**
 ```
-ERROR: duplicate key value violates unique constraint "activity_logs_pkey"
+ERROR: duplicate key value violates unique constraint "act_log_pkey"
 ```
 
 **Fix:**
@@ -234,7 +234,7 @@ psql -U postgres -c "DROP DATABASE IF EXISTS dashboard_bpk;"
 Setelah sync, pastikan:
 
 - [ ] Database ada dan accessible
-- [ ] Table `activity_logs` ada
+- [ ] Table `act_log` ada
 - [ ] Row count sama dengan ekspektasi owner
 - [ ] Sample data query berjalan
 - [ ] Backend API bisa query data
@@ -279,3 +279,4 @@ Setelah sync, pastikan:
 
 **Last Updated:** February 2026
 **Maintained by:** Dashboard BPK Team
+

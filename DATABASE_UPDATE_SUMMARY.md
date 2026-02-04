@@ -74,14 +74,14 @@ git pull
 
 ### Migration 004: New Columns
 ```sql
-ALTER TABLE activity_logs 
+ALTER TABLE act_log 
 ADD COLUMN status VARCHAR(50);
 ADD COLUMN detail_aktifitas TEXT;
 ```
 
 **Why?** Seed file `actlog_data.sql` contains these columns:
 ```sql
-INSERT INTO public.activity_logs 
+INSERT INTO public.act_log 
   (id_trans,nama,satker,aktifitas,scope,lokasi,
    detail_aktifitas,cluster,tanggal,token,status,created_at)
 VALUES (...)
@@ -102,7 +102,7 @@ VALUES (...)
 - [ ] Pull latest: `git pull`
 - [ ] Run setup: `.\scripts\setup_database.ps1`
 - [ ] Verify database name: `dashboard_bpk`
-- [ ] Check row count: `SELECT COUNT(*) FROM activity_logs`
+- [ ] Check row count: `SELECT COUNT(*) FROM act_log`
 - [ ] Test backend API
 - [ ] Test frontend display
 
@@ -115,7 +115,7 @@ If you already have database setup, you can apply new migration only:
 psql -U postgres -d dashboard_bpk -f backend\migrations\004_add_status_detail.up.sql
 
 # Verify
-psql -U postgres -d dashboard_bpk -c "\d activity_logs"
+psql -U postgres -d dashboard_bpk -c "\d act_log"
 ```
 
 ## 📊 Data Statistics
@@ -144,7 +144,7 @@ DB_NAME=dashboard_bpk
 **Old**: Only 001_create_tables.up.sql
 **New**: 002, 003, 004 in sequence
 
-**Why?** Migration 001 was initial schema, 002 is the correct activity_logs structure from CSV import.
+**Why?** Migration 001 was initial schema, 002 is the correct act_log structure from CSV import.
 
 ## 💡 Best Practices
 
@@ -206,3 +206,4 @@ If you encounter issues:
 **Update Date**: February 1, 2026
 **Updated By**: Dashboard BPK Team
 **Version**: 2.0
+

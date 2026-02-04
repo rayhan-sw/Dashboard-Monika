@@ -22,10 +22,10 @@ cd backend\scripts
 ### Verify Data
 ```powershell
 # Check row count
-psql -U postgres -d dashboard_bpk -c "SELECT COUNT(*) FROM activity_logs;"
+psql -U postgres -d dashboard_bpk -c "SELECT COUNT(*) FROM act_log;"
 
 # Sample data
-psql -U postgres -d dashboard_bpk -c "SELECT nama, lokasi, tanggal FROM activity_logs LIMIT 10;"
+psql -U postgres -d dashboard_bpk -c "SELECT nama, lokasi, tanggal FROM act_log LIMIT 10;"
 ```
 
 ### Reset Database
@@ -81,10 +81,10 @@ psql -U postgres -l | Select-String "dashboard_bpk"
 psql -U postgres -d dashboard_bpk -c "\dt"
 
 # Row count
-psql -U postgres -d dashboard_bpk -c "SELECT COUNT(*) FROM activity_logs;"
+psql -U postgres -d dashboard_bpk -c "SELECT COUNT(*) FROM act_log;"
 
 # Recent data
-psql -U postgres -d dashboard_bpk -c "SELECT tanggal FROM activity_logs ORDER BY tanggal DESC LIMIT 5;"
+psql -U postgres -d dashboard_bpk -c "SELECT tanggal FROM act_log ORDER BY tanggal DESC LIMIT 5;"
 ```
 
 ## 📞 Help
@@ -97,3 +97,4 @@ psql -U postgres -d dashboard_bpk -c "SELECT tanggal FROM activity_logs ORDER BY
 ---
 
 **Keep this file open while working!**
+

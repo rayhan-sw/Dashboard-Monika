@@ -84,7 +84,7 @@ Script akan otomatis:
    ```
 
 **Migration Creates:**
-- ✅ `activity_logs` table (main data)
+- ✅ `act_log` table (main data)
 - ✅ `users` table (authentication)
 - ✅ `provinces` table (regional data)
 - ✅ `organizational_units` table (BPK units)
@@ -313,3 +313,4 @@ psql -U postgres -d dashboard_bpk -f backend/migrations/001_create_tables.up.sql
 
 **Status**: ✅ FASE 1 COMPLETE - Project Structure & Dependencies Ready
 **Date**: 27 Januari 2026
+

@@ -13,7 +13,7 @@ Backend dengan Golang + GORM telah selesai dibangun dengan semua endpoint API, C
 - **Fixed entity** `activity_log.go`:
   - Updated ke UUID fields (id, id_trans, token)
   - Added province & region columns
-  - Changed table name to `activity_logs`
+  - Changed table name to `act_log`
 - **Fixed repository** methods:
   - `GetCountByStatus()` uses `aktifitas='LOGIN'` untuk success
   - `GetCountByStatus()` uses `aktifitas='LOGOUT' AND scope='error'` untuk failed
@@ -216,8 +216,8 @@ backend/
 │   └── database/
 │       └── postgres.go          # DB connection + GetDB()
 ├── migrations/
-│   ├── 002_create_activity_logs.up.sql
-│   └── 002_create_activity_logs.down.sql
+│   ├── 002_create_act_log.up.sql
+│   └── 002_create_act_log.down.sql
 ├── .env
 ├── .env.example
 └── go.mod
@@ -318,6 +318,7 @@ curl "http://localhost:8080/api/dashboard/activities?page=1&page_size=10"
 ```
 
 ---
+
 
 
 

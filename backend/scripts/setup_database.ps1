@@ -111,11 +111,11 @@ if (-not $migrationSuccess) {
 Write-Host ""
 
 # Step 4: Seed Data from actlog_data.sql
-Write-Host "[4/7] Seeding activity_logs data..." -ForegroundColor $ColorWarning
+Write-Host "[4/7] Seeding act_log data..." -ForegroundColor $ColorWarning
 $seedFile = Join-Path $PSScriptRoot "..\seeds\actlog_data.sql"
 
 # Step 4: Seed Data from actlog_data.sql
-Write-Host "[4/7] Seeding activity_logs data..." -ForegroundColor $ColorWarning
+Write-Host "[4/7] Seeding act_log data..." -ForegroundColor $ColorWarning
 $seedFile = Join-Path $PSScriptRoot "..\seeds\actlog_data.sql"
 
 if (Test-Path $seedFile) {
@@ -144,23 +144,23 @@ if (Test-Path $seedFile) {
 }
 Write-Host ""
 
-# Step 5: Check activity_logs table
-Write-Host "[5/7] Checking activity_logs table..." -ForegroundColor $ColorWarning
-$activityLogsExists = psql -U $DBUser -h $DBHost -p $DBPort -d $DBName -t -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'activity_logs');" 2>$null
+# Step 5: Check act_log table
+Write-Host "[5/7] Checking act_log table..." -ForegroundColor $ColorWarning
+$activityLogsExists = psql -U $DBUser -h $DBHost -p $DBPort -d $DBName -t -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'act_log');" 2>$null
 
 if ($activityLogsExists -match "t") {
-    $rowCount = psql -U $DBUser -h $DBHost -p $DBPort -d $DBName -t -c "SELECT COUNT(*) FROM activity_logs;" 2>$null
+    $rowCount = psql -U $DBUser -h $DBHost -p $DBPort -d $DBName -t -c "SELECT COUNT(*) FROM act_log;" 2>$null
     $rowCount = $rowCount.Trim()
-    Write-Host "      ✓ activity_logs table exists with $rowCount rows" -ForegroundColor $ColorSuccess
+    Write-Host "      ✓ act_log table exists with $rowCount rows" -ForegroundColor $ColorSuccess
 } else {
-    Write-Host "      ✗ activity_logs table not found (migration may have failed)" -ForegroundColor $ColorError
+    Write-Host "      ✗ act_log table not found (migration may have failed)" -ForegroundColor $ColorError
 }
 Write-Host ""
 
 # Step 6: Verify Columns
 Write-Host "[6/7] Verifying table structure..." -ForegroundColor $ColorWarning
 try {
-    $columns = psql -U $DBUser -h $DBHost -p $DBPort -d $DBName -t -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'activity_logs' ORDER BY ordinal_position;" 2>$null
+    $columns = psql -U $DBUser -h $DBHost -p $DBPort -d $DBName -t -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'act_log' ORDER BY ordinal_position;" 2>$null
     $columnList = @()
     foreach ($col in $columns) {
         $col = $col.Trim()

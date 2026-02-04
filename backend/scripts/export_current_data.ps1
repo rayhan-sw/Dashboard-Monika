@@ -28,7 +28,7 @@ Write-Host "Database: $dbName" -ForegroundColor Green
 Write-Host "Host: $dbHost" -ForegroundColor Green
 Write-Host "User: $dbUser" -ForegroundColor Green
 Write-Host ""
-Write-Host "Exporting activity_logs data using pg_dump..." -ForegroundColor Cyan
+Write-Host "Exporting act_log data using pg_dump..." -ForegroundColor Cyan
 
 # Set password environment variable
 $env:PGPASSWORD = $dbPassword
@@ -51,7 +51,7 @@ try {
     
     # Export using pg_dump
     Write-Host "Running pg_dump..." -ForegroundColor Cyan
-    & pg_dump -h $dbHost -p $dbPort -U $dbUser -d $dbName --table=activity_logs --data-only --column-inserts --no-owner --no-privileges --file=$outputFile
+    & pg_dump -h $dbHost -p $dbPort -U $dbUser -d $dbName --table=act_log --data-only --column-inserts --no-owner --no-privileges --file=$outputFile
     
     if ($LASTEXITCODE -eq 0 -and (Test-Path $outputFile)) {
         $fileSize = (Get-Item $outputFile).Length / 1MB
