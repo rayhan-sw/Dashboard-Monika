@@ -12,3 +12,4 @@ ALTER TABLE act_log ADD COLUMN IF NOT EXISTS eselon VARCHAR(100);
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_act_log_email ON act_log(email);
 CREATE INDEX IF NOT EXISTS idx_act_log_eselon ON act_log(eselon);
+
