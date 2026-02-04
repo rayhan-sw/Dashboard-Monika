@@ -17,6 +17,7 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
   const mapInstanceRef = useRef<any>(null); // Store map instance for reliable cleanup
   const [map, setMap] = useState<any>(null);
   const geoJsonLayerRef = useRef<any>(null);
+  const [legendMinimized, setLegendMinimized] = useState(false);
 
   // Initialize map once
   useEffect(() => {
@@ -79,7 +80,7 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
 
       // Load GeoJSON Indonesia
       try {
-        const response = await fetch("/geojson/indonesia-provinces.json");
+        const response = await fetch("/geojson/indonesia-provinces-38.json");
         const geoData = await response.json();
 
         // Get max count for color scaling
@@ -90,26 +91,26 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
           data.map((d) => [d.name.toLowerCase(), d.count]),
         );
 
-        // Function to get color based on count (simplified to 3 levels)
-        const getColor = (count: number) => {
+        // Function to get color and category based on count
+        const getColorAndCategory = (count: number) => {
+          if (count === 0)
+            return { color: "#e5e7eb", category: "Tidak ada aktivitas" }; // Abu-abu
           const ratio = count / maxCount;
-          if (ratio > 0.6) return "#047857"; // Tinggi - Dark green
-          if (ratio > 0.3) return "#34d399"; // Sedang - Medium green
-          if (ratio > 0) return "#a7f3d0"; // Rendah - Light green
-          return "#d1fae5"; // No data - Very light green
+          if (ratio > 0.6)
+            return { color: "#047857", category: "Aktivitas Terbanyak" }; // Hijau tua
+          if (ratio > 0.3)
+            return { color: "#86efac", category: "Aktivitas Sedang" }; // Hijau muda
+          return { color: "#d1fae5", category: "Aktivitas Rendah" }; // Hijau sangat muda
         };
 
         // Style function
         const style = (feature: any) => {
-          const provinceName = feature.properties.Propinsi || "";
-          // Normalize province name for matching
-          const normalizedName = provinceName
-            .replace(/NUSATENGGARA/g, "NUSA TENGGARA")
-            .trim();
-          const count = dataMap.get(normalizedName.toLowerCase()) || 0;
+          const provinceName = feature.properties.name || "";
+          const count = dataMap.get(provinceName.toLowerCase()) || 0;
+          const { color } = getColorAndCategory(count);
 
           return {
-            fillColor: getColor(count),
+            fillColor: color,
             weight: 1,
             opacity: 1,
             color: "#10b981",
@@ -121,19 +122,28 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
         geoJsonLayerRef.current = L.geoJSON(geoData, {
           style: style,
           onEachFeature: (feature: any, layer: any) => {
-            const rawProvinceName = feature.properties.Propinsi || "Unknown";
-            const provinceName = rawProvinceName
-              .replace(/NUSATENGGARA/g, "NUSA TENGGARA")
-              .trim();
+            const provinceName = feature.properties.name || "Unknown";
             const count = dataMap.get(provinceName.toLowerCase()) || 0;
+            const { color, category } = getColorAndCategory(count);
 
-            // Popup
-            layer.bindPopup(`
-              <div style="font-family: system-ui; padding: 4px;">
-                <strong style="font-size: 14px; color: #1f2937;">${provinceName}</strong><br/>
-                <span style="font-size: 13px; color: #6b7280;">${count} aktivitas unit kerja</span>
+            // Create popup content with proper escaping
+            const popupContent = `
+              <div style="font-family: system-ui; padding: 8px; min-width: 200px;">
+                <strong style="font-size: 14px; color: #1f2937; display: block; margin-bottom: 4px;">${provinceName}</strong>
+                <span style="font-size: 13px; color: #6b7280; display: block; margin-bottom: 6px;">${count} aktivitas unit kerja</span>
+                <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 18px; height: 18px; background-color: ${color}; border: 1px solid #9ca3af; border-radius: 3px; flex-shrink: 0;"></div>
+                  <span style="font-size: 12px; color: #374151; font-weight: 600;">${category}</span>
+                </div>
               </div>
-            `);
+            `.trim();
+
+            // Bind popup
+            layer.bindPopup(popupContent, {
+              className: "custom-popup",
+              closeButton: true,
+              autoPan: true,
+            });
 
             // Hover effect
             layer.on({
@@ -177,38 +187,49 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
     const maxCount = Math.max(...data.map((d) => d.count), 1);
     const dataMap = new Map(data.map((d) => [d.name.toLowerCase(), d.count]));
 
-    const getColor = (count: number) => {
+    const getColorAndCategory = (count: number) => {
+      if (count === 0)
+        return { color: "#e5e7eb", category: "Tidak ada aktivitas" };
       const ratio = count / maxCount;
-      if (ratio > 0.6) return "#047857";
-      if (ratio > 0.3) return "#34d399";
-      if (ratio > 0) return "#a7f3d0";
-      return "#d1fae5";
+      if (ratio > 0.6)
+        return { color: "#047857", category: "Aktivitas Terbanyak" };
+      if (ratio > 0.3)
+        return { color: "#86efac", category: "Aktivitas Sedang" };
+      return { color: "#d1fae5", category: "Aktivitas Rendah" };
     };
 
     // Update each layer's style
     geoJsonLayerRef.current.eachLayer((layer: any) => {
       const feature = layer.feature;
-      const provinceName = feature.properties.Propinsi || "";
-      const normalizedName = provinceName
-        .replace(/NUSATENGGARA/g, "NUSA TENGGARA")
-        .trim();
-      const count = dataMap.get(normalizedName.toLowerCase()) || 0;
+      const provinceName = feature.properties.name || "";
+      const count = dataMap.get(provinceName.toLowerCase()) || 0;
+      const { color, category } = getColorAndCategory(count);
 
       layer.setStyle({
-        fillColor: getColor(count),
+        fillColor: color,
         weight: 1,
         opacity: 1,
         color: "#10b981",
         fillOpacity: 0.7,
       });
 
-      // Update popup
-      layer.bindPopup(`
-        <div style="font-family: system-ui; padding: 4px;">
-          <strong style="font-size: 14px; color: #1f2937;">${normalizedName}</strong><br/>
-          <span style="font-size: 13px; color: #6b7280;">${count} aktivitas unit kerja</span>
+      // Update popup with proper content
+      const popupContent = `
+        <div style="font-family: system-ui; padding: 8px; min-width: 200px;">
+          <strong style="font-size: 14px; color: #1f2937; display: block; margin-bottom: 4px;">${provinceName}</strong>
+          <span style="font-size: 13px; color: #6b7280; display: block; margin-bottom: 6px;">${count} aktivitas unit kerja</span>
+          <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 18px; height: 18px; background-color: ${color}; border: 1px solid #9ca3af; border-radius: 3px; flex-shrink: 0;"></div>
+            <span style="font-size: 12px; color: #374151; font-weight: 600;">${category}</span>
+          </div>
         </div>
-      `);
+      `.trim();
+
+      layer.bindPopup(popupContent, {
+        className: "custom-popup",
+        closeButton: true,
+        autoPan: true,
+      });
     });
   }, [data, map]);
 
@@ -216,34 +237,93 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
     <div className="relative w-full h-full" style={{ zIndex: 1 }}>
       <div ref={mapRef} className="w-full h-full rounded-xl overflow-hidden" />
 
-      {/* Legend - Simplified to 3 levels */}
-      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 z-50">
-        <p className="text-xs font-semibold text-gray-700 mb-2">
-          Jumlah Aktivitas
-        </p>
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-4 rounded"
-              style={{ backgroundColor: "#047857" }}
-            ></div>
-            <span className="text-xs text-gray-700 font-medium">Tinggi</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-4 rounded"
-              style={{ backgroundColor: "#34d399" }}
-            ></div>
-            <span className="text-xs text-gray-700 font-medium">Sedang</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-4 rounded"
-              style={{ backgroundColor: "#a7f3d0" }}
-            ></div>
-            <span className="text-xs text-gray-700 font-medium">Rendah</span>
-          </div>
+      {/* Legend */}
+      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg border border-gray-200 z-[1000] overflow-hidden">
+        {/* Legend Header */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 bg-gray-50">
+          <p className="text-xs font-semibold text-gray-700">
+            Kategori Aktivitas
+          </p>
+          <button
+            onClick={() => setLegendMinimized(!legendMinimized)}
+            className="text-gray-500 hover:text-gray-700 focus:outline-none transition-colors"
+            aria-label={legendMinimized ? "Expand legend" : "Collapse legend"}
+          >
+            {legendMinimized ? (
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            ) : (
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 15l7-7 7 7"
+                />
+              </svg>
+            )}
+          </button>
         </div>
+
+        {/* Legend Content */}
+        {!legendMinimized && (
+          <div className="p-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-8 h-4 rounded"
+                  style={{ backgroundColor: "#047857" }}
+                ></div>
+                <span className="text-xs text-gray-700 font-medium">
+                  Aktivitas Terbanyak
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-8 h-4 rounded"
+                  style={{ backgroundColor: "#86efac" }}
+                ></div>
+                <span className="text-xs text-gray-700 font-medium">
+                  Aktivitas Sedang
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-8 h-4 rounded"
+                  style={{ backgroundColor: "#d1fae5" }}
+                ></div>
+                <span className="text-xs text-gray-700 font-medium">
+                  Aktivitas Rendah
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-8 h-4 rounded"
+                  style={{ backgroundColor: "#e5e7eb" }}
+                ></div>
+                <span className="text-xs text-gray-700 font-medium">
+                  Tidak ada aktivitas
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

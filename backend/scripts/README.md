@@ -28,7 +28,7 @@ Kumpulan scripts untuk mengelola database PostgreSQL project Dashboard BPK.
 
 ### 2. `export_actlog_data.ps1`
 
-**Purpose:** Export data dari tabel `act_log` untuk sharing ke tim
+**Purpose:** Export data dari tabel `act_log` untuk sharing ke tim (LEGACY)
 
 **Usage:**
 ```powershell
@@ -38,6 +38,45 @@ Kumpulan scripts untuk mengelola database PostgreSQL project Dashboard BPK.
 **Output:** `backend/seeds/actlog_data.sql`
 
 **Use case:** Ketika owner database ingin share data terbaru ke tim
+
+---
+
+### 2b. `export_current_data.ps1` ⭐ **RECOMMENDED**
+
+**Purpose:** Export seluruh data terbaru dari database PostgreSQL
+
+**Usage:**
+```powershell
+cd backend
+.\scripts\export_current_data.ps1
+```
+
+**What it does:**
+- ✅ Reads database config from `.env`
+- ✅ Exports `activity_logs` table using `pg_dump`
+- ✅ Creates `seeds/actlog_data_new.sql`
+- ✅ Shows statistics (file size, line count)
+
+**Output:** `backend/seeds/actlog_data_new.sql`
+
+**Use case:** 
+- Setelah update data di DBeaver
+- Ingin sync data yang sama ke semua anggota tim
+- Backup state database saat ini
+
+**Next steps after export:**
+```powershell
+# 1. Review file yang dihasilkan
+code seeds\actlog_data_new.sql
+
+# 2. Jika OK, replace seed file lama
+Move-Item seeds\actlog_data_new.sql seeds\actlog_data.sql -Force
+
+# 3. Commit dan push ke tim
+git add seeds\actlog_data.sql
+git commit -m "chore: update seed data from DBeaver"
+git push
+```
 
 ---
 

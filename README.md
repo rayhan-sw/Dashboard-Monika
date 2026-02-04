@@ -132,12 +132,14 @@ Dashboard-BPK/
    ```
 
    Script akan otomatis:
-   - ✅ Create database `actlog`
+   - ✅ Create database `dashboard_bpk`
    - ✅ Run migrations (create tables)
    - ✅ Seed default data
    - ✅ Verify setup
 
    📖 **Untuk anggota tim baru**: Lihat [TEAM_SETUP_GUIDE.md](TEAM_SETUP_GUIDE.md)
+   
+   🔄 **Untuk sync data terbaru**: Lihat [DATABASE_SYNC_WORKFLOW.md](DATABASE_SYNC_WORKFLOW.md)
 
 2. **Configure Environment**:
 
@@ -153,13 +155,7 @@ Dashboard-BPK/
    go mod tidy
    ```
 
-4. **Import CSV Data** (Opsional):
-
-   ```bash
-   go run cmd/import/main.go "path/to/actLog_202601091608.csv"
-   ```
-
-5. **Run Server**:
+4. **Run Server**:
 
    ```bash
    cd cmd/api
@@ -167,11 +163,28 @@ Dashboard-BPK/
    # Server runs on http://localhost:8080
    ```
 
-6. **Test API**:
+5. **Test API**:
    ```bash
    cd ..\..
    .\test-api.ps1
    ```
+
+**For Data Sync (After database changes):**
+
+Owner yang update data:
+```bash
+cd backend
+.\scripts\export_current_data.ps1
+# Review, commit, dan push seeds/actlog_data.sql
+```
+
+Team members:
+```bash
+git pull
+cd backend\scripts
+.\setup_database.ps1
+# Database akan sama persis dengan owner
+```
 
 **Manual Setup:**
 

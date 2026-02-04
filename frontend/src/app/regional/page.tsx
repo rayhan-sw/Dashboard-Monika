@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { dashboardService, regionalService } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import type { HourlyData } from "@/types/api";
+import { Filter, ChevronDown, Check } from "lucide-react";
 
 // Import regional-specific components
 import UnitPerformanceRanking from "./_components/UnitPerformanceRanking";
@@ -44,55 +45,62 @@ interface RegionMap {
   [key: string]: string;
 }
 
+// Province to Region mapping (using GeoJSON format - UPPERCASE)
 const REGION_MAP: RegionMap = {
-  "DKI Jakarta": "JAWA, BALI & NUSA TENGGARA",
-  "Jawa Barat": "JAWA, BALI & NUSA TENGGARA",
-  "Jawa Tengah": "JAWA, BALI & NUSA TENGGARA",
-  "DI Yogyakarta": "JAWA, BALI & NUSA TENGGARA",
-  "Jawa Timur": "JAWA, BALI & NUSA TENGGARA",
-  Banten: "JAWA, BALI & NUSA TENGGARA",
-  Bali: "JAWA, BALI & NUSA TENGGARA",
-  "Nusa Tenggara Barat": "JAWA, BALI & NUSA TENGGARA",
-  "Nusa Tenggara Timur": "JAWA, BALI & NUSA TENGGARA",
-  Aceh: "SUMATERA",
-  "Sumatera Utara": "SUMATERA",
-  "Sumatera Barat": "SUMATERA",
-  Riau: "SUMATERA",
-  "Kepulauan Riau": "SUMATERA",
-  Jambi: "SUMATERA",
-  "Sumatera Selatan": "SUMATERA",
-  "Bangka Belitung": "SUMATERA",
-  Bengkulu: "SUMATERA",
-  Lampung: "SUMATERA",
-  "Sulawesi Utara": "SULAWESI",
-  "Sulawesi Tengah": "SULAWESI",
-  "Sulawesi Selatan": "SULAWESI",
-  "Sulawesi Tenggara": "SULAWESI",
-  Gorontalo: "SULAWESI",
-  "Sulawesi Barat": "SULAWESI",
-  "Kalimantan Barat": "KALIMANTAN",
-  "Kalimantan Tengah": "KALIMANTAN",
-  "Kalimantan Selatan": "KALIMANTAN",
-  "Kalimantan Timur": "KALIMANTAN",
-  "Kalimantan Utara": "KALIMANTAN",
-  Maluku: "MALUKU & PAPUA",
-  "Maluku Utara": "MALUKU & PAPUA",
-  Papua: "MALUKU & PAPUA",
-  "Papua Barat": "MALUKU & PAPUA",
-  "Papua Selatan": "MALUKU & PAPUA",
-  "Papua Tengah": "MALUKU & PAPUA",
-  "Papua Pegunungan": "MALUKU & PAPUA",
-  "Papua Barat Daya": "MALUKU & PAPUA",
+  ACEH: "SUMATERA",
+  BALI: "JAWA, BALI & NUSA TENGGARA",
+  BANTEN: "JAWA, BALI & NUSA TENGGARA",
+  BENGKULU: "SUMATERA",
+  "DI YOGYAKARTA": "JAWA, BALI & NUSA TENGGARA",
+  "DKI JAKARTA": "JAWA, BALI & NUSA TENGGARA",
+  GORONTALO: "SULAWESI",
+  JAMBI: "SUMATERA",
+  "JAWA BARAT": "JAWA, BALI & NUSA TENGGARA",
+  "JAWA TENGAH": "JAWA, BALI & NUSA TENGGARA",
+  "JAWA TIMUR": "JAWA, BALI & NUSA TENGGARA",
+  "KALIMANTAN BARAT": "KALIMANTAN",
+  "KALIMANTAN SELATAN": "KALIMANTAN",
+  "KALIMANTAN TENGAH": "KALIMANTAN",
+  "KALIMANTAN TIMUR": "KALIMANTAN",
+  "KALIMANTAN UTARA": "KALIMANTAN",
+  "KEPULAUAN BANGKA BELITUNG": "SUMATERA",
+  "KEPULAUAN RIAU": "SUMATERA",
+  LAMPUNG: "SUMATERA",
+  MALUKU: "MALUKU & PAPUA",
+  "MALUKU UTARA": "MALUKU & PAPUA",
+  "NUSA TENGGARA BARAT": "JAWA, BALI & NUSA TENGGARA",
+  "NUSA TENGGARA TIMUR": "JAWA, BALI & NUSA TENGGARA",
+  PAPUA: "MALUKU & PAPUA",
+  "PAPUA BARAT": "MALUKU & PAPUA",
+  "PAPUA BARAT DAYA": "MALUKU & PAPUA",
+  "PAPUA PEGUNUNGAN": "MALUKU & PAPUA",
+  "PAPUA SELATAN": "MALUKU & PAPUA",
+  "PAPUA TENGAH": "MALUKU & PAPUA",
+  RIAU: "SUMATERA",
+  "SULAWESI BARAT": "SULAWESI",
+  "SULAWESI SELATAN": "SULAWESI",
+  "SULAWESI TENGAH": "SULAWESI",
+  "SULAWESI TENGGARA": "SULAWESI",
+  "SULAWESI UTARA": "SULAWESI",
+  "SUMATERA BARAT": "SUMATERA",
+  "SUMATERA SELATAN": "SUMATERA",
+  "SUMATERA UTARA": "SUMATERA",
 };
 
 export default function RegionalPage() {
   const { selectedCluster, dateRange, sidebarCollapsed, setSidebarCollapsed } =
     useAppStore();
   const [selectedUnit, setSelectedUnit] = useState<string>("");
+  const [selectedEselon, setSelectedEselon] = useState<string>("Semua Eselon");
+  const [tempSelectedEselon, setTempSelectedEselon] =
+    useState<string>("Semua Eselon");
+  const [showEselonPicker, setShowEselonPicker] = useState(false);
+  const eselonPickerRef = useRef<HTMLDivElement>(null);
+  const [availableEselons, setAvailableEselons] = useState<string[]>([]);
 
   // State untuk data dari API
   const [performanceData, setPerformanceData] = useState<SatkerPerformance[]>(
-    []
+    [],
   );
   const [geoData, setGeoData] = useState<{ [key: string]: GeoRegion }>({});
   const [topContributors, setTopContributors] = useState<TopContributor[]>([]);
@@ -100,9 +108,45 @@ export default function RegionalPage() {
   const [unitHourlyData, setUnitHourlyData] = useState<HourlyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingHourly, setLoadingHourly] = useState(false);
-  const [mapData, setMapData] = useState<{ name: string; count: number }[]>(
-    []
+  const [mapData, setMapData] = useState<{ name: string; count: number }[]>([]);
+  const [unitPeakTimes, setUnitPeakTimes] = useState<{ [key: string]: string }>(
+    {},
   );
+
+  // Define available eselons
+  const AVAILABLE_ESELONS = [
+    "Eksternal",
+    "Eselon 1",
+    "Eselon 2",
+    "Eselon 3",
+    "Eselon 4",
+    "Kelompok Jabatan Fungsional",
+  ];
+
+  // Sync temp with selected
+  useEffect(() => {
+    setTempSelectedEselon(selectedEselon);
+  }, [selectedEselon]);
+
+  // Handle click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        eselonPickerRef.current &&
+        !eselonPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEselonPicker(false);
+      }
+    };
+
+    if (showEselonPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showEselonPicker]);
 
   // Fetch data dari API
   useEffect(() => {
@@ -113,11 +157,13 @@ export default function RegionalPage() {
         const endDate = dateRange.endDate;
         const cluster =
           selectedCluster === "Semua Cluster" ? "" : selectedCluster;
+        const eselon = selectedEselon === "Semua Eselon" ? "" : selectedEselon;
 
         console.log("Regional Page - Fetching data with params:", {
           startDate,
           endDate,
           cluster,
+          eselon,
         });
 
         // 1. Fetch satker performance data
@@ -126,12 +172,13 @@ export default function RegionalPage() {
           10000,
           startDate,
           endDate,
-          cluster
+          cluster,
+          eselon,
         );
 
         console.log(
           "Regional Page - Satker data fetched:",
-          satkerResponse.data?.length || 0
+          satkerResponse.data?.length || 0,
         );
 
         // Filter out NULL, ---, and numeric-only satkers
@@ -164,20 +211,21 @@ export default function RegionalPage() {
 
         console.log(
           "Regional Page - Performance data processed:",
-          satkerPerformance.length
+          satkerPerformance.length,
         );
 
         // 2. Fetch locations
         const locationsResponse = await regionalService.getLocations(
           startDate,
           endDate,
-          cluster
+          cluster,
+          eselon,
         );
         const locations = locationsResponse.data;
 
         console.log(
           "Regional Page - Locations from DB aggregation:",
-          locations.length
+          locations.length,
         );
 
         // 3. Process Geographic Distribution for map
@@ -191,46 +239,52 @@ export default function RegionalPage() {
 
           let targetProvince = "";
 
-          if (location.toLowerCase().includes("pusat")) {
-            targetProvince = "DKI Jakarta";
+          // Normalize province names to match GeoJSON format (UPPERCASE)
+          const cleanLocation = location.toLowerCase();
+
+          if (cleanLocation.includes("pusat")) {
+            targetProvince = "DKI JAKARTA";
+          } else if (cleanLocation.includes("aceh")) {
+            targetProvince = "ACEH";
+          } else if (cleanLocation.includes("yogyakarta")) {
+            targetProvince = "DI YOGYAKARTA";
+          } else if (cleanLocation.includes("jakarta")) {
+            targetProvince = "DKI JAKARTA";
+          } else if (
+            cleanLocation.includes("bangka") ||
+            cleanLocation.includes("belitung")
+          ) {
+            targetProvince = "KEPULAUAN BANGKA BELITUNG";
           } else {
-            const cleanLocation = location.toLowerCase();
+            // Try to match with REGION_MAP keys
+            const matchedProvince = Object.keys(REGION_MAP).find(
+              (provinceName) => {
+                const cleanProvince = provinceName.toLowerCase();
+                return (
+                  cleanLocation.includes(cleanProvince) ||
+                  cleanProvince.includes(cleanLocation)
+                );
+              },
+            );
 
-            if (cleanLocation.includes("aceh")) {
-              targetProvince = "DI. ACEH";
-            } else if (cleanLocation.includes("yogyakarta")) {
-              targetProvince = "DI. YOGYAKARTA";
-            } else if (cleanLocation.includes("jakarta")) {
-              targetProvince = "DKI JAKARTA";
+            if (matchedProvince) {
+              // Convert to GeoJSON format (UPPERCASE)
+              targetProvince = matchedProvince.toUpperCase();
             } else {
-              const matchedProvince = Object.keys(REGION_MAP).find(
-                (provinceName) => {
-                  const cleanProvince = provinceName.toLowerCase();
-                  return (
-                    cleanLocation.includes(cleanProvince) ||
-                    cleanProvince.includes(cleanLocation)
-                  );
-                }
-              );
-
-              if (matchedProvince) {
-                targetProvince = matchedProvince;
-              } else {
-                targetProvince = location;
-              }
+              targetProvince = location.toUpperCase();
             }
           }
 
           if (targetProvince) {
             provinceMapForChart.set(
               targetProvince,
-              (provinceMapForChart.get(targetProvince) || 0) + count
+              (provinceMapForChart.get(targetProvince) || 0) + count,
             );
           }
         });
 
         const mapProvinceData = Array.from(provinceMapForChart.entries()).map(
-          ([name, count]) => ({ name, count })
+          ([name, count]) => ({ name, count }),
         );
 
         setMapData(mapProvinceData);
@@ -238,49 +292,126 @@ export default function RegionalPage() {
         console.log(
           "Regional Page - Map data processed:",
           mapProvinceData.length,
-          "provinces"
+          "provinces",
         );
+        console.log("Regional Page - Province mapping:", mapProvinceData);
 
-        // 4. Process Geographic Distribution for chart
+        // 4. Process Geographic Distribution for chart (normalize to UPPERCASE)
         const provinceMap = new Map<string, number>();
         locations.forEach((item) => {
-          const location = item.lokasi;
+          const location = item.lokasi?.trim() || "";
           const count = item.count || 0;
-          if (location && location.trim() !== "") {
-            provinceMap.set(location, count);
+
+          if (!location) return;
+
+          let normalizedProvince = "";
+          const cleanLocation = location.toLowerCase();
+
+          // Normalize province names to match GeoJSON format (UPPERCASE)
+          if (cleanLocation.includes("pusat")) {
+            normalizedProvince = "DKI JAKARTA";
+          } else if (cleanLocation.includes("aceh")) {
+            normalizedProvince = "ACEH";
+          } else if (cleanLocation.includes("yogyakarta")) {
+            normalizedProvince = "DI YOGYAKARTA";
+          } else if (cleanLocation.includes("jakarta")) {
+            normalizedProvince = "DKI JAKARTA";
+          } else if (
+            cleanLocation.includes("bangka") ||
+            cleanLocation.includes("belitung")
+          ) {
+            normalizedProvince = "KEPULAUAN BANGKA BELITUNG";
+          } else if (cleanLocation.includes("sumatera utara")) {
+            normalizedProvince = "SUMATERA UTARA";
+          } else if (cleanLocation.includes("sumatera barat")) {
+            normalizedProvince = "SUMATERA BARAT";
+          } else if (cleanLocation.includes("sumatera selatan")) {
+            normalizedProvince = "SUMATERA SELATAN";
+          } else if (cleanLocation.includes("jawa barat")) {
+            normalizedProvince = "JAWA BARAT";
+          } else if (cleanLocation.includes("jawa tengah")) {
+            normalizedProvince = "JAWA TENGAH";
+          } else if (cleanLocation.includes("jawa timur")) {
+            normalizedProvince = "JAWA TIMUR";
+          } else if (cleanLocation.includes("kalimantan barat")) {
+            normalizedProvince = "KALIMANTAN BARAT";
+          } else if (cleanLocation.includes("kalimantan tengah")) {
+            normalizedProvince = "KALIMANTAN TENGAH";
+          } else if (cleanLocation.includes("kalimantan selatan")) {
+            normalizedProvince = "KALIMANTAN SELATAN";
+          } else if (cleanLocation.includes("kalimantan timur")) {
+            normalizedProvince = "KALIMANTAN TIMUR";
+          } else if (cleanLocation.includes("kalimantan utara")) {
+            normalizedProvince = "KALIMANTAN UTARA";
+          } else if (cleanLocation.includes("sulawesi utara")) {
+            normalizedProvince = "SULAWESI UTARA";
+          } else if (cleanLocation.includes("sulawesi tengah")) {
+            normalizedProvince = "SULAWESI TENGAH";
+          } else if (cleanLocation.includes("sulawesi selatan")) {
+            normalizedProvince = "SULAWESI SELATAN";
+          } else if (cleanLocation.includes("sulawesi tenggara")) {
+            normalizedProvince = "SULAWESI TENGGARA";
+          } else if (cleanLocation.includes("sulawesi barat")) {
+            normalizedProvince = "SULAWESI BARAT";
+          } else if (cleanLocation.includes("nusa tenggara barat")) {
+            normalizedProvince = "NUSA TENGGARA BARAT";
+          } else if (cleanLocation.includes("nusa tenggara timur")) {
+            normalizedProvince = "NUSA TENGGARA TIMUR";
+          } else if (cleanLocation.includes("papua barat daya")) {
+            normalizedProvince = "PAPUA BARAT DAYA";
+          } else if (cleanLocation.includes("papua pegunungan")) {
+            normalizedProvince = "PAPUA PEGUNUNGAN";
+          } else if (cleanLocation.includes("papua selatan")) {
+            normalizedProvince = "PAPUA SELATAN";
+          } else if (cleanLocation.includes("papua tengah")) {
+            normalizedProvince = "PAPUA TENGAH";
+          } else if (cleanLocation.includes("papua barat")) {
+            normalizedProvince = "PAPUA BARAT";
+          } else if (cleanLocation.includes("papua")) {
+            normalizedProvince = "PAPUA";
+          } else {
+            // Try to match with REGION_MAP keys (already UPPERCASE)
+            const matchedProvince = Object.keys(REGION_MAP).find(
+              (provinceName) => {
+                const cleanProvince = provinceName.toLowerCase();
+                return (
+                  cleanLocation.includes(cleanProvince) ||
+                  cleanProvince.includes(cleanLocation)
+                );
+              },
+            );
+
+            normalizedProvince = matchedProvince || location.toUpperCase();
+          }
+
+          if (normalizedProvince) {
+            provinceMap.set(
+              normalizedProvince,
+              (provinceMap.get(normalizedProvince) || 0) + count,
+            );
           }
         });
 
         const regionData: { [key: string]: GeoRegion } = {};
         const sortedProvinces = Array.from(provinceMap.entries()).sort(
-          (a, b) => b[1] - a[1]
+          (a, b) => b[1] - a[1],
         );
 
-        sortedProvinces.forEach(([location, count]) => {
-          let provinceName = location;
+        sortedProvinces.forEach(([provinceName, count]) => {
           let region;
 
-          if (location.toLowerCase().includes("pusat")) {
+          // Check if it's PUSAT
+          if (
+            provinceName === "DKI JAKARTA" ||
+            provinceName.includes("PUSAT")
+          ) {
             region = "PUSAT";
-            provinceName = location;
           } else {
-            region = REGION_MAP[location];
-
-            if (!region) {
-              const matchedKey = Object.keys(REGION_MAP).find(
-                (key) =>
-                  location.toLowerCase().includes(key.toLowerCase()) ||
-                  key.toLowerCase().includes(location.toLowerCase())
-              );
-              if (matchedKey) {
-                region = REGION_MAP[matchedKey];
-                provinceName = matchedKey;
-              }
-            }
+            // Get region from REGION_MAP (keys are already UPPERCASE)
+            region = REGION_MAP[provinceName];
 
             if (!region) {
               region = "LAINNYA";
-              provinceName = location;
             }
           }
 
@@ -304,7 +435,7 @@ export default function RegionalPage() {
         console.log(
           "Regional Page - Geographic data processed:",
           Object.keys(regionData).length,
-          "regions"
+          "regions",
         );
 
         // 5. Fetch Top Contributors
@@ -312,26 +443,28 @@ export default function RegionalPage() {
           10,
           startDate,
           endDate,
-          cluster
+          cluster,
+          eselon,
         );
         setTopContributors(contributorsResponse.data || []);
 
         console.log(
           "Regional Page - Top contributors fetched:",
-          contributorsResponse.data?.length || 0
+          contributorsResponse.data?.length || 0,
         );
 
         // 6. Fetch Hourly Chart Data
         const hourlyResponse = await dashboardService.getHourlyChart(
           startDate,
           endDate,
-          cluster
+          cluster,
+          eselon,
         );
         setHourlyData(hourlyResponse.data || []);
 
         console.log(
           "Regional Page - Hourly data fetched:",
-          hourlyResponse.data?.length || 0
+          hourlyResponse.data?.length || 0,
         );
       } catch (error) {
         console.error("Error fetching regional data:", error);
@@ -345,7 +478,55 @@ export default function RegionalPage() {
     };
 
     fetchData();
-  }, [selectedCluster, dateRange]);
+  }, [selectedCluster, dateRange, selectedEselon]);
+
+  // Fetch peak times for all units
+  useEffect(() => {
+    const fetchAllUnitPeakTimes = async () => {
+      if (performanceData.length === 0) return;
+
+      const startDate = dateRange.startDate;
+      const endDate = dateRange.endDate;
+      const cluster =
+        selectedCluster === "Semua Cluster" ? "" : selectedCluster;
+      const eselon = selectedEselon === "Semua Eselon" ? "" : selectedEselon;
+
+      const peakTimesMap: { [key: string]: string } = {};
+
+      // Fetch peak time for top 10 units
+      const promises = performanceData.slice(0, 10).map(async (unit) => {
+        try {
+          const response = await regionalService.getUnitHourlyData(
+            unit.satker,
+            startDate,
+            endDate,
+            cluster,
+            eselon,
+          );
+
+          const hourlyData = response.data || [];
+          if (hourlyData.length > 0) {
+            const maxData = hourlyData.reduce(
+              (max, current) => (current.count > max.count ? current : max),
+              hourlyData[0],
+            );
+            peakTimesMap[unit.satker] =
+              `${maxData.hour.toString().padStart(2, "0")}:00`;
+          } else {
+            peakTimesMap[unit.satker] = "00:00";
+          }
+        } catch (error) {
+          console.error(`Error fetching peak time for ${unit.satker}:`, error);
+          peakTimesMap[unit.satker] = "00:00";
+        }
+      });
+
+      await Promise.all(promises);
+      setUnitPeakTimes(peakTimesMap);
+    };
+
+    fetchAllUnitPeakTimes();
+  }, [performanceData, selectedCluster, dateRange, selectedEselon]);
 
   // Fetch hourly data for selected unit
   useEffect(() => {
@@ -361,12 +542,14 @@ export default function RegionalPage() {
         const endDate = dateRange.endDate;
         const cluster =
           selectedCluster === "Semua Cluster" ? "" : selectedCluster;
+        const eselon = selectedEselon === "Semua Eselon" ? "" : selectedEselon;
 
         const response = await regionalService.getUnitHourlyData(
           selectedUnit,
           startDate,
           endDate,
-          cluster
+          cluster,
+          eselon,
         );
 
         setUnitHourlyData(response.data || []);
@@ -379,7 +562,18 @@ export default function RegionalPage() {
     };
 
     fetchUnitHourlyData();
-  }, [selectedUnit, selectedCluster, dateRange, hourlyData]);
+  }, [selectedUnit, selectedCluster, dateRange, selectedEselon, hourlyData]);
+
+  // Handle apply eselon filter
+  const handleApplyEselon = () => {
+    setSelectedEselon(tempSelectedEselon);
+    setShowEselonPicker(false);
+  };
+
+  // Get eselon display text
+  const getEselonDisplayText = () => {
+    return selectedEselon;
+  };
 
   // Calculate peak time from hourly data
   const getPeakTime = () => {
@@ -387,7 +581,7 @@ export default function RegionalPage() {
 
     const maxData = unitHourlyData.reduce(
       (max, current) => (current.count > max.count ? current : max),
-      unitHourlyData[0]
+      unitHourlyData[0],
     );
 
     return `${maxData.hour.toString().padStart(2, "0")}:00`;
@@ -419,15 +613,100 @@ export default function RegionalPage() {
         <Header sidebarCollapsed={sidebarCollapsed} />
         <main className="pt-20 p-8 flex-1">
           <div className="max-w-[1800px] mx-auto space-y-8">
-            {/* Page Header */}
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent mb-2">
-                Analisis Organisasi & Regional
-              </h1>
-              <p className="text-gray-600">
-                Analisis komprehensif kinerja unit, distribusi geografis, dan
-                keterlibatan pengguna
-              </p>
+            {/* Page Header with Filter */}
+            <div className="flex items-center justify-between gap-6">
+              {/* Left: Page Title and Description */}
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent mb-2">
+                  Analisis Organisasi & Regional
+                </h1>
+                <p className="text-gray-600">
+                  Analisis komprehensif kinerja unit, distribusi geografis, dan
+                  keterlibatan pengguna
+                </p>
+              </div>
+
+              {/* Right: Filter Eselon */}
+              <div className="relative flex-shrink-0" ref={eselonPickerRef}>
+                <button
+                  onClick={() => setShowEselonPicker(!showEselonPicker)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-amber-500 rounded-lg hover:bg-amber-50 transition-colors shadow-sm"
+                >
+                  <Filter className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm text-gray-700 font-medium">
+                    {getEselonDisplayText()}
+                  </span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-amber-500 transition-transform ${
+                      showEselonPicker ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {/* Eselon Picker Dropdown */}
+                {showEselonPicker && (
+                  <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50 min-w-[280px]">
+                    <div className="space-y-2 mb-4 max-h-[300px] overflow-y-auto">
+                      {/* Semua Eselon Option */}
+                      <button
+                        onClick={() => setTempSelectedEselon("Semua Eselon")}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                          tempSelectedEselon === "Semua Eselon"
+                            ? "bg-amber-50 border border-amber-500"
+                            : "hover:bg-gray-100 border border-transparent"
+                        }`}
+                      >
+                        <span
+                          className={`text-sm ${
+                            tempSelectedEselon === "Semua Eselon"
+                              ? "text-amber-600 font-semibold"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          Semua Eselon
+                        </span>
+                        {tempSelectedEselon === "Semua Eselon" && (
+                          <Check className="w-4 h-4 text-amber-500" />
+                        )}
+                      </button>
+
+                      {/* Individual Eselon Options */}
+                      {AVAILABLE_ESELONS.map((eselon) => (
+                        <button
+                          key={eselon}
+                          onClick={() => setTempSelectedEselon(eselon)}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                            tempSelectedEselon === eselon
+                              ? "bg-amber-50 border border-amber-500"
+                              : "hover:bg-gray-100 border border-transparent"
+                          }`}
+                        >
+                          <span
+                            className={`text-sm ${
+                              tempSelectedEselon === eselon
+                                ? "text-amber-600 font-semibold"
+                                : "text-gray-700"
+                            }`}
+                          >
+                            {eselon}
+                          </span>
+                          {tempSelectedEselon === eselon && (
+                            <Check className="w-4 h-4 text-amber-500" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Apply Button */}
+                    <button
+                      onClick={handleApplyEselon}
+                      className="w-full py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors text-sm font-semibold shadow-sm"
+                    >
+                      Terapkan
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Row 1: Performance Ranking + Map */}
@@ -444,6 +723,7 @@ export default function RegionalPage() {
               displayHourlyData={displayHourlyData}
               loadingHourly={loadingHourly}
               getPeakTime={getPeakTime}
+              unitPeakTimes={unitPeakTimes}
             />
 
             {/* Row 3: Geographic Distribution */}

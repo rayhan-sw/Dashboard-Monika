@@ -19,6 +19,7 @@ interface UnitOperationalHoursProps {
   displayHourlyData: HourlyData[];
   loadingHourly: boolean;
   getPeakTime: () => string;
+  unitPeakTimes: { [key: string]: string };
 }
 
 export default function UnitOperationalHours({
@@ -28,11 +29,9 @@ export default function UnitOperationalHours({
   displayHourlyData,
   loadingHourly,
   getPeakTime,
+  unitPeakTimes,
 }: UnitOperationalHoursProps) {
-  const maxHourlyValue = Math.max(
-    ...displayHourlyData.map((d) => d.count),
-    20
-  );
+  const maxHourlyValue = Math.max(...displayHourlyData.map((d) => d.count), 20);
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
@@ -94,8 +93,7 @@ export default function UnitOperationalHours({
                           d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                         />
                       </svg>
-                      Puncak{" "}
-                      {selectedUnit === unit.satker ? getPeakTime() : "10:00"}
+                      Puncak {unitPeakTimes[unit.satker] || "..."}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5 truncate pr-1">
                       {unit.requests.toLocaleString()} skt
