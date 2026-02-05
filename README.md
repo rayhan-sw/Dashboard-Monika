@@ -1,243 +1,121 @@
 # Dashboard Monitoring BIDICS BPK RI
 
-> **Fase 1**: Dashboard User Monitor & Analisis Regional
-
-##  Deskripsi Proyek
-
-Dashboard monitoring aktivitas pengguna BIDICS (BPK Integrated Data and Information Center System) untuk Badan Pemeriksa Keuangan Republik Indonesia. Sistem ini menyediakan visualisasi real-time aktivitas pengguna, analisis regional, dan pemantauan kesalahan sistem.
-
-##  Design System
-
-- **File Figma**: [BPK-DASHBOARD--Dev-Mode](https://www.figma.com/design/yHuEwRXxFOAhq600fRXWzp/BPK-DASHBOARD--Dev-Mode-?node-id=392-465)
-- **Design Tokens**: Tersedia di `design-tokens.json`
-- **Font**: Plus Jakarta Sans (400, 500, 600, 700, 800)
-- **Primary Color**: #FEB800 (BPK Gold)
-- **Secondary Color**: #E27200 (Orange)
+Dashboard monitoring aktivitas pengguna BIDICS untuk Badan Pemeriksa Keuangan Republik Indonesia.
 
 ## Tech Stack
 
-### Frontend
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 14, TypeScript, Tailwind CSS, Zustand, Recharts, Leaflet |
+| Backend | Go 1.23+, Gin, GORM, PostgreSQL 15+ |
 
-- **Framework**: Next.js 14+ (App Router)
-- **Language**: TypeScript
-- **UI Library**: Shadcn UI + Tailwind CSS
-- **State Management**: Zustand
-- **Charts**: Recharts
-- **Maps**: Leaflet + OpenStreetMap
-- **Date Handling**: date-fns
+## Quick Start
 
-### Backend 
+### 1. Prerequisites
+- Node.js 18.17+
+- Go 1.21+
+- PostgreSQL 15+
 
-- **Language**: Golang 1.23+
-- **Framework**: Gin
-- **Database**: PostgreSQL 15+
-- **ORM**: GORM
-- **Environment**: godotenv
-- **UUID**: google/uuid
+### 2. Database Setup
 
-##  Struktur Proyek
+```powershell
+# Buat database
+createdb -U postgres daring_bpk
+
+# Jalankan setup script
+cd backend\scripts
+.\setup_database.ps1
+```
+
+### 3. Run Development
+
+```powershell
+# Option 1: Satu script untuk semua
+.\start-dev.ps1
+
+# Option 2: Manual (buka 2 terminal)
+# Terminal 1 - Backend
+cd backend && go run cmd/api/main.go
+
+# Terminal 2 - Frontend
+cd frontend && npm run dev
+```
+
+### 4. Access
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8080
+- Health Check: http://localhost:8080/health
+
+## Project Structure
 
 ```
 Dashboard-BPK/
-├── frontend/                 # Next.js 14 Application
-│   ├── src/
-│   │   ├── app/             # App Router Pages
-│   │   │   ├── page.tsx             # Dashboard User Monitor
-│   │   │   └── regional/            # Analisis Regional
-│   │   ├── components/       # React Components
-│   │   │   ├── layout/              # Sidebar, Header
-│   │   │   ├── charts/              # Chart Components
-│   │   │   ├── maps/                # Map Components
-│   │   │   └── tables/              # Table Components
-│   │   ├── stores/          # Zustand State Management
-│   │   ├── lib/             # Utilities & Helpers
-│   │   └── services/        # API Services
-│   └── package.json
+├── frontend/                 # Next.js Application
+│   └── src/
+│       ├── app/              # Pages (dashboard, regional, search, dll)
+│       ├── components/       # UI Components
+│       ├── services/         # API Client
+│       └── stores/           # Zustand State
 │
-└── backend/                 # Golang API Server
-    ├── cmd/
-    │   └── api/             # Main Application Entry
-    ├── internal/
-    │   ├── domain/          # Business Logic
-    │   ├── handler/         # HTTP Handlers
-    │   ├── repository/      # Database Layer
-    │   └── usecase/         # Use Cases
-    ├── migrations/          # Database Migrations
-    ├── scripts/             # Utility Scripts
-    └── go.mod
+├── backend/                  # Go API Server
+│   ├── cmd/api/              # Entry point
+│   ├── internal/
+│   │   ├── handler/          # HTTP Handlers
+│   │   ├── repository/       # Database Layer
+│   │   └── entity/           # Data Models
+│   ├── migrations/           # SQL Migrations
+│   └── scripts/              # Utility Scripts
+│
+├── start-dev.ps1             # Start all servers
+└── stop-dev.ps1              # Stop all servers
 ```
 
-##  Fase 1 - Fitur Utama
+## API Endpoints
 
-### Dashboard User Monitor (Route: `/`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| GET | `/api/dashboard/stats` | Dashboard statistics |
+| GET | `/api/dashboard/activities` | Activity logs |
+| GET | `/api/dashboard/charts/:type` | Chart data (interaction/hourly) |
+| GET | `/api/regional/provinces` | Province list |
+| GET | `/api/regional/units` | Unit list |
+| GET | `/api/search` | Global search |
 
-1. **Card Analisis Sistem** - Warning banner untuk kesalahan logout
-2. **4 Stats Cards**:
-   - Total Pengguna
-   - Login Berhasil
-   - Total Aktivitas
-   - Kesalahan Logout
-3. **Riwayat Aktivitas** - Log aktivitas pengguna terbaru
-4. **Mode Interaksi Pengguna** - Pie chart kategorisasi aktivitas
-5. **Jam Tersibuk** - Card highlight peak hours
-6. **Distribusi Aktivitas** - Line chart tren per jam
-7. **Analisis Tingkat Keberhasilan** - Bar chart login success rate
-8. **Pemantauan Kesalahan Logout** - Tabel error flags
+## Environment Variables
 
-### Analisis Regional & Unit (Route: `/regional`)
-
-- Peta Indonesia dengan filter provinsi
-- Tabel aktivitas per regional
-- Statistik per unit organisasi
-
-##  Autentikasi & Otorisasi
-
-- **JWT Token** dengan refresh mechanism
-- **Role-Based Access Control (RBAC)**:
-  - Admin BPK (Full Access)
-  - Regional User (Limited Access)
-
-##  Data Source
-
-- **File CSV**: `actLog_202601091608.csv`
-- **Delimiter**: Semicolon (`;`)
-- **Encoding**: UTF-8
-- **Log Fields**: Timestamp, Username, Action, IP Address, Status, etc.
-
-##  Deployment
-
-- **NO DOCKER** - Direct deployment
-- **Frontend**: Vercel / Manual VPS
-- **Backend**: VPS dengan systemd service
-- **Database**: PostgreSQL 15+ (Manual setup)
-
-##  Development Setup
-
-### Prerequisites
-
-- Node.js 18+ & npm
-- Golang 1.23+
-- PostgreSQL 15+
-- DBeaver (untuk database management)
-
-### Backend Setup
-
-**Quick Start (Recommended):**
-
-1. **Setup Database Otomatis**:
-
-   ```bash
-   cd backend/scripts
-   .\setup_database.ps1
-   ```
-
-   Script akan otomatis:
-   - ✅ Create database `dashboard_bpk`
-   - ✅ Run migrations (create tables)
-   - ✅ Seed default data
-   - ✅ Verify setup
-
-   📖 **Untuk anggota tim baru**: Lihat [TEAM_SETUP_GUIDE.md](TEAM_SETUP_GUIDE.md)
-   
-   🔄 **Untuk sync data terbaru**: Lihat [DATABASE_SYNC_WORKFLOW.md](DATABASE_SYNC_WORKFLOW.md)
-
-2. **Configure Environment**:
-
-   ```bash
-   cd backend
-   cp .env.example .env
-   # Edit .env dengan password PostgreSQL kamu
-   ```
-
-3. **Install Dependencies**:
-
-   ```bash
-   go mod tidy
-   ```
-
-4. **Run Server**:
-
-   ```bash
-   cd cmd/api
-   .\run.ps1
-   # Server runs on http://localhost:8080
-   ```
-
-5. **Test API**:
-   ```bash
-   cd ..\..
-   .\test-api.ps1
-   ```
-
-**For Data Sync (After database changes):**
-
-Owner yang update data:
-```bash
-cd backend
-.\scripts\export_current_data.ps1
-# Review, commit, dan push seeds/actlog_data.sql
-```
-
-Team members:
-```bash
-git pull
-cd backend\scripts
-.\setup_database.ps1
-# Database akan sama persis dengan owner
-```
-
-**Verify Data Consistency:**
-
-```bash
-# Run verification script
-.\verify-database.ps1
-```
-
-Atau lihat [VERIFY_DATA.md](VERIFY_DATA.md) untuk command manual dan troubleshooting.
-
-**Manual Setup:**
-
-Lihat dokumentasi lengkap di [backend/DATABASE_README.md](backend/DATABASE_README.md)
-
-### Frontend Setup
-
-_(Will be added in FASE 3)_
-
-##  Environment Variables
-
-### Backend (.env)
-
+Backend `.env`:
 ```env
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=12345678
-DB_NAME=dashboard_bpk
-PORT=8080
+DB_PASSWORD=yourpassword
+DB_NAME=daring_bpk
 ```
 
-## 🗓️ Development Timeline
+## Design System
 
-- **Fase 0A**:  Extract Figma Design
-- **Fase 0B**:  Create Workspace Folder
-- **Fase 1**:  Setup Project Structure & Migrations
-- **Fase 2**:  Implement Database & Backend API
-- **Fase 3**:  Build Frontend Components
-- **Fase 4**:  Integration & Testing
-- **Fase 5**:  Deployment Configuration
-- **Fase 6**:  Final Testing & Documentation
+- **Design File**: [Figma](https://www.figma.com/design/yHuEwRXxFOAhq600fRXWzp/BPK-DASHBOARD--Dev-Mode-)
+- **Primary Color**: #FEB800 (BPK Gold)
+- **Secondary Color**: #E27200 (Orange)
+- **Font**: Plus Jakarta Sans
 
-## 👥 Tim Development
+## Common Commands
 
-- **Client**: Biro TI BPK RI
-- **Development**: [Your Team]
-- **Design System**: Figma Design Team
+```powershell
+# Start servers
+.\start-dev.ps1
 
-##  License
+# Stop servers
+.\stop-dev.ps1
 
-Internal Project - Badan Pemeriksa Keuangan RI
+# Build frontend production
+cd frontend && npm run build && npm start
+
+# Database reset
+psql -U postgres -c "DROP DATABASE daring_bpk;"
+cd backend\scripts && .\setup_database.ps1
+```
 
 ---
-
-**Status Terakhir**: FASE 2 COMPLETED - Backend API Ready
-**Tanggal**: 9 Januari 2025
+**BPK RI** - Badan Pemeriksa Keuangan Republik Indonesia

@@ -23,7 +23,8 @@ const COLORS: Record<string, string> = {
 };
 
 export default function InteractionChart() {
-  const { dateRange, selectedCluster } = useAppStore();
+  const dateRange = useAppStore((state) => state.dateRange);
+  const selectedCluster = useAppStore((state) => state.selectedCluster);
   const [data, setData] = useState<
     { name: string; value: number; color: string }[]
   >([]);

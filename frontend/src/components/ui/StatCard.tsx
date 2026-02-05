@@ -28,7 +28,7 @@ export default function StatCard({
   color = "blue",
 }: StatCardProps) {
   return (
-    <div className="bg-white rounded-[13px] p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+    <div className="bg-white rounded-[13px] p-6 shadow-sm hover:shadow-md transition-shadow duration-200 h-[120px]">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm text-gray-600 font-medium mb-2">{title}</p>

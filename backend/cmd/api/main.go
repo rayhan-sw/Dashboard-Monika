@@ -24,8 +24,12 @@ func main() {
 
 	log.Println("Connected to database:", os.Getenv("DB_NAME"))
 
-	// Initialize Gin router
+	// Initialize Gin router with custom settings
 	r := gin.Default()
+	
+	// Disable trailing slash redirect to prevent 301 issues
+	r.RedirectTrailingSlash = false
+	r.RedirectFixedPath = false
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
@@ -93,6 +97,15 @@ func main() {
 			reports.POST("/request-access", handler.RequestAccess)
 			reports.PUT("/access-requests/:id", handler.UpdateAccessRequest)
 		}
+
+		// Search routes - register directly without trailing slash issues
+		api.GET("/search", handler.GlobalSearch)
+		api.GET("/search/suggestions", handler.GetSearchSuggestions)
+		api.GET("/search/users", handler.SearchUsers)
+		api.GET("/search/satker", handler.SearchSatker)
+
+		// Metadata routes
+		api.GET("/metadata/satker", handler.GetSatkerList)
 	}
 
 	// Start server

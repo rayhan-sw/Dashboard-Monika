@@ -1,7 +1,7 @@
 "use client";
 
+import { Icon } from "@iconify/react";
 import {
-  Search,
   Bell,
   Settings,
   User,
@@ -11,6 +11,7 @@ import {
   Check,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { dashboardService } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import { format, parse } from "date-fns";
@@ -21,6 +22,7 @@ interface HeaderProps {
 }
 
 export default function Header({ sidebarCollapsed = false }: HeaderProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [clusters, setClusters] = useState<string[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -31,13 +33,13 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
   const [tempSelectedCluster, setTempSelectedCluster] = useState<string>("");
   const datePickerRef = useRef<HTMLDivElement>(null);
   const clusterPickerRef = useRef<HTMLDivElement>(null);
-  const {
-    selectedCluster,
-    setSelectedCluster,
-    dateRange,
-    setDateRange,
-    setPresetRange,
-  } = useAppStore();
+
+  // Use individual selectors for better performance
+  const selectedCluster = useAppStore((state) => state.selectedCluster);
+  const setSelectedCluster = useAppStore((state) => state.setSelectedCluster);
+  const dateRange = useAppStore((state) => state.dateRange);
+  const setDateRange = useAppStore((state) => state.setDateRange);
+  const setPresetRange = useAppStore((state) => state.setPresetRange);
 
   useEffect(() => {
     loadClusters();
@@ -138,10 +140,6 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
         startDate: format(tempStartDate, "yyyy-MM-dd"),
         endDate: format(tempEndDate, "yyyy-MM-dd"),
       };
-      console.log("=== APPLYING DATE RANGE ===");
-      console.log("Previous dateRange:", dateRange);
-      console.log("New dateRange:", newDateRange);
-      console.log("Current cluster:", selectedCluster);
       setDateRange(newDateRange);
       setShowDatePicker(false);
       setTempStartDate(null);
@@ -164,13 +162,8 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
   };
 
   const handleApplyCluster = () => {
-    console.log("=== APPLYING CLUSTER ===");
-    console.log("Previous cluster:", selectedCluster);
-    console.log("New cluster:", tempSelectedCluster);
-    console.log("Type:", typeof tempSelectedCluster);
     setSelectedCluster(tempSelectedCluster);
     setShowClusterPicker(false);
-    console.log("Cluster applied, picker closed");
   };
 
   const getClusterDisplayText = () => {
@@ -180,22 +173,33 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
 
   return (
     <header
-      className={`h-20 bg-white border-b border-gray-5 fixed top-0 right-0 z-[100] transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'left-20' : 'left-80'}`}
+      className={`h-20 bg-white border-b border-gray-5 fixed top-0 right-0 z-[100] ${sidebarCollapsed ? "left-20" : "left-80"}`}
+      style={{
+        transition: "left 300ms ease-out",
+        willChange: "left",
+      }}
     >
       <div className="h-full px-6 flex items-center justify-between">
         {/* Search Bar */}
         <div className="flex-1 max-w-xl">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-3" />
+          <div
+            className="relative cursor-pointer"
+            onClick={() => router.push("/search")}
+          >
+            <Icon
+              icon="mdi:magnify"
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-3 pointer-events-none"
+            />
             <input
               type="text"
               placeholder="Search activities, users, or reports..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              readOnly
               className="w-full h-12 pl-12 pr-4 rounded-lg-bpk border border-gray-5 
-                       focus:border-bpk-orange focus:ring-2 focus:ring-bpk-orange/20 
+                       hover:border-bpk-orange hover:ring-2 hover:ring-bpk-orange/20 
                        outline-none transition-all text-body text-gray-1 
-                       placeholder:text-gray-3"
+                       placeholder:text-gray-3 cursor-pointer"
             />
           </div>
         </div>

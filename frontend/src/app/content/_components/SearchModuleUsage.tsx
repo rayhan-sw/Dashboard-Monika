@@ -27,9 +27,16 @@ export default function SearchModuleUsage() {
       const response = await contentService.getSearchModuleUsage(
         dateRange.startDate,
         dateRange.endDate,
-        selectedCluster
+        selectedCluster,
       );
-      setModules(response.data || []);
+      // Map API response to expected format
+      const mappedModules: ModuleData[] = (response.data || []).map(
+        (item: { module: string; count: number }) => ({
+          name: item.module,
+          count: item.count,
+        }),
+      );
+      setModules(mappedModules);
       setError(null);
     } catch (err) {
       console.error("Error loading modules:", err);
@@ -85,7 +92,10 @@ export default function SearchModuleUsage() {
           <h3 className="text-lg font-semibold text-slate-800">
             Penggunaan Modul Pencarian
           </h3>
-          <p className="text-sm text-slate-500">Menampilkan aktivitas pencarian berdasarkan kategori atau jenis pencarian.</p>
+          <p className="text-sm text-slate-500">
+            Menampilkan aktivitas pencarian berdasarkan kategori atau jenis
+            pencarian.
+          </p>
         </div>
       </div>
 
@@ -94,19 +104,29 @@ export default function SearchModuleUsage() {
         {modules.length > 0 ? (
           <div className="h-full flex items-end justify-around gap-4 px-4">
             {modules.map((item, index) => {
-              const maxCount = Math.max(...modules.map(m => m.count));
-              const heightPercentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
-              
+              const maxCount = Math.max(...modules.map((m) => m.count));
+              const heightPercentage =
+                maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+
               return (
-                <div key={`${item.name}-${index}`} className="flex-1 flex flex-col items-center gap-2">
+                <div
+                  key={`${item.name}-${index}`}
+                  className="flex-1 flex flex-col items-center gap-2"
+                >
                   {/* Bar */}
-                  <div className="relative w-full flex flex-col items-center justify-end" style={{ height: '85%' }}>
+                  <div
+                    className="relative w-full flex flex-col items-center justify-end"
+                    style={{ height: "85%" }}
+                  >
                     <div className="absolute -top-8 text-sm font-bold text-slate-700">
                       {item.count.toLocaleString()}
                     </div>
                     <div
                       className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all duration-500 flex items-start justify-center pt-2 shadow-lg"
-                      style={{ height: `${heightPercentage}%`, minHeight: '30px' }}
+                      style={{
+                        height: `${heightPercentage}%`,
+                        minHeight: "30px",
+                      }}
                     >
                       <span className="text-xs font-medium text-white">
                         {heightPercentage.toFixed(0)}%

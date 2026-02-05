@@ -18,7 +18,8 @@ import { CheckCircle, Maximize2, X } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AccessSuccessChart() {
-  const { dateRange, selectedCluster } = useAppStore();
+  const dateRange = useAppStore((state) => state.dateRange);
+  const selectedCluster = useAppStore((state) => state.selectedCluster);
   const [data, setData] = useState<AccessSuccessData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -50,11 +51,13 @@ export default function AccessSuccessChart() {
   };
 
   if (loading) {
-    return <div className="h-96 bg-gray-100 animate-pulse rounded-[13px]" />;
+    return (
+      <div className="h-[400px] bg-gray-100 animate-pulse rounded-[13px]" />
+    );
   }
 
   return (
-    <div className="bg-white rounded-lg-bpk p-6 shadow-md border border-gray-5">
+    <div className="bg-white rounded-lg-bpk p-6 shadow-md border border-gray-5 h-[400px]">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded-lg-bpk bg-bpk-orange flex items-center justify-center flex-shrink-0">

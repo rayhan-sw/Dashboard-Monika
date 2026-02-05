@@ -43,29 +43,23 @@ const menuItems = [
   },
 ];
 
-interface SidebarProps {
-  onCollapsedChange?: (collapsed: boolean) => void;
-}
-
-export default function Sidebar({ onCollapsedChange }: SidebarProps) {
+export default function Sidebar() {
   const pathname = usePathname();
-  const { sidebarCollapsed, setSidebarCollapsed } = useAppStore();
+  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
+  const setSidebarCollapsed = useAppStore((state) => state.setSidebarCollapsed);
 
   const handleToggle = () => {
-    const newState = !sidebarCollapsed;
-    setSidebarCollapsed(newState);
-    if (onCollapsedChange) {
-      onCollapsedChange(newState);
-    }
+    setSidebarCollapsed(!sidebarCollapsed);
   };
 
   return (
     <aside
       className={`${
         sidebarCollapsed ? "w-20" : "w-80"
-      } h-screen bg-white border-r border-gray-5 flex flex-col fixed left-0 top-0 z-[110] overflow-visible`}
+      } h-screen bg-white border-r border-gray-5 flex flex-col fixed left-0 top-0 z-[110] overflow-visible will-change-[width]`}
       style={{
-        transition: "width 500ms cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: "width 300ms ease-out",
+        contain: "layout style",
       }}
     >
       <div
@@ -73,7 +67,7 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
           sidebarCollapsed ? "px-4" : "px-6"
         }`}
         style={{
-          transition: "padding 500ms cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: "padding 200ms ease-out",
         }}
       >
         <div
@@ -84,16 +78,16 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
           <img
             src="/images/logo-monika.svg"
             alt="Logo Monika"
-            className={`absolute inset-0 m-auto object-contain transition-all duration-500 ease-in-out ${
+            className={`absolute inset-0 m-auto object-contain ${
               sidebarCollapsed
-                ? "opacity-0 scale-75 pointer-events-none"
+                ? "opacity-0 scale-90 pointer-events-none"
                 : "opacity-100 scale-100"
             }`}
             style={{
               maxHeight: "100%",
               maxWidth: "100%",
-              transformOrigin: "center",
-              transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+              transition: "opacity 200ms ease-out, transform 200ms ease-out",
+              willChange: "opacity, transform",
             }}
           />
 
@@ -101,16 +95,16 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
           <img
             src="/images/logo-M.svg"
             alt="Logo M"
-            className={`absolute inset-0 m-auto object-contain transition-all duration-500 ease-in-out ${
+            className={`absolute inset-0 m-auto object-contain ${
               sidebarCollapsed
                 ? "opacity-100 scale-100"
-                : "opacity-0 scale-125 pointer-events-none"
+                : "opacity-0 scale-110 pointer-events-none"
             }`}
             style={{
               maxHeight: "2.5rem",
               maxWidth: "100%",
-              transformOrigin: "center",
-              transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+              transition: "opacity 200ms ease-out, transform 200ms ease-out",
+              willChange: "opacity, transform",
             }}
           />
         </div>
@@ -121,14 +115,17 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
           className="absolute -right-4 bottom-0 translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-[120] border-4 border-white hover:scale-110"
           style={{
             background: "linear-gradient(135deg, #FEB800 0%, #E27200 100%)",
-            transition: "all 500ms cubic-bezier(0.4, 0, 0.2, 1)",
+            transition: "transform 150ms ease-out",
           }}
           aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <ChevronLeft 
-            className={`w-4 h-4 text-white transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          <ChevronLeft
+            className={`w-4 h-4 text-white ${
               sidebarCollapsed ? "rotate-180" : "rotate-0"
-            }`} 
+            }`}
+            style={{
+              transition: "transform 200ms ease-out",
+            }}
           />
         </button>
       </div>
@@ -141,7 +138,7 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
         style={{
           scrollbarWidth: "none",
           msOverflowStyle: "none",
-          transition: "padding 600ms cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: "padding 200ms ease-out",
         }}
       >
         <ul className="space-y-1">
@@ -150,14 +147,7 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
             const isActive = pathname === item.href;
 
             return (
-              <li
-                key={item.name}
-                style={{
-                  animation: !sidebarCollapsed
-                    ? `fadeInSlide 400ms cubic-bezier(0.4, 0, 0.2, 1) ${index * 50}ms backwards`
-                    : "none",
-                }}
-              >
+              <li key={item.name}>
                 <Link
                   href={item.href}
                   className={`
@@ -170,25 +160,19 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
                     }
                   `}
                   style={{
-                    transition: "all 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    transition:
+                      "padding 200ms ease-out, background 150ms ease-out",
                   }}
                   title={sidebarCollapsed ? item.name : undefined}
                 >
                   <Icon
                     className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-white" : "text-gray-3 group-hover:text-bpk-orange"}`}
-                    style={{
-                      transition: "all 400ms cubic-bezier(0.4, 0, 0.2, 1)",
-                      transform:
-                        isActive && !sidebarCollapsed ? "scale(1.1)" : "scale(1)",
-                    }}
                   />
                   <div
-                    className={`flex-1 ${!sidebarCollapsed ? "opacity-100" : "opacity-0 w-0"}`}
+                    className={`flex-1 overflow-hidden ${!sidebarCollapsed ? "opacity-100" : "opacity-0 w-0"}`}
                     style={{
-                      transition: "all 600ms cubic-bezier(0.4, 0, 0.2, 1)",
-                      transform: !sidebarCollapsed
-                        ? "translateX(0)"
-                        : "translateX(-20px)",
+                      transition:
+                        "opacity 150ms ease-out, width 200ms ease-out",
                     }}
                   >
                     <div
@@ -203,13 +187,7 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
                     </div>
                   </div>
                   {isActive && !sidebarCollapsed && (
-                    <div
-                      className="w-1 h-8 bg-white rounded-full"
-                      style={{
-                        animation:
-                          "slideInRight 400ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-                      }}
-                    ></div>
+                    <div className="w-1 h-8 bg-white rounded-full"></div>
                   )}
 
                   {/* Tooltip for collapsed state */}
@@ -217,14 +195,7 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
                     <div
                       className="absolute left-full ml-2 px-3 py-2 bg-gray-1 text-white text-sm rounded-md-bpk opacity-0 invisible group-hover:opacity-100 group-hover:visible whitespace-nowrap z-50 shadow-lg"
                       style={{
-                        transition: "all 300ms cubic-bezier(0.4, 0, 0.2, 1)",
-                        transform: "translateX(-8px)",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateX(0)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateX(-8px)";
+                        transition: "opacity 150ms ease-out",
                       }}
                     >
                       {item.name}
@@ -244,23 +215,16 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
           sidebarCollapsed ? "px-2 justify-center" : "px-4"
         }`}
         style={{
-          transition: "all 600ms cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: "padding 200ms ease-out",
         }}
       >
-        <div
-          className="w-10 h-10 rounded-full bg-gradient-bpk flex items-center justify-center flex-shrink-0"
-          style={{
-            transition: "transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-            transform: sidebarCollapsed ? "scale(1)" : "scale(1.05)",
-          }}
-        >
+        <div className="w-10 h-10 rounded-full bg-gradient-bpk flex items-center justify-center flex-shrink-0">
           <span className="text-white font-bold text-sm">AD</span>
         </div>
         <div
-          className={`flex-1 ${!sidebarCollapsed ? "opacity-100" : "opacity-0 w-0"}`}
+          className={`flex-1 overflow-hidden ${!sidebarCollapsed ? "opacity-100" : "opacity-0 w-0"}`}
           style={{
-            transition: "all 600ms cubic-bezier(0.4, 0, 0.2, 1)",
-            transform: !sidebarCollapsed ? "translateX(0)" : "translateX(-20px)",
+            transition: "opacity 150ms ease-out, width 200ms ease-out",
           }}
         >
           <div className="text-body font-semibold text-gray-1 whitespace-nowrap">
@@ -271,40 +235,11 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
           </div>
         </div>
         {!sidebarCollapsed && (
-          <button
-            className="w-8 h-8 rounded-md-bpk hover:bg-gray-6 flex items-center justify-center"
-            style={{
-              transition: "all 300ms cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-          >
+          <button className="w-8 h-8 rounded-md-bpk hover:bg-gray-6 flex items-center justify-center transition-colors">
             <Settings className="w-4 h-4 text-gray-3" />
           </button>
         )}
       </div>
-
-      <style jsx global>{`
-        @keyframes fadeInSlide {
-          from {
-            opacity: 0;
-            transform: translateX(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        @keyframes slideInRight {
-          from {
-            opacity: 0;
-            transform: translateX(-10px) scale(0.8);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0) scale(1);
-          }
-        }
-      `}</style>
     </aside>
   );
 }

@@ -15,7 +15,8 @@ interface LogoutError {
 export default function ErrorMonitoringTable() {
   const [errors, setErrors] = useState<LogoutError[]>([]);
   const [loading, setLoading] = useState(true);
-  const { dateRange, selectedCluster } = useAppStore();
+  const dateRange = useAppStore((state) => state.dateRange);
+  const selectedCluster = useAppStore((state) => state.selectedCluster);
 
   useEffect(() => {
     const fetchLogoutErrors = async () => {
@@ -60,7 +61,7 @@ export default function ErrorMonitoringTable() {
 
   if (loading) {
     return (
-      <div className="card-bpk p-6">
+      <div className="card-bpk p-6 min-h-[280px]">
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-gray-200 rounded w-1/3"></div>
           <div className="space-y-3">
@@ -74,7 +75,7 @@ export default function ErrorMonitoringTable() {
   }
 
   return (
-    <div className="card-bpk p-6">
+    <div className="card-bpk p-6 min-h-[280px]">
       <div className="flex items-start gap-3 mb-6">
         <div className="w-12 h-12 rounded-lg-bpk bg-red-500 flex items-center justify-center flex-shrink-0">
           <AlertTriangle className="h-6 w-6 text-white" />

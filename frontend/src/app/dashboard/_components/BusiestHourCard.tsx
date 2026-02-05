@@ -8,7 +8,8 @@ import { useAppStore } from "@/stores/appStore";
 import type { DashboardStats } from "@/types/api";
 
 export default function BusiestHourCard() {
-  const { dateRange, selectedCluster } = useAppStore();
+  const dateRange = useAppStore((state) => state.dateRange);
+  const selectedCluster = useAppStore((state) => state.selectedCluster);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
