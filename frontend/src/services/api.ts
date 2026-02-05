@@ -265,6 +265,136 @@ export const regionalService = {
   },
 };
 
+// Content Analytics API (Analisis Konten)
+export const contentService = {
+  getDashboardRankings: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    const query = params.toString();
+    return fetchApi<ApiResponse<{ rank: number; cluster: string; count: number }[]>>(
+      `/api/content/dashboard-rankings${query ? `?${query}` : ""}`
+    );
+  },
+
+  getSearchModuleUsage: (startDate?: string, endDate?: string, cluster?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    if (cluster) params.append("cluster", cluster);
+    const query = params.toString();
+    return fetchApi<ApiResponse<{ module: string; count: number; percentage: number }[]>>(
+      `/api/content/search-modules${query ? `?${query}` : ""}`
+    );
+  },
+
+  getExportStats: (startDate?: string, endDate?: string, cluster?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    if (cluster) params.append("cluster", cluster);
+    const query = params.toString();
+    return fetchApi<ApiResponse<{ view_data: number; download_data: number; export_data: number }>>(
+      `/api/content/export-stats${query ? `?${query}` : ""}`
+    );
+  },
+
+  getOperationalIntents: (startDate?: string, endDate?: string, limit?: number, cluster?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    if (limit) params.append("limit", limit.toString());
+    if (cluster) params.append("cluster", cluster);
+    const query = params.toString();
+    return fetchApi<ApiResponse<{ intent: string; count: number }[]>>(
+      `/api/content/operational-intents${query ? `?${query}` : ""}`
+    );
+  },
+
+  getGlobalEconomicsChart: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    const query = params.toString();
+    return fetchApi<ApiResponse<{ category: string; count: number; percentage: number }[]>>(
+      `/api/content/global-economics${query ? `?${query}` : ""}`
+    );
+  },
+};
+
+// Reports API (Laporan)
+export const reportService = {
+  getTemplates: () => {
+    return fetchApi<ApiResponse<{
+      id: string;
+      name: string;
+      description: string;
+      formats: string[];
+    }[]>>("/api/reports/templates");
+  },
+
+  generateReport: (templateId: string, format: string, startDate?: string, endDate?: string) => {
+    return fetchApi<{ success: boolean; filename: string; download_url: string }>(
+      "/api/reports/generate",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          template_id: templateId,
+          format,
+          start_date: startDate,
+          end_date: endDate,
+        }),
+      }
+    );
+  },
+
+  getRecentDownloads: (limit?: number) => {
+    const params = new URLSearchParams();
+    if (limit) params.append("limit", limit.toString());
+    const query = params.toString();
+    return fetchApi<ApiResponse<{
+      id: number;
+      report_name: string;
+      format: string;
+      generated_at: string;
+      downloaded_by: string;
+    }[]>>(`/api/reports/downloads${query ? `?${query}` : ""}`);
+  },
+
+  getAccessRequests: () => {
+    return fetchApi<ApiResponse<{
+      id: number;
+      user_name: string;
+      report_type: string;
+      requested_at: string;
+      status: string;
+    }[]>>("/api/reports/access-requests");
+  },
+
+  requestAccess: (reportType: string, reason: string) => {
+    return fetchApi<{ success: boolean; message: string }>(
+      "/api/reports/request-access",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          report_type: reportType,
+          reason,
+        }),
+      }
+    );
+  },
+
+  updateAccessRequest: (id: number, status: "approved" | "rejected") => {
+    return fetchApi<{ success: boolean; message: string }>(
+      `/api/reports/access-requests/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      }
+    );
+  },
+};
+
 // Health Check
 export const healthCheck = () =>
   fetchApi<{ status: string; service: string; version: string }>("/health");
