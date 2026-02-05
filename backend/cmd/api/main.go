@@ -72,6 +72,27 @@ func main() {
 			regional.GET("/units/hourly", handler.GetHourlyDataForSatker)
 			regional.GET("/top-contributors", handler.GetTopContributors)
 		}
+
+		// Content Analytics routes (Analisis Konten)
+		content := api.Group("/content")
+		{
+			content.GET("/dashboard-rankings", handler.GetDashboardRankings)
+			content.GET("/search-modules", handler.GetSearchModuleUsage)
+			content.GET("/export-stats", handler.GetExportStats)
+			content.GET("/operational-intents", handler.GetOperationalIntents)
+			content.GET("/global-economics", handler.GetGlobalEconomicsChart)
+		}
+
+		// Reports routes (Laporan)
+		reports := api.Group("/reports")
+		{
+			reports.GET("/templates", handler.GetReportTemplates)
+			reports.POST("/generate", handler.GenerateReport)
+			reports.GET("/downloads", handler.GetRecentDownloads)
+			reports.GET("/access-requests", handler.GetAccessRequests)
+			reports.POST("/request-access", handler.RequestAccess)
+			reports.PUT("/access-requests/:id", handler.UpdateAccessRequest)
+		}
 	}
 
 	// Start server

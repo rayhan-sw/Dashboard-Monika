@@ -31,7 +31,7 @@ const menuItems = [
   },
   {
     name: "Analisis Konten",
-    href: "/content-intelligence",
+    href: "/content",
     icon: Brain,
     description: "Content Intelligence",
   },

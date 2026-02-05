@@ -31,7 +31,8 @@ interface AppState {
 
 const getDefaultDateRange = (): DateRange => {
   const endDate = new Date();
-  const startDate = subDays(endDate, 30);
+  // Use full data range from 2021 to current date to show all clusters
+  const startDate = new Date("2021-01-01");
   return {
     startDate: format(startDate, "yyyy-MM-dd"),
     endDate: format(endDate, "yyyy-MM-dd"),
