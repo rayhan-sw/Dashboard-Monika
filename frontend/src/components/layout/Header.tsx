@@ -9,28 +9,53 @@ import {
   Filter,
   ChevronDown,
   Check,
+  LogOut,
+  CheckCircle,
+  XCircle,
+  Info,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { dashboardService } from "@/services/api";
+import { useRouter } from "next/navigation";
+import { dashboardService, notificationService } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import { format, parse } from "date-fns";
 import { id } from "date-fns/locale";
+
+interface Notification {
+  id: number;
+  user_id: number;
+  title: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+  related_entity: string;
+  related_id: number | null;
+  created_at: string;
+}
 
 interface HeaderProps {
   sidebarCollapsed?: boolean;
 }
 
 export default function Header({ sidebarCollapsed = false }: HeaderProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [clusters, setClusters] = useState<string[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showClusterPicker, setShowClusterPicker] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [currentUser, setCurrentUser] = useState<{ id: number; username: string; role: string } | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [tempStartDate, setTempStartDate] = useState<Date | null>(null);
   const [tempEndDate, setTempEndDate] = useState<Date | null>(null);
   const [tempSelectedCluster, setTempSelectedCluster] = useState<string>("");
   const datePickerRef = useRef<HTMLDivElement>(null);
   const clusterPickerRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
   const {
     selectedCluster,
     setSelectedCluster,
@@ -39,10 +64,49 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
     setPresetRange,
   } = useAppStore();
 
+  // Load user and notifications
   useEffect(() => {
     loadClusters();
     setTempSelectedCluster(selectedCluster);
+    
+    // Load current user from localStorage
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        // Load notifications for this user
+        if (user.id) {
+          loadNotifications(user.id);
+        }
+      } catch (e) {
+        console.error('Failed to parse user data:', e);
+      }
+    }
   }, [selectedCluster]);
+
+  const loadNotifications = async (userId: number) => {
+    try {
+      const response = await notificationService.getNotifications(userId);
+      setNotifications(response.data || []);
+      setUnreadCount(response.unread_count || 0);
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    }
+  };
+
+  const handleMarkNotificationRead = async (notifId: number) => {
+    try {
+      await notificationService.markAsRead(notifId);
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => n.id === notifId ? { ...n, is_read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,9 +122,21 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
       ) {
         setShowClusterPicker(false);
       }
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowUserMenu(false);
+      }
+      if (
+        notifRef.current &&
+        !notifRef.current.contains(event.target as Node)
+      ) {
+        setShowNotifications(false);
+      }
     };
 
-    if (showDatePicker || showClusterPicker) {
+    if (showDatePicker || showClusterPicker || showNotifications) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
@@ -176,6 +252,15 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
   const getClusterDisplayText = () => {
     if (!selectedCluster) return "Semua Cluster";
     return selectedCluster;
+  };
+
+  const handleLogout = () => {
+    // Clear auth data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // Redirect to login
+    router.push('/auth/login');
   };
 
   return (
@@ -408,16 +493,64 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
           </div>
 
           {/* Notifications */}
-          <button
-            className="relative w-10 h-10 rounded-md-bpk hover:bg-gray-6 
-                           flex items-center justify-center transition-colors"
-          >
-            <Bell className="w-5 h-5 text-gray-2" />
-            <span
-              className="absolute top-1 right-1 w-2 h-2 bg-status-error 
-                           rounded-full ring-2 ring-white"
-            ></span>
-          </button>
+          <div className="relative" ref={notifRef}>
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative w-10 h-10 rounded-md-bpk hover:bg-gray-6 
+                             flex items-center justify-center transition-colors"
+            >
+              <Bell className="w-5 h-5 text-gray-2" />
+              {unreadCount > 0 && (
+                <span
+                  className="absolute top-1 right-1 w-2 h-2 bg-status-error 
+                             rounded-full ring-2 ring-white"
+                ></span>
+              )}
+            </button>
+
+            {/* Notifications Dropdown */}
+            {showNotifications && (
+              <div className="absolute top-full right-0 mt-2 bg-white rounded-lg-bpk shadow-lg border border-gray-5 z-[200] min-w-[280px] max-w-[320px]">
+                <div className="px-4 py-3 border-b border-gray-5">
+                  <h3 className="font-semibold text-gray-1">Notifikasi</h3>
+                </div>
+                
+                <div className="max-h-[300px] overflow-y-auto">
+                  {notifications.length > 0 ? (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => !notif.is_read && handleMarkNotificationRead(notif.id)}
+                        className={`px-4 py-3 border-b border-gray-5 last:border-0 cursor-pointer hover:bg-gray-6 transition-colors ${
+                          !notif.is_read ? 'bg-orange-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className={`mt-0.5 ${
+                            notif.type === 'success' ? 'text-emerald-500' :
+                            notif.type === 'error' ? 'text-red-500' :
+                            'text-blue-500'
+                          }`}>
+                            {notif.type === 'success' ? <CheckCircle className="w-4 h-4" /> :
+                             notif.type === 'error' ? <XCircle className="w-4 h-4" /> :
+                             <Info className="w-4 h-4" />}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-1">{notif.title}</p>
+                            <p className="text-xs text-gray-3">{notif.message}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-4 py-6 text-center text-gray-3 text-sm">
+                      Tidak ada notifikasi
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Settings */}
           <button
@@ -428,23 +561,55 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
           </button>
 
           {/* User Profile */}
-          <button
-            className="flex items-center gap-3 px-3 py-2 rounded-lg-bpk 
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg-bpk 
                            hover:bg-gray-6 transition-colors"
-          >
-            <div
-              className="w-9 h-9 rounded-full bg-gradient-bpk 
-                          flex items-center justify-center"
             >
-              <User className="w-5 h-5 text-white" />
-            </div>
-            <div className="hidden md:block text-left">
-              <div className="text-caption font-semibold text-gray-1">
-                Admin User
+              <div
+                className="w-9 h-9 rounded-full bg-gradient-bpk 
+                          flex items-center justify-center"
+              >
+                <User className="w-5 h-5 text-white" />
               </div>
-              <div className="text-overline text-gray-3">Administrator</div>
-            </div>
-          </button>
+              <div className="hidden md:block text-left">
+                <div className="text-caption font-semibold text-gray-1">
+                  {currentUser?.username || 'User'}
+                </div>
+                <div className="text-overline text-gray-3">
+                  {currentUser?.role === 'admin' ? 'Administrator' : 'User'}
+                </div>
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 text-gray-3 transition-transform ${showUserMenu ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {/* User Menu Dropdown */}
+            {showUserMenu && (
+              <div className="absolute top-full right-0 mt-2 bg-white rounded-lg-bpk shadow-lg border border-gray-5 py-2 z-[200] min-w-[200px]">
+                <div className="px-4 py-2 border-b border-gray-5">
+                  <div className="text-caption font-semibold text-gray-1">
+                    {currentUser?.username || 'User'}
+                  </div>
+                  <div className="text-overline text-gray-3">
+                    {currentUser?.role === 'admin' ? 'Administrator' : 'User'}
+                  </div>
+                </div>
+                
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 transition-colors text-left group"
+                >
+                  <LogOut className="w-4 h-4 text-red-600" />
+                  <span className="text-caption text-red-600 font-medium">
+                    Logout
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

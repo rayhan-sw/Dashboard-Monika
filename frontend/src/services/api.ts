@@ -371,13 +371,13 @@ export const reportService = {
     }[]>>("/api/reports/access-requests");
   },
 
-  requestAccess: (reportType: string, reason: string) => {
-    return fetchApi<{ success: boolean; message: string }>(
+  requestAccess: (userId: number, reason: string) => {
+    return fetchApi<{ success: boolean; message: string; request_id: number }>(
       "/api/reports/request-access",
       {
         method: "POST",
         body: JSON.stringify({
-          report_type: reportType,
+          user_id: userId,
           reason,
         }),
       }
@@ -392,6 +392,65 @@ export const reportService = {
         body: JSON.stringify({ status }),
       }
     );
+  },
+};
+
+// Notification API
+export const notificationService = {
+  getNotifications: (userId: number) => {
+    return fetchApi<{
+      data: {
+        id: number;
+        user_id: number;
+        title: string;
+        message: string;
+        type: string;
+        is_read: boolean;
+        related_entity: string;
+        related_id: number | null;
+        created_at: string;
+      }[];
+      unread_count: number;
+    }>(`/api/notifications?user_id=${userId}`);
+  },
+
+  markAsRead: (id: number) => {
+    return fetchApi<{ success: boolean; message: string }>(
+      `/api/notifications/${id}/read`,
+      {
+        method: "PUT",
+      }
+    );
+  },
+
+  markAllAsRead: (userId: number) => {
+    return fetchApi<{ success: boolean; message: string }>(
+      "/api/notifications/read-all",
+      {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId }),
+      }
+    );
+  },
+};
+
+// User API
+export const userService = {
+  getProfile: (userId: number) => {
+    return fetchApi<{
+      data: {
+        id: number;
+        username: string;
+        role: string;
+        full_name: string;
+        email: string;
+        is_active: boolean;
+        report_access_status: string;
+        created_at: string;
+        updated_at: string;
+        last_login: string | null;
+      };
+    }>(`/api/users/profile?user_id=${userId}`);
   },
 };
 

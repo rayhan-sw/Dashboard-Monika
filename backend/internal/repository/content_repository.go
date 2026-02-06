@@ -22,9 +22,16 @@ type SearchModule struct {
 
 // ExportStats represents export/download statistics
 type ExportStats struct {
-	ViewData     int `json:"view_data"`
-	DownloadData int `json:"download_data"`
-	ExportData   int `json:"export_data"`
+	ViewData        int                   `json:"view_data"`
+	DownloadData    int                   `json:"download_data"`
+	ViewDetails     []DetailActivityCount `json:"view_details,omitempty"`
+	DownloadDetails []DetailActivityCount `json:"download_details,omitempty"`
+}
+
+// DetailActivityCount represents detailed activity breakdown
+type DetailActivityCount struct {
+	Detail string `json:"detail"`
+	Count  int    `json:"count"`
 }
 
 // OperationalIntent represents operational intent data
@@ -192,7 +199,7 @@ func GetSearchModuleUsage(startDate, endDate, cluster string) ([]SearchModule, e
 	return modules, nil
 }
 
-// GetExportStats returns export/download statistics
+// GetExportStats returns export/download statistics with details
 func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 	db := database.GetDB()
 
@@ -234,18 +241,43 @@ func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 	` + dateFilter
 	db.Raw(downloadQuery, args...).Scan(&downloadCount)
 
-	// Export Data count (activities with 'export' only)
-	var exportCount int
-	exportQuery := `
-		SELECT COUNT(*) FROM act_log
-		WHERE aktifitas ILIKE '%export%'
-	` + dateFilter
-	db.Raw(exportQuery, args...).Scan(&exportCount)
+	// Get View Data Details
+	var viewDetails []DetailActivityCount
+	viewDetailQuery := `
+		SELECT 
+			COALESCE(NULLIF(detail_aktifitas, ''), scope, aktifitas) as detail,
+			COUNT(*) as count
+		FROM act_log
+		WHERE aktifitas ILIKE '%view%' 
+		AND aktifitas NOT ILIKE '%download%' 
+		AND aktifitas NOT ILIKE '%export%'
+	` + dateFilter + `
+		GROUP BY detail
+		ORDER BY count DESC
+		LIMIT 10
+	`
+	db.Raw(viewDetailQuery, args...).Scan(&viewDetails)
+
+	// Get Download Data Details
+	var downloadDetails []DetailActivityCount
+	downloadDetailQuery := `
+		SELECT 
+			COALESCE(NULLIF(detail_aktifitas, ''), scope, aktifitas) as detail,
+			COUNT(*) as count
+		FROM act_log
+		WHERE aktifitas ILIKE '%download%'
+	` + dateFilter + `
+		GROUP BY detail
+		ORDER BY count DESC
+		LIMIT 10
+	`
+	db.Raw(downloadDetailQuery, args...).Scan(&downloadDetails)
 
 	return &ExportStats{
-		ViewData:     viewCount,
-		DownloadData: downloadCount,
-		ExportData:   exportCount,
+		ViewData:        viewCount,
+		DownloadData:    downloadCount,
+		ViewDetails:     viewDetails,
+		DownloadDetails: downloadDetails,
 	}, nil
 }
 

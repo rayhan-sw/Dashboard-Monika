@@ -5,7 +5,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
 	"github.com/bpk-ri/dashboard-monitoring/internal/repository"
+	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
 )
 
@@ -128,41 +130,56 @@ func GetRecentDownloads(c *gin.Context) {
 
 // GetAccessRequests returns pending access requests (Admin only)
 func GetAccessRequests(c *gin.Context) {
-	// In a real app, this would come from database
-	requests := []AccessRequest{
-		{
-			ID:          1,
-			Username:    "Budi Santoso",
-			Unit:        "BPK Perwakilan Jawa Barat",
-			RequestTime: time.Date(2026, 1, 31, 10, 30, 0, 0, time.UTC),
-			Status:      "pending",
-		},
-		{
-			ID:          2,
-			Username:    "Susi Susanti",
-			Unit:        "Auditorat Utama Keuangan Negara I",
-			RequestTime: time.Date(2026, 1, 31, 9, 30, 0, 0, time.UTC),
-			Status:      "pending",
-		},
-		{
-			ID:          3,
-			Username:    "Rizky Fajar",
-			Unit:        "Biro TI",
-			RequestTime: time.Date(2026, 1, 30, 12, 30, 0, 0, time.UTC),
-			Status:      "pending",
-		},
+	db := database.GetDB()
+
+	// Get all access requests with user data
+	var requests []entity.ReportAccessRequest
+	if err := db.Preload("User").Order("requested_at DESC").Find(&requests).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch access requests"})
+		return
 	}
 
-	// Count pending requests
+	// Transform to response format
+	type AccessRequestResponse struct {
+		ID          int       `json:"id"`
+		UserID      int       `json:"user_id"`
+		UserName    string    `json:"user_name"`
+		Unit        string    `json:"unit"`
+		RequestedAt time.Time `json:"requested_at"`
+		Status      string    `json:"status"`
+		Reason      string    `json:"reason,omitempty"`
+	}
+
+	responseData := make([]AccessRequestResponse, 0, len(requests))
 	pendingCount := 0
+
 	for _, r := range requests {
+		userName := "Unknown User"
+		if r.User != nil {
+			if r.User.FullName != "" {
+				userName = r.User.FullName
+			} else {
+				userName = r.User.Username
+			}
+		}
+
+		responseData = append(responseData, AccessRequestResponse{
+			ID:          r.ID,
+			UserID:      r.UserID,
+			UserName:    userName,
+			Unit:        "Biro TI", // Default unit, can be extended later
+			RequestedAt: r.RequestedAt,
+			Status:      r.Status,
+			Reason:      r.Reason,
+		})
+
 		if r.Status == "pending" {
 			pendingCount++
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data":          requests,
+		"data":          responseData,
 		"pending_count": pendingCount,
 	})
 }
@@ -170,8 +187,8 @@ func GetAccessRequests(c *gin.Context) {
 // RequestAccess allows user to request report access
 func RequestAccess(c *gin.Context) {
 	var req struct {
-		ReportID string `json:"report_id"`
-		Reason   string `json:"reason"`
+		UserID int    `json:"user_id"`
+		Reason string `json:"reason"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -179,19 +196,68 @@ func RequestAccess(c *gin.Context) {
 		return
 	}
 
-	// In a real app, this would save to database
+	if req.UserID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	db := database.GetDB()
+
+	// Check if user exists
+	var user entity.User
+	if err := db.First(&user, req.UserID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Check if user already has pending or approved request
+	if user.ReportAccessStatus == "pending" {
+		c.JSON(http.StatusConflict, gin.H{"error": "Permintaan akses sedang diproses"})
+		return
+	}
+	if user.ReportAccessStatus == "approved" {
+		c.JSON(http.StatusConflict, gin.H{"error": "Anda sudah memiliki akses laporan"})
+		return
+	}
+
+	// Create new access request
+	accessRequest := entity.ReportAccessRequest{
+		UserID:      req.UserID,
+		Reason:      req.Reason,
+		Status:      "pending",
+		RequestedAt: time.Now(),
+	}
+
+	if err := db.Create(&accessRequest).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat permintaan akses"})
+		return
+	}
+
+	// Update user's report access status
+	if err := db.Model(&user).Update("report_access_status", "pending").Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui status"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Permintaan akses berhasil dikirim",
+		"success":    true,
+		"message":    "Permintaan akses berhasil dikirim",
+		"request_id": accessRequest.ID,
 	})
 }
 
 // UpdateAccessRequest updates access request status (Admin only)
 func UpdateAccessRequest(c *gin.Context) {
 	id := c.Param("id")
+	requestID, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request ID"})
+		return
+	}
 
 	var req struct {
-		Status string `json:"status"` // approved or rejected
+		Status     string `json:"status"` // approved or rejected
+		AdminNotes string `json:"admin_notes,omitempty"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -199,9 +265,63 @@ func UpdateAccessRequest(c *gin.Context) {
 		return
 	}
 
-	requestID, _ := strconv.Atoi(id)
+	if req.Status != "approved" && req.Status != "rejected" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Status must be 'approved' or 'rejected'"})
+		return
+	}
 
-	// In a real app, this would update database
+	db := database.GetDB()
+
+	// Find the access request
+	var accessRequest entity.ReportAccessRequest
+	if err := db.First(&accessRequest, requestID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Request not found"})
+		return
+	}
+
+	// Update the access request
+	now := time.Now()
+	accessRequest.Status = req.Status
+	accessRequest.ProcessedAt = &now
+	accessRequest.AdminNotes = req.AdminNotes
+
+	if err := db.Save(&accessRequest).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update request"})
+		return
+	}
+
+	// Update user's report access status
+	newStatus := req.Status
+	if req.Status == "rejected" {
+		newStatus = "none" // Reset to none so they can request again
+	}
+	if err := db.Model(&entity.User{}).Where("id = ?", accessRequest.UserID).Update("report_access_status", newStatus).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user status"})
+		return
+	}
+
+	// Create notification for the user
+	notifTitle := "Akses Laporan"
+	notifMessage := "Permintaan akses laporan Anda telah disetujui"
+	notifType := "success"
+	if req.Status == "rejected" {
+		notifMessage = "Permintaan akses laporan Anda ditolak"
+		notifType = "error"
+	}
+
+	notification := entity.Notification{
+		UserID:        accessRequest.UserID,
+		Title:         notifTitle,
+		Message:       notifMessage,
+		Type:          notifType,
+		IsRead:        false,
+		RelatedEntity: "report_access",
+		RelatedID:     &requestID,
+		CreatedAt:     time.Now(),
+	}
+
+	db.Create(&notification) // Ignore error, notification is not critical
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"request_id": requestID,

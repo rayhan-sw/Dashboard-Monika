@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import Footer from "@/components/layout/Footer";
@@ -36,7 +37,29 @@ import {
  * - State: stores/appStore.ts (Global state with dateRange and selectedCluster)
  */
 export default function ContentAnalysisPage() {
+  const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth/login');
+    } else {
+      setLoading(false);
+    }
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Memuat...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-50">

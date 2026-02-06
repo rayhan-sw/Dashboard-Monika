@@ -1,0 +1,115 @@
+package handler
+
+import (
+	"net/http"
+	"strconv"
+
+	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
+	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
+	"github.com/gin-gonic/gin"
+)
+
+// GetNotifications returns notifications for a user
+func GetNotifications(c *gin.Context) {
+	userIDStr := c.Query("user_id")
+	if userIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id"})
+		return
+	}
+
+	db := database.GetDB()
+
+	var notifications []entity.Notification
+	if err := db.Where("user_id = ?", userID).Order("created_at DESC").Find(&notifications).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch notifications"})
+		return
+	}
+
+	// Count unread
+	var unreadCount int64
+	db.Model(&entity.Notification{}).Where("user_id = ? AND is_read = ?", userID, false).Count(&unreadCount)
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":         notifications,
+		"unread_count": unreadCount,
+	})
+}
+
+// MarkNotificationRead marks a notification as read
+func MarkNotificationRead(c *gin.Context) {
+	id := c.Param("id")
+	notifID, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid notification ID"})
+		return
+	}
+
+	db := database.GetDB()
+
+	if err := db.Model(&entity.Notification{}).Where("id = ?", notifID).Update("is_read", true).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark notification as read"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Notification marked as read",
+	})
+}
+
+// MarkAllNotificationsRead marks all notifications as read for a user
+func MarkAllNotificationsRead(c *gin.Context) {
+	var req struct {
+		UserID int `json:"user_id"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	db := database.GetDB()
+
+	if err := db.Model(&entity.Notification{}).Where("user_id = ?", req.UserID).Update("is_read", true).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark all notifications as read"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "All notifications marked as read",
+	})
+}
+
+// GetUserProfile returns user profile with report access status
+func GetUserProfile(c *gin.Context) {
+	userIDStr := c.Query("user_id")
+	if userIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id"})
+		return
+	}
+
+	db := database.GetDB()
+
+	var user entity.User
+	if err := db.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": user,
+	})
+}

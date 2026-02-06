@@ -48,6 +48,15 @@ func main() {
 		})
 	})
 
+	// Authentication routes (public - no middleware)
+	auth := r.Group("/api/auth")
+	{
+		auth.POST("/login", handler.Login)
+		auth.POST("/register", handler.Register)
+		auth.POST("/forgot-password", handler.ForgotPassword)
+		auth.POST("/logout", handler.Logout)
+	}
+
 	// API routes
 	api := r.Group("/api")
 	{
@@ -92,6 +101,20 @@ func main() {
 			reports.GET("/access-requests", handler.GetAccessRequests)
 			reports.POST("/request-access", handler.RequestAccess)
 			reports.PUT("/access-requests/:id", handler.UpdateAccessRequest)
+		}
+
+		// Notification routes
+		notifications := api.Group("/notifications")
+		{
+			notifications.GET("", handler.GetNotifications)
+			notifications.PUT("/:id/read", handler.MarkNotificationRead)
+			notifications.POST("/read-all", handler.MarkAllNotificationsRead)
+		}
+
+		// User profile routes
+		users := api.Group("/users")
+		{
+			users.GET("/profile", handler.GetUserProfile)
 		}
 	}
 

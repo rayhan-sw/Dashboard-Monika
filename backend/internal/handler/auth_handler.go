@@ -1,0 +1,180 @@
+package handler
+
+import (
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
+	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// Login handles user authentication
+func Login(c *gin.Context) {
+	var req entity.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	db := database.GetDB()
+
+	// Find user by username or email
+	var user entity.User
+	var err error
+	
+	// Check if input contains '@' to determine if it's email or username
+	if strings.Contains(req.Username, "@") {
+		// Login with email
+		err = db.Where("email = ? AND is_active = ?", req.Username, true).First(&user).Error
+	} else {
+		// Login with username
+		err = db.Where("username = ? AND is_active = ?", req.Username, true).First(&user).Error
+	}
+	
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Username/Email atau password salah"})
+		return
+	}
+
+	// Verify password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Username/Email atau password salah"})
+		return
+	}
+
+	// Update last login
+	now := time.Now()
+	user.LastLogin = &now
+	db.Save(&user)
+
+	// Generate session token (simple implementation - in production use JWT)
+	token := generateSessionToken(user.ID)
+
+	c.JSON(http.StatusOK, entity.LoginResponse{
+		Token:   token,
+		User:    user,
+		Message: "Login berhasil",
+	})
+}
+
+// Register handles user registration
+func Register(c *gin.Context) {
+	var req entity.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	// Validate email domain
+	if !strings.HasSuffix(req.Email, "@bpk.go.id") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email harus menggunakan domain @bpk.go.id"})
+		return
+	}
+
+	// Validate password confirmation
+	if req.Password != req.ConfirmPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password dan konfirmasi password tidak cocok"})
+		return
+	}
+
+	db := database.GetDB()
+
+	// Check if username already exists
+	var existingUser entity.User
+	if err := db.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Username sudah digunakan"})
+		return
+	}
+
+	// Check if email already exists
+	if err := db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Email sudah digunakan"})
+		return
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat akun"})
+		return
+	}
+
+	// Create new user
+	newUser := entity.User{
+		Username:     req.Username,
+		PasswordHash: string(hashedPassword),
+		Role:         "user", // Default role
+		FullName:     req.FullName,
+		Email:        req.Email,
+		IsActive:     true,
+	}
+
+	if err := db.Create(&newUser).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat akun"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Akun berhasil dibuat",
+		"user":    newUser,
+	})
+}
+
+// ForgotPassword handles password reset
+func ForgotPassword(c *gin.Context) {
+	var req entity.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	// Validate password confirmation
+	if req.NewPassword != req.ConfirmPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password dan konfirmasi password tidak cocok"})
+		return
+	}
+
+	db := database.GetDB()
+
+	// Find user
+	var user entity.User
+	if err := db.Where("username = ?", req.Username).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Username tidak ditemukan"})
+		return
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengubah password"})
+		return
+	}
+
+	// Update password
+	user.PasswordHash = string(hashedPassword)
+	if err := db.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengubah password"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Password berhasil diubah",
+	})
+}
+
+// Logout handles user logout
+func Logout(c *gin.Context) {
+	// Clear session/token (implementation depends on your session management)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logout berhasil",
+	})
+}
+
+// Helper function to generate session token (simplified)
+func generateSessionToken(userID int) string {
+	// In production, use JWT or proper session management
+	return "session_token_" + time.Now().Format("20060102150405")
+}

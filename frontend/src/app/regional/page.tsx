@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { dashboardService, regionalService } from "@/services/api";
@@ -88,8 +89,10 @@ const REGION_MAP: RegionMap = {
 };
 
 export default function RegionalPage() {
+  const router = useRouter();
   const { selectedCluster, dateRange, sidebarCollapsed, setSidebarCollapsed } =
     useAppStore();
+  const [authLoading, setAuthLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState<string>("");
   const [selectedEselon, setSelectedEselon] = useState<string>("Semua Eselon");
   const [tempSelectedEselon, setTempSelectedEselon] =
@@ -97,6 +100,16 @@ export default function RegionalPage() {
   const [showEselonPicker, setShowEselonPicker] = useState(false);
   const eselonPickerRef = useRef<HTMLDivElement>(null);
   const [availableEselons, setAvailableEselons] = useState<string[]>([]);
+
+  // Auth check
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth/login');
+    } else {
+      setAuthLoading(false);
+    }
+  }, [router]);
 
   // State untuk data dari API
   const [performanceData, setPerformanceData] = useState<SatkerPerformance[]>(
@@ -589,6 +602,17 @@ export default function RegionalPage() {
 
   const displayHourlyData =
     unitHourlyData.length > 0 ? unitHourlyData : hourlyData;
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Memuat...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

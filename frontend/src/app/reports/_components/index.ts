@@ -7,3 +7,4 @@ export { default as DownloadHistoryList } from "./DownloadHistoryList";
 export type { DownloadHistoryRef } from "./DownloadHistoryList";
 export { default as AccessRequestList } from "./AccessRequestList";
 export { default as ReportHeaderBanner } from "./ReportHeaderBanner";
+export { default as AccessLockedView } from "./AccessLockedView";

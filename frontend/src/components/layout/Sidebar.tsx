@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -19,7 +20,7 @@ import { useAppStore } from "@/stores/appStore";
 const menuItems = [
   {
     name: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: Home,
     description: "User Monitor",
   },
@@ -47,9 +48,30 @@ interface SidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
 }
 
+interface CurrentUser {
+  id: number;
+  username: string;
+  role: string;
+  full_name?: string;
+}
+
 export default function Sidebar({ onCollapsedChange }: SidebarProps) {
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const pathname = usePathname();
   const { sidebarCollapsed, setSidebarCollapsed } = useAppStore();
+
+  useEffect(() => {
+    // Load current user from localStorage
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+      } catch (e) {
+        console.error('Failed to parse user data:', e);
+      }
+    }
+  }, []);
 
   const handleToggle = () => {
     const newState = !sidebarCollapsed;
@@ -58,6 +80,11 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
       onCollapsedChange(newState);
     }
   };
+
+  // Get display name and initials
+  const displayName = currentUser?.full_name || currentUser?.username || 'User';
+  const roleDisplay = currentUser?.role === 'admin' ? 'Administrator' : 'Monitoring - Biro TI';
+  const initials = displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
   return (
     <aside
@@ -248,13 +275,15 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
         }}
       >
         <div
-          className="w-10 h-10 rounded-full bg-gradient-bpk flex items-center justify-center flex-shrink-0"
+          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+            currentUser?.role === 'admin' ? 'bg-gradient-bpk' : 'bg-red-500'
+          }`}
           style={{
             transition: "transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)",
             transform: sidebarCollapsed ? "scale(1)" : "scale(1.05)",
           }}
         >
-          <span className="text-white font-bold text-sm">AD</span>
+          <span className="text-white font-bold text-sm">{initials}</span>
         </div>
         <div
           className={`flex-1 ${!sidebarCollapsed ? "opacity-100" : "opacity-0 w-0"}`}
@@ -264,10 +293,10 @@ export default function Sidebar({ onCollapsedChange }: SidebarProps) {
           }}
         >
           <div className="text-body font-semibold text-gray-1 whitespace-nowrap">
-            Admin User
+            {displayName}
           </div>
           <div className="text-overline text-gray-3 whitespace-nowrap">
-            Administrator
+            {roleDisplay}
           </div>
         </div>
         {!sidebarCollapsed && (

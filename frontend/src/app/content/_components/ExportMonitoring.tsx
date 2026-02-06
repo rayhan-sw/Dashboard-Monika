@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileDown, AlertCircle, Eye } from "lucide-react";
+import { FileDown, AlertCircle, Eye, Info } from "lucide-react";
 import { contentService } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 
@@ -9,7 +9,8 @@ import { useAppStore } from "@/stores/appStore";
 interface ExportData {
   view_data: number;
   download_data: number;
-  export_data: number;
+  view_details?: Array<{ detail: string; count: number }>;
+  download_details?: Array<{ detail: string; count: number }>;
 }
 
 export default function ExportMonitoring() {
@@ -81,51 +82,88 @@ export default function ExportMonitoring() {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
           <FileDown className="w-5 h-5 text-emerald-600" />
         </div>
         <div>
           <h3 className="text-lg font-semibold text-slate-800">
-            Pemantauan Ekspor Data
+            Pemantauan Data
           </h3>
-          <p className="text-sm text-slate-500">Pelacakan file</p>
+          <p className="text-sm text-slate-500">Pelacakan aktivitas data</p>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-6">
         {/* View Data */}
-        <div className="bg-slate-50 rounded-xl p-6 text-center">
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <Eye className="w-6 h-6 text-blue-600" />
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-6 border border-blue-200">
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center shadow-lg">
+              <Eye className="w-6 h-6 text-white" />
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-bold text-blue-900">
+                {stats?.view_data?.toLocaleString() || 0}
+              </p>
+              <p className="text-sm text-blue-600 font-medium mt-1">View Data</p>
+            </div>
           </div>
-          <p className="text-3xl font-bold text-slate-800">
-            {stats?.view_data || 0}
-          </p>
-          <p className="text-sm text-slate-500 mt-1">View Data</p>
+          
+          {/* View Details */}
+          {stats?.view_details && stats.view_details.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-blue-200">
+              <div className="flex items-center gap-2 mb-3">
+                <Info className="w-4 h-4 text-blue-600" />
+                <p className="text-xs font-semibold text-blue-700 uppercase">Detail Aktivitas</p>
+              </div>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {stats.view_details.slice(0, 5).map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-sm">
+                    <span className="text-slate-700 truncate flex-1 mr-2">{item.detail}</span>
+                    <span className="font-semibold text-blue-700 whitespace-nowrap">
+                      {item.count.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Download Data */}
-        <div className="bg-orange-50 rounded-xl p-6 text-center">
-          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <FileDown className="w-6 h-6 text-orange-600" />
+        <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-xl p-6 border border-orange-200">
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center shadow-lg">
+              <FileDown className="w-6 h-6 text-white" />
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-bold text-orange-900">
+                {stats?.download_data?.toLocaleString() || 0}
+              </p>
+              <p className="text-sm text-orange-600 font-medium mt-1">Download Data</p>
+            </div>
           </div>
-          <p className="text-3xl font-bold text-orange-600">
-            {stats?.download_data || 0}
-          </p>
-          <p className="text-sm text-slate-500 mt-1">Download Data</p>
-        </div>
-
-        {/* Export Data */}
-        <div className="bg-emerald-50 rounded-xl p-6 text-center">
-          <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <FileDown className="w-6 h-6 text-emerald-600" />
-          </div>
-          <p className="text-3xl font-bold text-emerald-600">
-            {stats?.export_data || 0}
-          </p>
-          <p className="text-sm text-slate-500 mt-1">Export Data</p>
+          
+          {/* Download Details */}
+          {stats?.download_details && stats.download_details.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-orange-200">
+              <div className="flex items-center gap-2 mb-3">
+                <Info className="w-4 h-4 text-orange-600" />
+                <p className="text-xs font-semibold text-orange-700 uppercase">Detail Aktivitas</p>
+              </div>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {stats.download_details.slice(0, 5).map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-sm">
+                    <span className="text-slate-700 truncate flex-1 mr-2">{item.detail}</span>
+                    <span className="font-semibold text-orange-700 whitespace-nowrap">
+                      {item.count.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
