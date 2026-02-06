@@ -52,8 +52,8 @@ export default function OperationalIntents({
       );
       // Map API response to expected format
       const mappedIntents: IntentData[] = (response.data || []).map(
-        (item: { intent: string; count: number }) => ({
-          name: item.intent,
+        (item: { name: string; count: number }) => ({
+          name: item.name,
           count: item.count,
         }),
       );

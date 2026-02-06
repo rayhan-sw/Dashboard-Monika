@@ -31,8 +31,8 @@ export default function SearchModuleUsage() {
       );
       // Map API response to expected format
       const mappedModules: ModuleData[] = (response.data || []).map(
-        (item: { module: string; count: number }) => ({
-          name: item.module,
+        (item: { name: string; count: number }) => ({
+          name: item.name,
           count: item.count,
         }),
       );

@@ -56,11 +56,11 @@ export default function DashboardRankings() {
         0,
       );
       const mappedRankings: RankingData[] = data.map(
-        (item: { rank: number; cluster: string; count: number }) => ({
+        (item: { rank: number; name: string; count: number; percentage: number }) => ({
           rank: item.rank,
-          name: item.cluster,
+          name: item.name,
           count: item.count,
-          percentage: totalCount > 0 ? (item.count / totalCount) * 100 : 0,
+          percentage: item.percentage || (totalCount > 0 ? (item.count / totalCount) * 100 : 0),
         }),
       );
       setRankings(mappedRankings);

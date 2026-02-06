@@ -272,7 +272,7 @@ export const contentService = {
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
     const query = params.toString();
-    return fetchApi<ApiResponse<{ rank: number; cluster: string; count: number }[]>>(
+    return fetchApi<ApiResponse<{ rank: number; name: string; count: number; percentage: number }[]>>(
       `/api/content/dashboard-rankings${query ? `?${query}` : ""}`
     );
   },
@@ -283,7 +283,7 @@ export const contentService = {
     if (endDate) params.append("end_date", endDate);
     if (cluster) params.append("cluster", cluster);
     const query = params.toString();
-    return fetchApi<ApiResponse<{ module: string; count: number; percentage: number }[]>>(
+    return fetchApi<ApiResponse<{ name: string; count: number }[]>>(
       `/api/content/search-modules${query ? `?${query}` : ""}`
     );
   },
@@ -294,7 +294,12 @@ export const contentService = {
     if (endDate) params.append("end_date", endDate);
     if (cluster) params.append("cluster", cluster);
     const query = params.toString();
-    return fetchApi<ApiResponse<{ view_data: number; download_data: number; export_data: number }>>(
+    return fetchApi<ApiResponse<{ 
+      view_data: number; 
+      download_data: number; 
+      view_details?: { detail: string; count: number }[];
+      download_details?: { detail: string; count: number }[];
+    }>>(
       `/api/content/export-stats${query ? `?${query}` : ""}`
     );
   },
@@ -306,7 +311,7 @@ export const contentService = {
     if (limit) params.append("limit", limit.toString());
     if (cluster) params.append("cluster", cluster);
     const query = params.toString();
-    return fetchApi<ApiResponse<{ intent: string; count: number }[]>>(
+    return fetchApi<ApiResponse<{ name: string; count: number }[]>>(
       `/api/content/operational-intents${query ? `?${query}` : ""}`
     );
   },

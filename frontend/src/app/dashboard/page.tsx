@@ -12,10 +12,11 @@ import ActivityTable from "./_components/ActivityTable";
 import BusiestHourCard from "./_components/BusiestHourCard";
 import ErrorMonitoringTable from "./_components/ErrorMonitoringTable";
 import Footer from "@/components/layout/Footer";
+import { useAppStore } from "@/stores/appStore";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar onCollapsedChange={setSidebarCollapsed} />
+      <Sidebar />
 
       <div
         className={`flex-1 flex flex-col min-h-screen transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
