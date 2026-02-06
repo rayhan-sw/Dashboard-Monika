@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import Footer from "@/components/layout/Footer";
+import { useAppStore } from "@/stores/appStore";
 
 // Import widget components following Clean Architecture
 import {
@@ -16,19 +17,19 @@ import {
 
 /**
  * Content Analysis Page
- * 
+ *
  * This page displays content analytics including:
  * - Dashboard usage rankings (Feature 1) - Filtered by dateRange only
  * - Search module + Export monitoring + Operational intents (Feature 2) - Filtered by dateRange AND cluster
- * 
+ *
  * Feature Structure:
  * 1. DashboardRankings - Shows all clusters ranked by usage (dateRange filter only)
  * 2. SearchModuleUsage - Shows search activity (dateRange + cluster filter from global state)
  * 3. ExportMonitoring - Shows view/download/export stats (dateRange + cluster filter from global state)
  * 4. OperationalIntents - Shows feature access keywords (dateRange + cluster filter from global state)
- * 
+ *
  * All filters are managed globally in Header component (by Rayhan)
- * 
+ *
  * Architecture: Clean Architecture / MVC Pattern
  * - View: This page.tsx (Controller/Layout)
  * - Components: _components/* (View widgets with self-contained logic)
@@ -38,7 +39,7 @@ import {
  */
 export default function ContentAnalysisPage() {
   const router = useRouter();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -64,13 +65,15 @@ export default function ContentAnalysisPage() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar Navigation */}
-      <Sidebar onCollapsedChange={setSidebarCollapsed} />
+      <Sidebar />
 
       {/* Main Content Area */}
       <div
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-          sidebarCollapsed ? "ml-20" : "ml-80"
-        }`}
+        className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? "ml-20" : "ml-80"}`}
+        style={{
+          transition: "margin-left 300ms ease-out",
+          willChange: "margin-left",
+        }}
       >
         {/* Header */}
         <Header sidebarCollapsed={sidebarCollapsed} />
@@ -83,8 +86,8 @@ export default function ContentAnalysisPage() {
               Analisis Penggunaan Aplikasi & Konten
             </h1>
             <p className="text-slate-500 mt-1">
-              Analisis lengkap aktivitas pengguna, penggunaan fitur, dan interaksi
-              konten
+              Analisis lengkap aktivitas pengguna, penggunaan fitur, dan
+              interaksi konten
             </p>
           </div>
 
@@ -94,7 +97,7 @@ export default function ContentAnalysisPage() {
             <DashboardRankings />
 
             {/* FEATURE 2: Cluster-based Analysis (dateRange + cluster filter) */}
-            
+
             {/* Search Module Usage (Vertical Bar Chart) */}
             <SearchModuleUsage />
 

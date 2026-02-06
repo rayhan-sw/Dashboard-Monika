@@ -430,13 +430,15 @@ func (r *activityLogRepository) GetUniqueUsersCount(startDate, endDate *string, 
 }
 
 // GetUniqueClusters returns list of unique cluster values (excluding null/empty)
+// Returns clusters with lowercase formatting for consistency
 func (r *activityLogRepository) GetUniqueClusters() ([]string, error) {
 	var clusters []string
-	err := r.db.Model(&entity.ActivityLog{}).
-		Distinct("cluster").
-		Where("cluster IS NOT NULL AND cluster != '' AND cluster != 'NULL'").
-		Order("cluster ASC").
-		Pluck("cluster", &clusters).Error
+	err := r.db.Raw(`
+		SELECT DISTINCT LOWER(cluster) as cluster
+		FROM act_log 
+		WHERE cluster IS NOT NULL AND cluster != '' AND cluster != 'NULL'
+		ORDER BY cluster ASC
+	`).Pluck("cluster", &clusters).Error
 	return clusters, err
 }
 

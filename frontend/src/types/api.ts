@@ -26,6 +26,9 @@ export interface ActivityLog {
   region: string;
   created_at: string;
   updated_at: string;
+  status?: string;
+  detail_aktifitas?: string;
+  eselon?: string;
 }
 
 export interface PaginatedResponse<T> {

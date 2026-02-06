@@ -9,7 +9,8 @@ import { useAppStore } from "@/stores/appStore";
 import type { DashboardStats as DashboardStatsType } from "@/types/api";
 
 export default function DashboardStats() {
-  const { dateRange, selectedCluster } = useAppStore();
+  const dateRange = useAppStore((state) => state.dateRange);
+  const selectedCluster = useAppStore((state) => state.selectedCluster);
   const [stats, setStats] = useState<DashboardStatsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,21 +21,12 @@ export default function DashboardStats() {
 
   const loadStats = async () => {
     setLoading(true);
-    console.log("=== DashboardStats - loadStats ===");
-    console.log("dateRange:", dateRange);
-    console.log("selectedCluster:", selectedCluster);
-    console.log("Calling API with:", {
-      startDate: dateRange.startDate,
-      endDate: dateRange.endDate,
-      cluster: selectedCluster,
-    });
     try {
       const data = await dashboardService.getStats(
         dateRange.startDate,
         dateRange.endDate,
         selectedCluster,
       );
-      console.log("DashboardStats - Received data:", data);
       setStats(data);
       setError(null);
     } catch (err) {
@@ -51,7 +43,7 @@ export default function DashboardStats() {
         {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className="h-32 bg-gray-100 animate-pulse rounded-[13px]"
+            className="h-[120px] bg-gray-100 animate-pulse rounded-[13px]"
           />
         ))}
       </div>
@@ -73,10 +65,10 @@ export default function DashboardStats() {
   const hasNoData = stats.total_activities === 0 && stats.total_users === 0;
 
   return (
-    <div className="space-y-4">
+    <div className="min-h-[120px]">
       {hasNoData && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-[13px] p-4 text-yellow-700 flex items-center gap-2">
-          <AlertCircle className="h-5 w-5" />
+        <div className="bg-yellow-50 border border-yellow-200 rounded-[13px] p-4 text-yellow-700 flex items-center gap-2 mb-4">
+          <AlertCircle className="h-5 w-5 flex-shrink-0" />
           <span className="text-caption">
             Tidak ada data untuk filter yang dipilih. Coba pilih periode tanggal
             yang lebih luas atau cluster lain.

@@ -18,7 +18,8 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
 export default function HourlyActivityChart() {
-  const { dateRange, selectedCluster } = useAppStore();
+  const dateRange = useAppStore((state) => state.dateRange);
+  const selectedCluster = useAppStore((state) => state.selectedCluster);
   const [data, setData] = useState<{ hour: number; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -65,7 +66,7 @@ export default function HourlyActivityChart() {
   }
 
   return (
-    <div className="bg-white rounded-lg-bpk p-6 shadow-md border border-gray-5">
+    <div className="bg-white rounded-lg-bpk p-6 shadow-md border border-gray-5 h-[400px]">
       <div className="flex items-start gap-3 mb-4">
         <div className="w-12 h-12 rounded-lg-bpk bg-blue-500 flex items-center justify-center flex-shrink-0">
           <Flame className="h-6 w-6 text-white" />

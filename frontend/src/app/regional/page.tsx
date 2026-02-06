@@ -8,15 +8,17 @@ import { dashboardService, regionalService } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import type { HourlyData } from "@/types/api";
 import { Filter, ChevronDown, Check } from "lucide-react";
-
-// Import regional-specific components
-import UnitPerformanceRanking from "./_components/UnitPerformanceRanking";
-import IndonesiaMapSection from "./_components/IndonesiaMapSection";
-import UnitOperationalHours from "./_components/UnitOperationalHours";
-import GeographicDistributionList from "./_components/GeographicDistributionList";
-import GeographicDistributionChart from "./_components/GeographicDistributionChart";
-import TopContributors from "./_components/TopContributors";
 import Footer from "@/components/layout/Footer";
+
+// Import regional-specific components using barrel exports
+import {
+  UnitPerformanceRanking,
+  IndonesiaMapSection,
+  UnitOperationalHours,
+  GeographicDistributionList,
+  GeographicDistributionChart,
+  TopContributors,
+} from "./_components";
 
 // Interfaces untuk data regional
 interface SatkerPerformance {
@@ -90,8 +92,9 @@ const REGION_MAP: RegionMap = {
 
 export default function RegionalPage() {
   const router = useRouter();
-  const { selectedCluster, dateRange, sidebarCollapsed, setSidebarCollapsed } =
-    useAppStore();
+  const selectedCluster = useAppStore((state) => state.selectedCluster);
+  const dateRange = useAppStore((state) => state.dateRange);
+  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const [authLoading, setAuthLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState<string>("");
   const [selectedEselon, setSelectedEselon] = useState<string>("Semua Eselon");
@@ -627,12 +630,14 @@ export default function RegionalPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar onCollapsedChange={setSidebarCollapsed} />
+      <Sidebar />
 
       <div
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-          sidebarCollapsed ? "ml-20" : "ml-80"
-        }`}
+        className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? "ml-20" : "ml-80"}`}
+        style={{
+          transition: "margin-left 300ms ease-out",
+          willChange: "margin-left",
+        }}
       >
         <Header sidebarCollapsed={sidebarCollapsed} />
         <main className="pt-20 p-8 flex-1">

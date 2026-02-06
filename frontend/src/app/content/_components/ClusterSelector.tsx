@@ -10,9 +10,14 @@ interface ClusterSelectorProps {
   selectedCluster: string;
 }
 
-export default function ClusterSelector({ onClusterChange, selectedCluster }: ClusterSelectorProps) {
+export default function ClusterSelector({
+  onClusterChange,
+  selectedCluster,
+}: ClusterSelectorProps) {
   const { dateRange } = useAppStore();
-  const [clusters, setClusters] = useState<{ name: string; count: number }[]>([]);
+  const [clusters, setClusters] = useState<{ name: string; count: number }[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,9 +30,16 @@ export default function ClusterSelector({ onClusterChange, selectedCluster }: Cl
     try {
       const response = await contentService.getDashboardRankings(
         dateRange.startDate,
-        dateRange.endDate
+        dateRange.endDate,
       );
-      setClusters(response.data || []);
+      // Map API response to expected format
+      const mappedClusters = (response.data || []).map(
+        (item: { cluster: string; count: number }) => ({
+          name: item.cluster,
+          count: item.count,
+        }),
+      );
+      setClusters(mappedClusters);
       setError(null);
     } catch (err) {
       console.error("Error loading clusters:", err);
@@ -89,7 +101,10 @@ export default function ClusterSelector({ onClusterChange, selectedCluster }: Cl
       </div>
 
       {/* Cluster Buttons - Vertical Scrollable */}
-      <div className="flex-1 overflow-y-auto space-y-2 pr-2" style={{ maxHeight: '400px' }}>
+      <div
+        className="flex-1 overflow-y-auto space-y-2 pr-2"
+        style={{ maxHeight: "400px" }}
+      >
         {/* All Clusters Option */}
         <button
           onClick={() => onClusterChange("")}

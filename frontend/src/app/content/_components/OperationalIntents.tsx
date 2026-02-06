@@ -29,7 +29,9 @@ interface OperationalIntentsProps {
   limit?: number;
 }
 
-export default function OperationalIntents({ limit = 10 }: OperationalIntentsProps) {
+export default function OperationalIntents({
+  limit = 10,
+}: OperationalIntentsProps) {
   const { dateRange, selectedCluster } = useAppStore();
   const [intents, setIntents] = useState<IntentData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,9 +48,16 @@ export default function OperationalIntents({ limit = 10 }: OperationalIntentsPro
         dateRange.startDate,
         dateRange.endDate,
         limit,
-        selectedCluster
+        selectedCluster,
       );
-      setIntents(response.data || []);
+      // Map API response to expected format
+      const mappedIntents: IntentData[] = (response.data || []).map(
+        (item: { intent: string; count: number }) => ({
+          name: item.intent,
+          count: item.count,
+        }),
+      );
+      setIntents(mappedIntents);
       setError(null);
     } catch (err) {
       console.error("Error loading intents:", err);

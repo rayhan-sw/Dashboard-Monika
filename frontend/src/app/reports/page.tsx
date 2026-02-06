@@ -28,13 +28,13 @@ interface UserData {
 
 /**
  * Reports Page
- * 
+ *
  * This page displays report generation and management:
  * - BPK header banner
  * - Report template cards for generating reports
  * - Download history list
  * - Access request management (Admin only)
- * 
+ *
  * Architecture: Clean Architecture / MVC Pattern
  * - View: This page.tsx (Controller/Layout)
  * - Components: _components/* (View widgets with self-contained logic)
@@ -43,7 +43,7 @@ interface UserData {
  */
 export default function ReportsPage() {
   const router = useRouter();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const downloadHistoryRef = useRef<DownloadHistoryRef>(null);
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -127,13 +127,15 @@ export default function ReportsPage() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar Navigation */}
-      <Sidebar onCollapsedChange={setSidebarCollapsed} />
+      <Sidebar />
 
       {/* Main Content Area */}
       <div
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-          sidebarCollapsed ? "ml-20" : "ml-80"
-        }`}
+        className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? "ml-20" : "ml-80"}`}
+        style={{
+          transition: "margin-left 300ms ease-out",
+          willChange: "margin-left",
+        }}
       >
         {/* Header */}
         <Header sidebarCollapsed={sidebarCollapsed} />

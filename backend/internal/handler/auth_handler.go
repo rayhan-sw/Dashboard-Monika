@@ -24,7 +24,7 @@ func Login(c *gin.Context) {
 	// Find user by username or email
 	var user entity.User
 	var err error
-	
+
 	// Check if input contains '@' to determine if it's email or username
 	if strings.Contains(req.Username, "@") {
 		// Login with email
@@ -33,7 +33,7 @@ func Login(c *gin.Context) {
 		// Login with username
 		err = db.Where("username = ? AND is_active = ?", req.Username, true).First(&user).Error
 	}
-	
+
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Username/Email atau password salah"})
 		return

@@ -20,13 +20,13 @@ const getColorGradient = (rank: number, totalCount: number) => {
     const ratio = (rank - 1) / 4; // 0 to 1 for ranks 1-5
     return `linear-gradient(135deg, rgb(16, 185, 129) ${(1 - ratio) * 100}%, rgb(164, 244, 207) ${ratio * 100}%)`;
   }
-  
+
   // BOTTOM 5: Gradient from #EF4444 (red-500) to #FF696B (red-400)
   if (rank > totalCount - 5) {
     const ratio = (rank - (totalCount - 4)) / 4; // 0 to 1 for last 5
     return `linear-gradient(135deg, rgb(239, 68, 68) ${(1 - ratio) * 100}%, rgb(255, 105, 107) ${ratio * 100}%)`;
   }
-  
+
   // MIDDLE: Gradient from #FDC233 (amber-400) to #FFE06F (amber-200)
   const middleRatio = (rank - 6) / Math.max(1, totalCount - 11);
   return `linear-gradient(135deg, rgb(253, 194, 51) ${(1 - middleRatio) * 100}%, rgb(255, 224, 111) ${middleRatio * 100}%)`;
@@ -47,9 +47,23 @@ export default function DashboardRankings() {
     try {
       const response = await contentService.getDashboardRankings(
         dateRange.startDate,
-        dateRange.endDate
+        dateRange.endDate,
       );
-      setRankings(response.data || []);
+      // Map API response to expected format
+      const data = response.data || [];
+      const totalCount = data.reduce(
+        (sum: number, item: { count: number }) => sum + item.count,
+        0,
+      );
+      const mappedRankings: RankingData[] = data.map(
+        (item: { rank: number; cluster: string; count: number }) => ({
+          rank: item.rank,
+          name: item.cluster,
+          count: item.count,
+          percentage: totalCount > 0 ? (item.count / totalCount) * 100 : 0,
+        }),
+      );
+      setRankings(mappedRankings);
       setError(null);
     } catch (err) {
       console.error("Error loading rankings:", err);
@@ -122,9 +136,12 @@ export default function DashboardRankings() {
             const rank = index + 1;
             const totalCount = rankings.length;
             const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
-            
+
             return (
-              <div key={`${item.name}-${index}`} className="flex items-center gap-4">
+              <div
+                key={`${item.name}-${index}`}
+                className="flex items-center gap-4"
+              >
                 {/* Rank number circle with gradient */}
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"

@@ -8,7 +8,8 @@ import type { ActivityLog } from "@/types/api";
 import { Radio, Maximize2, X } from "lucide-react";
 
 export default function ActivityTable() {
-  const { dateRange, selectedCluster } = useAppStore();
+  const dateRange = useAppStore((state) => state.dateRange);
+  const selectedCluster = useAppStore((state) => state.selectedCluster);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
