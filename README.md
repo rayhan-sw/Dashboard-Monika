@@ -1,6 +1,6 @@
-# Dashboard Monitoring BIDICS BPK RI
+# Dashboard Monitoring Monika
 
-Dashboard monitoring aktivitas pengguna BIDICS untuk Badan Pemeriksa Keuangan Republik Indonesia.
+Dashboard monitoring aktivitas pengguna
 
 ## Tech Stack
 
@@ -70,35 +70,8 @@ Dashboard-BPK/
 └── stop-dev.ps1              # Stop all servers
 ```
 
-## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Health check |
-| GET | `/api/dashboard/stats` | Dashboard statistics |
-| GET | `/api/dashboard/activities` | Activity logs |
-| GET | `/api/dashboard/charts/:type` | Chart data (interaction/hourly) |
-| GET | `/api/regional/provinces` | Province list |
-| GET | `/api/regional/units` | Unit list |
-| GET | `/api/search` | Global search |
 
-## Environment Variables
-
-Backend `.env`:
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=yourpassword
-DB_NAME=daring_bpk
-```
-
-## Design System
-
-- **Design File**: [Figma](https://www.figma.com/design/yHuEwRXxFOAhq600fRXWzp/BPK-DASHBOARD--Dev-Mode-)
-- **Primary Color**: #FEB800 (BPK Gold)
-- **Secondary Color**: #E27200 (Orange)
-- **Font**: Plus Jakarta Sans
 
 ## Common Commands
 
@@ -117,5 +90,3 @@ psql -U postgres -c "DROP DATABASE daring_bpk;"
 cd backend\scripts && .\setup_database.ps1
 ```
 
----
-**BPK RI** - Badan Pemeriksa Keuangan Republik Indonesia
