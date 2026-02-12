@@ -40,3 +40,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Generated reports (runtime files)
+generated_reports/
+REPORT_TESTING.md

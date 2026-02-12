@@ -20,6 +20,26 @@ func (ReportAccessRequest) TableName() string {
 	return "report_access_requests"
 }
 
+// ReportDownload represents a report download record
+type ReportDownload struct {
+	ID          int       `gorm:"primaryKey" json:"id"`
+	UserID      int       `gorm:"not null" json:"user_id"`
+	User        *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	ReportName  string    `gorm:"not null" json:"report_name"`
+	TemplateID  string    `gorm:"not null" json:"template_id"`
+	Format      string    `gorm:"not null" json:"format"`
+	FileSize    string    `json:"file_size,omitempty"`
+	StartDate   *string   `json:"start_date,omitempty"`
+	EndDate     *string   `json:"end_date,omitempty"`
+	GeneratedAt time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"generated_at"`
+	CreatedAt   time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
+}
+
+// TableName specifies the table name for GORM
+func (ReportDownload) TableName() string {
+	return "report_downloads"
+}
+
 // Notification represents a user notification
 type Notification struct {
 	ID            int       `gorm:"primaryKey" json:"id"`

@@ -5,6 +5,7 @@
 export { default as ReportTemplateCards } from "./ReportTemplateCards";
 export { default as DownloadHistoryList } from "./DownloadHistoryList";
 export type { DownloadHistoryRef } from "./DownloadHistoryList";
+export { default as AllDownloadsModal } from "./AllDownloadsModal";
 export { default as AccessRequestList } from "./AccessRequestList";
 export { default as ReportHeaderBanner } from "./ReportHeaderBanner";
 export { default as AccessLockedView } from "./AccessLockedView";

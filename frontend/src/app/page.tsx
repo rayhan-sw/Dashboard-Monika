@@ -11,8 +11,8 @@ export default function Home() {
     const token = localStorage.getItem('token');
     
     if (!token) {
-      // Not logged in, redirect to register first
-      router.push('/auth/register');
+      // Not logged in, redirect to login page
+      router.push('/auth/login');
     } else {
       // Logged in, redirect to dashboard
       router.push('/dashboard');

@@ -65,6 +65,13 @@ export function LoginForm() {
           href="/auth/forgot-password"
           text="Lupa kata sandi?"
         />
+
+        {/* Register Link */}
+        <AuthLink
+          href="/auth/register"
+          text="Daftar"
+          prefix="Belum punya akun?"
+        />
       </form>
     </>
   );

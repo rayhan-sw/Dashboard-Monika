@@ -1,12 +1,17 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
 	"github.com/bpk-ri/dashboard-monitoring/internal/repository"
+	"github.com/bpk-ri/dashboard-monitoring/internal/service"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
 )
@@ -78,6 +83,44 @@ func GenerateReport(c *gin.Context) {
 		return
 	}
 
+	// Get user ID from context or header
+	userID, exists := c.Get("user_id")
+
+	// Default values for anonymous/testing access
+	var userIDInt int = 1 // Default to system user
+	generatedBy := "System"
+	username := "anonymous"
+	email := "system@bpk.go.id"
+
+	// If user is authenticated via context, get their info
+	if exists {
+		userIDInt = userID.(int)
+	} else {
+		// Try to get user ID from header (for non-auth middleware routes)
+		userIDStr := c.GetHeader("X-User-ID")
+		if userIDStr != "" {
+			if _, err := fmt.Sscanf(userIDStr, "%d", &userIDInt); err == nil && userIDInt > 0 {
+				// Successfully parsed user ID from header
+			} else {
+				userIDInt = 1 // Reset to default if parse failed
+			}
+		}
+	}
+
+	// Get user info from database if not default system user
+	if userIDInt > 0 {
+		db := database.GetDB()
+		var user entity.User
+		if err := db.First(&user, userIDInt).Error; err == nil {
+			generatedBy = user.FullName
+			if generatedBy == "" {
+				generatedBy = user.Username
+			}
+			username = user.Username
+			email = user.Email
+		}
+	}
+
 	// Generate report data based on template
 	reportData, err := repository.GenerateReportData(req.TemplateID, req.StartDate, req.EndDate)
 	if err != nil {
@@ -85,47 +128,192 @@ func GenerateReport(c *gin.Context) {
 		return
 	}
 
+	// Initialize report generator
+	outputDir := "generated_reports"
+	generator := service.NewReportGenerator(outputDir)
+
+	// Prepare metadata
+	metadata := service.ReportMetadata{
+		GeneratedBy: generatedBy,
+		Username:    username,
+		Email:       email,
+		DateRange:   req.StartDate + " - " + req.EndDate,
+	}
+
+	// Generate file based on format
+	var filename string
+	formatUpper := strings.ToUpper(req.Format)
+
+	switch formatUpper {
+	case "CSV":
+		filename, err = generator.GenerateCSV(req.TemplateID, reportData, metadata)
+	case "EXCEL", "XLSX":
+		filename, err = generator.GenerateExcel(req.TemplateID, reportData, metadata)
+	case "PDF":
+		filename, err = generator.GeneratePDF(req.TemplateID, reportData, metadata)
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid format. Supported formats: CSV, Excel, PDF"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to generate report: %v", err)})
+		return
+	}
+
+	// Get file info
+	fileInfo, err := os.Stat(filename)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file info"})
+		return
+	}
+
+	// Calculate file size in human-readable format
+	fileSize := formatFileSize(fileInfo.Size())
+
+	// Prepare date pointers (nil if empty string)
+	var startDate, endDate *string
+	if req.StartDate != "" {
+		startDate = &req.StartDate
+	}
+	if req.EndDate != "" {
+		endDate = &req.EndDate
+	}
+
+	// Track the download in database
+	download := &entity.ReportDownload{
+		UserID:     userIDInt,
+		ReportName: reportData.Title,
+		TemplateID: req.TemplateID,
+		Format:     formatUpper,
+		FileSize:   fileSize,
+		StartDate:  startDate,
+		EndDate:    endDate,
+	}
+
+	if err := repository.CreateReportDownload(download); err != nil {
+		// Log error but don't fail the request
+		c.Error(err)
+	}
+
+	// Return download URL
+	baseFilename := filepath.Base(filename)
+	downloadURL := fmt.Sprintf("/api/reports/download/%s", baseFilename)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":      true,
 		"template_id":  req.TemplateID,
-		"format":       req.Format,
-		"data":         reportData,
+		"format":       formatUpper,
+		"filename":     baseFilename,
+		"download_url": downloadURL,
+		"file_size":    fileSize,
 		"generated_at": time.Now(),
 	})
 }
 
-// GetRecentDownloads returns recent download history (Admin only)
-func GetRecentDownloads(c *gin.Context) {
-	// In a real app, this would come from database
-	// For now, return mock data
-	downloads := []DownloadHistory{
-		{
-			ID:         1,
-			ReportName: "Kinerja Organisasi & Wilayah - Jan 2026",
-			Format:     "PDF",
-			Size:       "245KB",
-			CreatedAt:  time.Date(2026, 1, 9, 9, 30, 0, 0, time.UTC),
-			Status:     "completed",
-		},
-		{
-			ID:         2,
-			ReportName: "Tren Aktivitas Pengguna - Q4 2025",
-			Format:     "Excel",
-			Size:       "245KB",
-			CreatedAt:  time.Date(2025, 12, 12, 9, 30, 0, 0, time.UTC),
-			Status:     "completed",
-		},
-		{
-			ID:         3,
-			ReportName: "Laporan Pemanfaatan Fitur - Q4 2025",
-			Format:     "PDF",
-			Size:       "245KB",
-			CreatedAt:  time.Date(2026, 1, 9, 9, 30, 0, 0, time.UTC),
-			Status:     "completed",
-		},
+// DownloadFile serves generated report files
+func DownloadFile(c *gin.Context) {
+	filename := c.Param("filename")
+
+	// Security: prevent directory traversal
+	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid filename"})
+		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": downloads})
+	// Construct file path
+	filePath := filepath.Join("generated_reports", filename)
+
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	// Determine content type based on file extension
+	ext := strings.ToLower(filepath.Ext(filename))
+	var contentType string
+	switch ext {
+	case ".csv":
+		contentType = "text/csv"
+	case ".xlsx":
+		contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	case ".pdf":
+		contentType = "application/pdf"
+	default:
+		contentType = "application/octet-stream"
+	}
+
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.File(filePath)
+}
+
+// Helper function to format file size
+func formatFileSize(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// GetRecentDownloads returns recent download history from database
+func GetRecentDownloads(c *gin.Context) {
+	// Get limit from query parameter, default to 10
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		limit = 10
+	}
+
+	// Get optional date filters
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	// Get downloads from database with optional date filters
+	downloads, err := repository.GetRecentDownloadsWithFilter(limit, startDate, endDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch downloads"})
+		return
+	}
+
+	// Transform to response format
+	type DownloadResponse struct {
+		ID           int    `json:"id"`
+		ReportName   string `json:"report_name"`
+		Format       string `json:"format"`
+		DownloadedBy string `json:"downloaded_by"`
+		GeneratedAt  string `json:"generated_at"`
+		FileSize     string `json:"file_size,omitempty"`
+	}
+
+	var response []DownloadResponse
+	for _, d := range downloads {
+		downloadedBy := "Unknown"
+		if d.User != nil {
+			downloadedBy = d.User.FullName
+			if downloadedBy == "" {
+				downloadedBy = d.User.Username
+			}
+		}
+
+		response = append(response, DownloadResponse{
+			ID:           d.ID,
+			ReportName:   d.ReportName,
+			Format:       d.Format,
+			DownloadedBy: downloadedBy,
+			GeneratedAt:  d.GeneratedAt.Format(time.RFC3339),
+			FileSize:     d.FileSize,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": response})
 }
 
 // GetAccessRequests returns pending access requests (Admin only)

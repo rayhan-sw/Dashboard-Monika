@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -39,8 +40,22 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Store user info in context for later use
-		// In production, extract user ID from JWT and fetch user from DB
+		// Get user ID from custom header (temporary solution until JWT is implemented)
+		userIDStr := c.GetHeader("X-User-ID")
+		if userIDStr != "" {
+			// Convert to int and verify user exists
+			var userID int
+			if _, err := fmt.Sscanf(userIDStr, "%d", &userID); err == nil {
+				db := database.GetDB()
+				var user entity.User
+				if err := db.First(&user, userID).Error; err == nil {
+					// User exists, set to context
+					c.Set("user_id", userID)
+					c.Set("user", user)
+				}
+			}
+		}
+
 		c.Next()
 	}
 }

@@ -3,8 +3,10 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/bpk-ri/dashboard-monitoring/internal/handler"
+	"github.com/bpk-ri/dashboard-monitoring/internal/service"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -24,9 +26,19 @@ func main() {
 
 	log.Println("Connected to database:", os.Getenv("DB_NAME"))
 
+	// Start cleanup service for generated reports
+	// Delete files older than 24 hours, check every 1 hour
+	cleanupService := service.NewCleanupService(
+		"generated_reports",
+		24*time.Hour, // Max age: 24 hours
+		1*time.Hour,  // Check interval: every 1 hour
+	)
+	cleanupService.Start()
+	log.Println("Cleanup service started for generated_reports")
+
 	// Initialize Gin router with custom settings
 	r := gin.Default()
-	
+
 	// Disable trailing slash redirect to prevent 301 issues
 	r.RedirectTrailingSlash = false
 	r.RedirectFixedPath = false
@@ -35,7 +47,7 @@ func main() {
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-ID")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
@@ -102,6 +114,7 @@ func main() {
 			reports.GET("/templates", handler.GetReportTemplates)
 			reports.POST("/generate", handler.GenerateReport)
 			reports.GET("/downloads", handler.GetRecentDownloads)
+			reports.GET("/download/:filename", handler.DownloadFile)
 			reports.GET("/access-requests", handler.GetAccessRequests)
 			reports.POST("/request-access", handler.RequestAccess)
 			reports.PUT("/access-requests/:id", handler.UpdateAccessRequest)
