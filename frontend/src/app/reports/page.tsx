@@ -9,7 +9,6 @@ import { userService } from "@/services/api";
 
 // Import widget components following Clean Architecture
 import {
-  ReportHeaderBanner,
   ReportTemplateCards,
   DownloadHistoryList,
   AccessRequestList,
@@ -29,7 +28,6 @@ interface UserData {
  * Reports Page
  *
  * This page displays report generation and management:
- * - BPK header banner
  * - Report template cards for generating reports
  * - Download history list
  * - Access request management (Admin only)
@@ -135,10 +133,7 @@ export default function ReportsPage() {
         <Header />
 
         {/* Page Content */}
-        <main className="pt-20 p-8 flex-1">
-          {/* BPK Header Banner */}
-          <ReportHeaderBanner />
-
+        <main className="pt-24 p-8 flex-1">
           {/* Widget Grid */}
           <div className="space-y-6">
             {hasAccess ? (

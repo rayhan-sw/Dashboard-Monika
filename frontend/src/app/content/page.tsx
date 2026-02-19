@@ -74,10 +74,10 @@ export default function ContentAnalysisPage() {
         <main className="pt-20 p-8 flex-1 overflow-x-hidden">
           {/* Page Title */}
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-orange-500">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent mb-2">
               Analisis Penggunaan Aplikasi & Konten
             </h1>
-            <p className="text-slate-500 mt-1">
+            <p className="text-gray-600">
               Analisis lengkap aktivitas pengguna, penggunaan fitur, dan
               interaksi konten
             </p>

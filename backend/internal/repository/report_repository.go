@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 )
 
@@ -232,4 +233,60 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 	}
 
 	return &report, nil
+}
+
+// CreateReportDownload records a new report download
+func CreateReportDownload(download *entity.ReportDownload) error {
+	db := database.GetDB()
+	return db.Create(download).Error
+}
+
+// GetRecentDownloads retrieves recent report downloads with user info
+func GetRecentDownloads(limit int) ([]entity.ReportDownload, error) {
+	db := database.GetDB()
+	var downloads []entity.ReportDownload
+
+	err := db.Preload("User").
+		Order("generated_at DESC").
+		Limit(limit).
+		Find(&downloads).Error
+
+	return downloads, err
+}
+
+// GetRecentDownloadsWithFilter retrieves recent report downloads with optional date filters
+func GetRecentDownloadsWithFilter(limit int, startDate, endDate string) ([]entity.ReportDownload, error) {
+	db := database.GetDB()
+	var downloads []entity.ReportDownload
+
+	query := db.Preload("User")
+
+	// Apply date filters if provided
+	if startDate != "" && endDate != "" {
+		query = query.Where("DATE(generated_at) BETWEEN ? AND ?", startDate, endDate)
+	} else if startDate != "" {
+		query = query.Where("DATE(generated_at) >= ?", startDate)
+	} else if endDate != "" {
+		query = query.Where("DATE(generated_at) <= ?", endDate)
+	}
+
+	err := query.
+		Order("generated_at DESC").
+		Limit(limit).
+		Find(&downloads).Error
+
+	return downloads, err
+}
+
+// GetDownloadsByUser retrieves downloads for a specific user
+func GetDownloadsByUser(userID int, limit int) ([]entity.ReportDownload, error) {
+	db := database.GetDB()
+	var downloads []entity.ReportDownload
+
+	err := db.Where("user_id = ?", userID).
+		Order("generated_at DESC").
+		Limit(limit).
+		Find(&downloads).Error
+
+	return downloads, err
 }

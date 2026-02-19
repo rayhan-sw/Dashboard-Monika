@@ -71,3 +71,48 @@ export interface ApiError {
   error: string;
   message?: string;
 }
+
+// Report Types
+export interface ReportTemplate {
+  id: string;
+  title: string;
+  description: string;
+  formats: string[];
+}
+
+export interface ReportGenerateRequest {
+  template_id: string;
+  format: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface ReportGenerateResponse {
+  success: boolean;
+  template_id: string;
+  format: string;
+  filename: string;
+  download_url: string;
+  file_size: string;
+  generated_at: string;
+}
+
+export interface ReportDownload {
+  id: number;
+  report_name: string;
+  format: string;
+  downloaded_by: string;
+  generated_at: string;
+  file_size?: string;
+}
+
+export interface ReportAccessRequest {
+  id: number;
+  user_id: number;
+  user_name: string;
+  unit: string;
+  requested_at: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+}
+

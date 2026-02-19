@@ -8,6 +8,10 @@ import type {
   AccessSuccessData,
   SatkerData,
   ApiResponse,
+  ReportTemplate,
+  ReportGenerateResponse,
+  ReportDownload,
+  ReportAccessRequest,
 } from "@/types/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -28,13 +32,40 @@ async function fetchApi<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
+  // Get token from localStorage
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  
+  // Get user info from localStorage
+  const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+  let userId = null;
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      userId = user.id;
+    } catch (e) {
+      console.error('Failed to parse user from localStorage', e);
+    }
+  }
+
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    };
+
+    // Add Authorization header if token exists
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Add custom user ID header for tracking
+    if (userId) {
+      headers['X-User-ID'] = String(userId);
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -330,16 +361,11 @@ export const contentService = {
 // Reports API (Laporan)
 export const reportService = {
   getTemplates: () => {
-    return fetchApi<ApiResponse<{
-      id: string;
-      name: string;
-      description: string;
-      formats: string[];
-    }[]>>("/api/reports/templates");
+    return fetchApi<ApiResponse<ReportTemplate[]>>("/api/reports/templates");
   },
 
   generateReport: (templateId: string, format: string, startDate?: string, endDate?: string) => {
-    return fetchApi<{ success: boolean; filename: string; download_url: string }>(
+    return fetchApi<ReportGenerateResponse>(
       "/api/reports/generate",
       {
         method: "POST",
@@ -353,17 +379,13 @@ export const reportService = {
     );
   },
 
-  getRecentDownloads: (limit?: number) => {
+  getRecentDownloads: (limit?: number, startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
     if (limit) params.append("limit", limit.toString());
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
     const query = params.toString();
-    return fetchApi<ApiResponse<{
-      id: number;
-      report_name: string;
-      format: string;
-      generated_at: string;
-      downloaded_by: string;
-    }[]>>(`/api/reports/downloads${query ? `?${query}` : ""}`);
+    return fetchApi<ApiResponse<ReportDownload[]>>(`/api/reports/downloads${query ? `?${query}` : ""}`);
   },
 
   getAccessRequests: () => {
