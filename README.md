@@ -53,22 +53,47 @@ Dashboard-BPK/
 ├── frontend/                 # Next.js Application
 │   └── src/
 │       ├── app/              # Pages (dashboard, regional, search, dll)
-│       ├── components/       # UI Components
+│       │   └── auth/
+│       │       ├── _hooks/   # Controller layer (custom hooks)
+│       │       └── _services/# Model layer (API calls)
+│       ├── components/       # View layer (UI Components)
 │       ├── services/         # API Client
-│       └── stores/           # Zustand State
+│       └── stores/           # Zustand State Management
 │
 ├── backend/                  # Go API Server
-│   ├── cmd/api/              # Entry point
+│   ├── cmd/api/              # Application entry point
 │   ├── internal/
-│   │   ├── handler/          # HTTP Handlers
-│   │   ├── repository/       # Database Layer
-│   │   └── entity/           # Data Models
+│   │   ├── entity/           # Domain models (Model)
+│   │   ├── service/          # Business logic layer
+│   │   ├── handler/          # HTTP handlers (Controller)
+│   │   ├── repository/       # Data access layer (Model)
+│   │   └── middleware/       # Cross-cutting concerns
 │   ├── migrations/           # SQL Migrations
 │   └── scripts/              # Utility Scripts
 │
+├── ARCHITECTURE.md           # Architecture documentation
+├── REFACTORING_SUMMARY.md    # Recent refactoring details
 ├── start-dev.ps1             # Start all servers
 └── stop-dev.ps1              # Stop all servers
 ```
+
+## Architecture
+
+This project follows **Clean Architecture** and **MVC (Model-View-Controller)** principles:
+
+### Backend (Go)
+- **Controllers**: `handler/` - HTTP request/response handling
+- **Services**: `service/` - Business logic and orchestration
+- **Models**: `entity/` + `repository/` - Data models and persistence
+- **Clear separation** of concerns with dependency injection
+
+### Frontend (Next.js/React)
+- **View**: React components for presentation
+- **Controller**: Custom hooks for state and logic
+- **Model**: API services for data access
+
+📖 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation.
+📊 See [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) for recent improvements.
 
 ## API Endpoints
 

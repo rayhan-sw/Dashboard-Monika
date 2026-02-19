@@ -74,14 +74,12 @@ func (rg *ReportGenerator) GeneratePDF(templateID string, data *repository.Repor
 	}
 }
 
-// Helper function to generate unique filename
 func (rg *ReportGenerator) generateFilename(templateID, format string) string {
 	timestamp := time.Now().Format("20060102_150405")
 	filename := fmt.Sprintf("%s_%s.%s", templateID, timestamp, strings.ToLower(format))
 	return filepath.Join(rg.OutputDir, filename)
 }
 
-// Helper function to write CSV content to file
 func (rg *ReportGenerator) writeCSVFile(filename, content string) error {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -93,7 +91,6 @@ func (rg *ReportGenerator) writeCSVFile(filename, content string) error {
 	return err
 }
 
-// Helper function to format number with thousands separator
 func formatNumber(n int) string {
 	str := fmt.Sprintf("%d", n)
 	if len(str) <= 3 {
@@ -110,7 +107,6 @@ func formatNumber(n int) string {
 	return result
 }
 
-// Helper function to calculate percentage
 func calculatePercentage(part, total int) string {
 	if total == 0 {
 		return "0.00"
@@ -270,7 +266,6 @@ func (rg *ReportGenerator) generateFeatureUsageCSV(data *repository.ReportData, 
 	return filename, rg.writeCSVFile(filename, content.String())
 }
 
-// Helper function to categorize features
 func categorizeFeature(feature string) string {
 	featureLower := strings.ToLower(feature)
 

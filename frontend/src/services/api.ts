@@ -50,15 +50,13 @@ async function fetchApi<T>(
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      ...options?.headers,
+      ...(options?.headers as Record<string, string> || {}),
     };
 
-    // Add Authorization header if token exists
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Add custom user ID header for tracking
     if (userId) {
       headers['X-User-ID'] = String(userId);
     }
@@ -458,6 +456,72 @@ export const notificationService = {
         body: JSON.stringify({ user_id: userId }),
       }
     );
+  },
+};
+
+// Profile API
+export const profileService = {
+  getProfile: () => {
+    return fetchApi<{
+      id: number;
+      username: string;
+      full_name: string;
+      email: string;
+      role: string;
+      profile_photo?: string;
+      report_access_status: string;
+      last_login?: string;
+      created_at: string;
+      report_access_label: string;
+    }>("/api/profile");
+  },
+
+  updateProfilePhoto: (profilePhoto: string) => {
+    return fetchApi<{
+      message: string;
+      user: {
+        id: number;
+        username: string;
+        full_name: string;
+        email: string;
+        role: string;
+        profile_photo: string;
+      };
+    }>("/api/profile/photo", {
+      method: "PUT",
+      body: JSON.stringify({ profile_photo: profilePhoto }),
+    });
+  },
+
+  requestReportAccess: () => {
+    return fetchApi<{
+      message: string;
+      status: string;
+    }>("/api/profile/request-access", {
+      method: "POST",
+    });
+  },
+
+  getPendingAccessRequests: () => {
+    return fetchApi<{
+      requests: Array<{
+        id: number;
+        username: string;
+        full_name: string;
+        email: string;
+        report_access_status: string;
+      }>;
+      count: number;
+    }>("/api/profile/access-requests");
+  },
+
+  approveReportAccess: (userId: number, action: "approve" | "reject") => {
+    return fetchApi<{
+      message: string;
+      status: string;
+    }>(`/api/profile/access-requests/${userId}?action=${action}`, {
+      method: "PUT",
+    });
   },
 };
 

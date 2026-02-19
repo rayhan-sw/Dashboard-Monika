@@ -249,7 +249,6 @@ func DownloadFile(c *gin.Context) {
 	c.File(filePath)
 }
 
-// Helper function to format file size
 func formatFileSize(bytes int64) string {
 	const unit = 1024
 	if bytes < unit {

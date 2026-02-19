@@ -1,8 +1,3 @@
-/**
- * useLogin Hook - Controller Layer
- * Handles login form logic and state management
- */
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';

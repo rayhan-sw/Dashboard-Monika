@@ -1,8 +1,3 @@
-/**
- * useForgotPassword Hook - Controller Layer
- * Handles forgot password form logic and state management
- */
-
 'use client';
 
 import { useState, useCallback } from 'react';

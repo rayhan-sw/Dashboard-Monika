@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Icon } from "@iconify/react";
 import {
   Bell,
@@ -555,12 +556,13 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
           </div>
 
           {/* Settings */}
-          <button
+          <Link
+            href="/settings"
             className="w-10 h-10 rounded-md-bpk hover:bg-gray-6 
                            flex items-center justify-center transition-colors"
           >
             <Settings className="w-5 h-5 text-gray-2" />
-          </button>
+          </Link>
 
           {/* User Profile */}
           <div className="relative" ref={userMenuRef}>

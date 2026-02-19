@@ -237,8 +237,9 @@ export default function Sidebar() {
       </nav>
 
       {/* User Profile Area */}
-      <div
-        className={`h-20 border-t border-gray-5 flex items-center gap-3 ${
+      <Link
+        href="/settings"
+        className={`h-20 border-t border-gray-5 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors ${
           sidebarCollapsed ? "px-2 justify-center" : "px-4"
         }`}
         style={{
@@ -270,11 +271,11 @@ export default function Sidebar() {
           </div>
         </div>
         {!sidebarCollapsed && (
-          <button className="w-8 h-8 rounded-md-bpk hover:bg-gray-6 flex items-center justify-center transition-colors">
+          <div className="w-8 h-8 rounded-md-bpk hover:bg-gray-200 flex items-center justify-center transition-colors">
             <Settings className="w-4 h-4 text-gray-3" />
-          </button>
+          </div>
         )}
-      </div>
+      </Link>
     </aside>
   );
 }

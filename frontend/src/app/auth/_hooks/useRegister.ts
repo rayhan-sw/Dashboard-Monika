@@ -1,8 +1,3 @@
-/**
- * useRegister Hook - Controller Layer
- * Handles register form logic and state management
- */
-
 'use client';
 
 import { useState, useCallback } from 'react';

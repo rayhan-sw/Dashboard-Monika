@@ -10,6 +10,7 @@ type User struct {
 	Role               string     `gorm:"not null;default:user" json:"role"`
 	FullName           string     `json:"full_name,omitempty"`
 	Email              string     `json:"email,omitempty"`
+	ProfilePhoto       string     `json:"profile_photo,omitempty"`
 	IsActive           bool       `gorm:"default:true" json:"is_active"`
 	ReportAccessStatus string     `gorm:"default:none" json:"report_access_status"` // none, pending, approved, rejected
 	CreatedAt          time.Time  `json:"created_at"`
@@ -49,4 +50,15 @@ type LoginResponse struct {
 	Token   string `json:"token"`
 	User    User   `json:"user"`
 	Message string `json:"message"`
+}
+
+// UpdateProfilePhotoRequest represents update profile photo request
+type UpdateProfilePhotoRequest struct {
+	ProfilePhoto string `json:"profile_photo" binding:"required"`
+}
+
+// UserProfileResponse represents user profile with computed fields
+type UserProfileResponse struct {
+	User
+	ReportAccessLabel string `json:"report_access_label"`
 }

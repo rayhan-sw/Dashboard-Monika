@@ -11,14 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { reportService } from "@/services/api";
-
-// Types
-interface ReportTemplate {
-  id: string;
-  name: string;
-  description: string;
-  formats: string[];
-}
+import type { ReportTemplate } from "@/types/api";
 
 // Template icons mapping
 const TEMPLATE_ICONS: Record<string, React.ReactNode> = {
@@ -172,7 +165,7 @@ export default function ReportTemplateCards({
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {templates.map((template) => {
         const displayInfo = TEMPLATE_DISPLAY_NAMES[template.id] || {
-          title: template.name,
+          title: template.title,
           desc: template.description,
         };
         return (

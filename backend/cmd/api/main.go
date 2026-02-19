@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bpk-ri/dashboard-monitoring/internal/handler"
+	"github.com/bpk-ri/dashboard-monitoring/internal/middleware"
 	"github.com/bpk-ri/dashboard-monitoring/internal/service"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
@@ -13,12 +14,10 @@ import (
 )
 
 func main() {
-	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment")
 	}
 
-	// Initialize database connection
 	if err := database.InitDB(); err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -26,25 +25,38 @@ func main() {
 
 	log.Println("Connected to database:", os.Getenv("DB_NAME"))
 
-	// Start cleanup service for generated reports
-	// Delete files older than 24 hours, check every 1 hour
+	startCleanupService()
+	router := setupRouter()
+	startServer(router)
+}
+
+func startCleanupService() {
 	cleanupService := service.NewCleanupService(
 		"generated_reports",
-		24*time.Hour, // Max age: 24 hours
-		1*time.Hour,  // Check interval: every 1 hour
+		24*time.Hour,
+		1*time.Hour,
 	)
 	cleanupService.Start()
 	log.Println("Cleanup service started for generated_reports")
+}
 
-	// Initialize Gin router with custom settings
+func setupRouter() *gin.Engine {
 	r := gin.Default()
-
-	// Disable trailing slash redirect to prevent 301 issues
 	r.RedirectTrailingSlash = false
 	r.RedirectFixedPath = false
 
-	// CORS middleware
-	r.Use(func(c *gin.Context) {
+	r.Use(corsMiddleware())
+
+	r.GET("/health", healthCheck)
+
+	setupAuthRoutes(r)
+	setupAPIRoutes(r)
+
+	return r
+}
+
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-ID")
@@ -53,18 +65,18 @@ func main() {
 			return
 		}
 		c.Next()
-	})
+	}
+}
 
-	// Health check
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "ok",
-			"service": "Dashboard BPK API",
-			"version": "1.0.0",
-		})
+func healthCheck(c *gin.Context) {
+	c.JSON(200, gin.H{
+		"status":  "ok",
+		"service": "Dashboard BPK API",
+		"version": "1.0.0",
 	})
+}
 
-	// Authentication routes (public - no middleware)
+func setupAuthRoutes(r *gin.Engine) {
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/login", handler.Login)
@@ -72,79 +84,111 @@ func main() {
 		auth.POST("/forgot-password", handler.ForgotPassword)
 		auth.POST("/logout", handler.Logout)
 	}
+}
 
-	// API routes
+func setupAPIRoutes(r *gin.Engine) {
 	api := r.Group("/api")
 	{
-		// Dashboard routes
-		dashboard := api.Group("/dashboard")
-		{
-			dashboard.GET("/stats", handler.GetDashboardStats)
-			dashboard.GET("/activities", handler.GetActivities)
-			dashboard.GET("/charts/:type", handler.GetChartData)
-			dashboard.GET("/access-success", handler.GetAccessSuccessRate)
-			dashboard.GET("/date-range", handler.GetDateRange)
-			dashboard.GET("/clusters", handler.GetClusters)
-			dashboard.GET("/logout-errors", handler.GetLogoutErrors)
-		}
-
-		// Regional routes
-		regional := api.Group("/regional")
-		{
-			regional.GET("/provinces", handler.GetProvinces)
-			regional.GET("/locations", handler.GetLokasi)
-			regional.GET("/units", handler.GetUnits)
-			regional.GET("/units/hourly", handler.GetHourlyDataForSatker)
-			regional.GET("/top-contributors", handler.GetTopContributors)
-		}
-
-		// Content Analytics routes (Analisis Konten)
-		content := api.Group("/content")
-		{
-			content.GET("/dashboard-rankings", handler.GetDashboardRankings)
-			content.GET("/search-modules", handler.GetSearchModuleUsage)
-			content.GET("/export-stats", handler.GetExportStats)
-			content.GET("/operational-intents", handler.GetOperationalIntents)
-			content.GET("/global-economics", handler.GetGlobalEconomicsChart)
-		}
-
-		// Reports routes (Laporan)
-		reports := api.Group("/reports")
-		{
-			reports.GET("/templates", handler.GetReportTemplates)
-			reports.POST("/generate", handler.GenerateReport)
-			reports.GET("/downloads", handler.GetRecentDownloads)
-			reports.GET("/download/:filename", handler.DownloadFile)
-			reports.GET("/access-requests", handler.GetAccessRequests)
-			reports.POST("/request-access", handler.RequestAccess)
-			reports.PUT("/access-requests/:id", handler.UpdateAccessRequest)
-		}
-
-		// Notification routes
-		notifications := api.Group("/notifications")
-		{
-			notifications.GET("", handler.GetNotifications)
-			notifications.PUT("/:id/read", handler.MarkNotificationRead)
-			notifications.POST("/read-all", handler.MarkAllNotificationsRead)
-		}
-
-		// User profile routes
-		users := api.Group("/users")
-		{
-			users.GET("/profile", handler.GetUserProfile)
-		}
-
-		// Search routes - register directly without trailing slash issues
-		api.GET("/search", handler.GlobalSearch)
-		api.GET("/search/suggestions", handler.GetSearchSuggestions)
-		api.GET("/search/users", handler.SearchUsers)
-		api.GET("/search/satker", handler.SearchSatker)
-
-		// Metadata routes
-		api.GET("/metadata/satker", handler.GetSatkerList)
+		setupDashboardRoutes(api)
+		setupRegionalRoutes(api)
+		setupContentRoutes(api)
+		setupReportRoutes(api)
+		setupNotificationRoutes(api)
+		setupUserRoutes(api)
+		setupProfileRoutes(api)
+		setupSearchRoutes(api)
+		setupMetadataRoutes(api)
 	}
+}
 
-	// Start server
+func setupDashboardRoutes(api *gin.RouterGroup) {
+	dashboard := api.Group("/dashboard")
+	{
+		dashboard.GET("/stats", handler.GetDashboardStats)
+		dashboard.GET("/activities", handler.GetActivities)
+		dashboard.GET("/charts/:type", handler.GetChartData)
+		dashboard.GET("/access-success", handler.GetAccessSuccessRate)
+		dashboard.GET("/date-range", handler.GetDateRange)
+		dashboard.GET("/clusters", handler.GetClusters)
+		dashboard.GET("/logout-errors", handler.GetLogoutErrors)
+	}
+}
+
+func setupRegionalRoutes(api *gin.RouterGroup) {
+	regional := api.Group("/regional")
+	{
+		regional.GET("/provinces", handler.GetProvinces)
+		regional.GET("/locations", handler.GetLokasi)
+		regional.GET("/units", handler.GetUnits)
+		regional.GET("/units/hourly", handler.GetHourlyDataForSatker)
+		regional.GET("/top-contributors", handler.GetTopContributors)
+	}
+}
+
+func setupContentRoutes(api *gin.RouterGroup) {
+	content := api.Group("/content")
+	{
+		content.GET("/dashboard-rankings", handler.GetDashboardRankings)
+		content.GET("/search-modules", handler.GetSearchModuleUsage)
+		content.GET("/export-stats", handler.GetExportStats)
+		content.GET("/operational-intents", handler.GetOperationalIntents)
+		content.GET("/global-economics", handler.GetGlobalEconomicsChart)
+	}
+}
+
+func setupReportRoutes(api *gin.RouterGroup) {
+	reports := api.Group("/reports")
+	{
+		reports.GET("/templates", handler.GetReportTemplates)
+		reports.POST("/generate", handler.GenerateReport)
+		reports.GET("/downloads", handler.GetRecentDownloads)
+		reports.GET("/download/:filename", handler.DownloadFile)
+		reports.GET("/access-requests", handler.GetAccessRequests)
+		reports.POST("/request-access", handler.RequestAccess)
+		reports.PUT("/access-requests/:id", handler.UpdateAccessRequest)
+	}
+}
+
+func setupNotificationRoutes(api *gin.RouterGroup) {
+	notifications := api.Group("/notifications")
+	{
+		notifications.GET("", handler.GetNotifications)
+		notifications.PUT("/:id/read", handler.MarkNotificationRead)
+		notifications.POST("/read-all", handler.MarkAllNotificationsRead)
+	}
+}
+
+func setupUserRoutes(api *gin.RouterGroup) {
+	users := api.Group("/users")
+	{
+		users.GET("/profile", handler.GetUserProfile)
+	}
+}
+
+func setupProfileRoutes(api *gin.RouterGroup) {
+	profile := api.Group("/profile")
+	profile.Use(middleware.AuthMiddleware())
+	{
+		profile.GET("", handler.GetProfile)
+		profile.PUT("/photo", handler.UpdateProfilePhoto)
+		profile.POST("/request-access", handler.RequestReportAccess)
+		profile.GET("/access-requests", handler.GetPendingAccessRequests)
+		profile.PUT("/access-requests/:id", handler.ApproveReportAccess)
+	}
+}
+
+func setupSearchRoutes(api *gin.RouterGroup) {
+	api.GET("/search", handler.GlobalSearch)
+	api.GET("/search/suggestions", handler.GetSearchSuggestions)
+	api.GET("/search/users", handler.SearchUsers)
+	api.GET("/search/satker", handler.SearchSatker)
+}
+
+func setupMetadataRoutes(api *gin.RouterGroup) {
+	api.GET("/metadata/satker", handler.GetSatkerList)
+}
+
+func startServer(r *gin.Engine) {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
