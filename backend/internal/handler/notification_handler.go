@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
+	"github.com/bpk-ri/dashboard-monitoring/internal/response"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
 )
@@ -27,7 +28,7 @@ func GetNotifications(c *gin.Context) {
 
 	var notifications []entity.Notification
 	if err := db.Where("user_id = ?", userID).Order("created_at DESC").Find(&notifications).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch notifications"})
+		response.Internal(c, err)
 		return
 	}
 
@@ -53,7 +54,7 @@ func MarkNotificationRead(c *gin.Context) {
 	db := database.GetDB()
 
 	if err := db.Model(&entity.Notification{}).Where("id = ?", notifID).Update("is_read", true).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark notification as read"})
+		response.Internal(c, err)
 		return
 	}
 
@@ -77,7 +78,7 @@ func MarkAllNotificationsRead(c *gin.Context) {
 	db := database.GetDB()
 
 	if err := db.Model(&entity.Notification{}).Where("user_id = ?", req.UserID).Update("is_read", true).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark all notifications as read"})
+		response.Internal(c, err)
 		return
 	}
 

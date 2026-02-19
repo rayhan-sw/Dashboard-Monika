@@ -94,7 +94,6 @@ export default function RegionalPage() {
   const router = useRouter();
   const selectedCluster = useAppStore((state) => state.selectedCluster);
   const dateRange = useAppStore((state) => state.dateRange);
-  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const [authLoading, setAuthLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState<string>("");
   const [selectedEselon, setSelectedEselon] = useState<string>("Semua Eselon");
@@ -106,9 +105,9 @@ export default function RegionalPage() {
 
   // Auth check
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) {
-      router.push('/auth/login');
+      router.push("/auth/login");
     } else {
       setAuthLoading(false);
     }
@@ -230,7 +229,7 @@ export default function RegionalPage() {
           satkerPerformance.length,
         );
 
-        // 2. Fetch locations
+        // 2. Fetch locations (now returns satker-based province data)
         const locationsResponse = await regionalService.getLocations(
           startDate,
           endDate,
@@ -240,68 +239,16 @@ export default function RegionalPage() {
         const locations = locationsResponse.data;
 
         console.log(
-          "Regional Page - Locations from DB aggregation:",
+          "Regional Page - Satker provinces from DB aggregation:",
           locations.length,
         );
 
         // 3. Process Geographic Distribution for map
-        const provinceMapForChart = new Map<string, number>();
-
-        locations.forEach((item) => {
-          const location = item.lokasi?.trim() || "";
-          const count = item.count || 0;
-
-          if (!location) return;
-
-          let targetProvince = "";
-
-          // Normalize province names to match GeoJSON format (UPPERCASE)
-          const cleanLocation = location.toLowerCase();
-
-          if (cleanLocation.includes("pusat")) {
-            targetProvince = "DKI JAKARTA";
-          } else if (cleanLocation.includes("aceh")) {
-            targetProvince = "ACEH";
-          } else if (cleanLocation.includes("yogyakarta")) {
-            targetProvince = "DI YOGYAKARTA";
-          } else if (cleanLocation.includes("jakarta")) {
-            targetProvince = "DKI JAKARTA";
-          } else if (
-            cleanLocation.includes("bangka") ||
-            cleanLocation.includes("belitung")
-          ) {
-            targetProvince = "KEPULAUAN BANGKA BELITUNG";
-          } else {
-            // Try to match with REGION_MAP keys
-            const matchedProvince = Object.keys(REGION_MAP).find(
-              (provinceName) => {
-                const cleanProvince = provinceName.toLowerCase();
-                return (
-                  cleanLocation.includes(cleanProvince) ||
-                  cleanProvince.includes(cleanLocation)
-                );
-              },
-            );
-
-            if (matchedProvince) {
-              // Convert to GeoJSON format (UPPERCASE)
-              targetProvince = matchedProvince.toUpperCase();
-            } else {
-              targetProvince = location.toUpperCase();
-            }
-          }
-
-          if (targetProvince) {
-            provinceMapForChart.set(
-              targetProvince,
-              (provinceMapForChart.get(targetProvince) || 0) + count,
-            );
-          }
-        });
-
-        const mapProvinceData = Array.from(provinceMapForChart.entries()).map(
-          ([name, count]) => ({ name, count }),
-        );
+        // Backend already returns normalized UPPERCASE province names
+        const mapProvinceData = locations.map((item) => ({
+          name: item.lokasi?.trim() || "",
+          count: item.count || 0,
+        })).filter(item => item.name !== "");
 
         setMapData(mapProvinceData);
 
@@ -312,108 +259,16 @@ export default function RegionalPage() {
         );
         console.log("Regional Page - Province mapping:", mapProvinceData);
 
-        // 4. Process Geographic Distribution for chart (normalize to UPPERCASE)
-        const provinceMap = new Map<string, number>();
+        // 4. Process Geographic Distribution for chart
+        // Backend already returns normalized UPPERCASE province names
+        const regionData: { [key: string]: GeoRegion } = {};
+        
         locations.forEach((item) => {
-          const location = item.lokasi?.trim() || "";
+          const provinceName = item.lokasi?.trim() || "";
           const count = item.count || 0;
 
-          if (!location) return;
+          if (!provinceName) return;
 
-          let normalizedProvince = "";
-          const cleanLocation = location.toLowerCase();
-
-          // Normalize province names to match GeoJSON format (UPPERCASE)
-          if (cleanLocation.includes("pusat")) {
-            normalizedProvince = "DKI JAKARTA";
-          } else if (cleanLocation.includes("aceh")) {
-            normalizedProvince = "ACEH";
-          } else if (cleanLocation.includes("yogyakarta")) {
-            normalizedProvince = "DI YOGYAKARTA";
-          } else if (cleanLocation.includes("jakarta")) {
-            normalizedProvince = "DKI JAKARTA";
-          } else if (
-            cleanLocation.includes("bangka") ||
-            cleanLocation.includes("belitung")
-          ) {
-            normalizedProvince = "KEPULAUAN BANGKA BELITUNG";
-          } else if (cleanLocation.includes("sumatera utara")) {
-            normalizedProvince = "SUMATERA UTARA";
-          } else if (cleanLocation.includes("sumatera barat")) {
-            normalizedProvince = "SUMATERA BARAT";
-          } else if (cleanLocation.includes("sumatera selatan")) {
-            normalizedProvince = "SUMATERA SELATAN";
-          } else if (cleanLocation.includes("jawa barat")) {
-            normalizedProvince = "JAWA BARAT";
-          } else if (cleanLocation.includes("jawa tengah")) {
-            normalizedProvince = "JAWA TENGAH";
-          } else if (cleanLocation.includes("jawa timur")) {
-            normalizedProvince = "JAWA TIMUR";
-          } else if (cleanLocation.includes("kalimantan barat")) {
-            normalizedProvince = "KALIMANTAN BARAT";
-          } else if (cleanLocation.includes("kalimantan tengah")) {
-            normalizedProvince = "KALIMANTAN TENGAH";
-          } else if (cleanLocation.includes("kalimantan selatan")) {
-            normalizedProvince = "KALIMANTAN SELATAN";
-          } else if (cleanLocation.includes("kalimantan timur")) {
-            normalizedProvince = "KALIMANTAN TIMUR";
-          } else if (cleanLocation.includes("kalimantan utara")) {
-            normalizedProvince = "KALIMANTAN UTARA";
-          } else if (cleanLocation.includes("sulawesi utara")) {
-            normalizedProvince = "SULAWESI UTARA";
-          } else if (cleanLocation.includes("sulawesi tengah")) {
-            normalizedProvince = "SULAWESI TENGAH";
-          } else if (cleanLocation.includes("sulawesi selatan")) {
-            normalizedProvince = "SULAWESI SELATAN";
-          } else if (cleanLocation.includes("sulawesi tenggara")) {
-            normalizedProvince = "SULAWESI TENGGARA";
-          } else if (cleanLocation.includes("sulawesi barat")) {
-            normalizedProvince = "SULAWESI BARAT";
-          } else if (cleanLocation.includes("nusa tenggara barat")) {
-            normalizedProvince = "NUSA TENGGARA BARAT";
-          } else if (cleanLocation.includes("nusa tenggara timur")) {
-            normalizedProvince = "NUSA TENGGARA TIMUR";
-          } else if (cleanLocation.includes("papua barat daya")) {
-            normalizedProvince = "PAPUA BARAT DAYA";
-          } else if (cleanLocation.includes("papua pegunungan")) {
-            normalizedProvince = "PAPUA PEGUNUNGAN";
-          } else if (cleanLocation.includes("papua selatan")) {
-            normalizedProvince = "PAPUA SELATAN";
-          } else if (cleanLocation.includes("papua tengah")) {
-            normalizedProvince = "PAPUA TENGAH";
-          } else if (cleanLocation.includes("papua barat")) {
-            normalizedProvince = "PAPUA BARAT";
-          } else if (cleanLocation.includes("papua")) {
-            normalizedProvince = "PAPUA";
-          } else {
-            // Try to match with REGION_MAP keys (already UPPERCASE)
-            const matchedProvince = Object.keys(REGION_MAP).find(
-              (provinceName) => {
-                const cleanProvince = provinceName.toLowerCase();
-                return (
-                  cleanLocation.includes(cleanProvince) ||
-                  cleanProvince.includes(cleanLocation)
-                );
-              },
-            );
-
-            normalizedProvince = matchedProvince || location.toUpperCase();
-          }
-
-          if (normalizedProvince) {
-            provinceMap.set(
-              normalizedProvince,
-              (provinceMap.get(normalizedProvince) || 0) + count,
-            );
-          }
-        });
-
-        const regionData: { [key: string]: GeoRegion } = {};
-        const sortedProvinces = Array.from(provinceMap.entries()).sort(
-          (a, b) => b[1] - a[1],
-        );
-
-        sortedProvinces.forEach(([provinceName, count]) => {
           let region;
 
           // Check if it's PUSAT
@@ -632,14 +487,8 @@ export default function RegionalPage() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
 
-      <div
-        className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? "ml-20" : "ml-80"}`}
-        style={{
-          transition: "margin-left 300ms ease-out",
-          willChange: "margin-left",
-        }}
-      >
-        <Header sidebarCollapsed={sidebarCollapsed} />
+      <div className="flex-1 flex flex-col min-h-screen ml-80">
+        <Header />
         <main className="pt-20 p-8 flex-1">
           <div className="max-w-[1800px] mx-auto space-y-8">
             {/* Page Header with Filter */}

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import Footer from "@/components/layout/Footer";
-import { useAppStore } from "@/stores/appStore";
 
 // Import widget components following Clean Architecture
 import {
@@ -39,13 +38,12 @@ import {
  */
 export default function ContentAnalysisPage() {
   const router = useRouter();
-  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) {
-      router.push('/auth/login');
+      router.push("/auth/login");
     } else {
       setLoading(false);
     }
@@ -68,15 +66,9 @@ export default function ContentAnalysisPage() {
       <Sidebar />
 
       {/* Main Content Area */}
-      <div
-        className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? "ml-20" : "ml-80"}`}
-        style={{
-          transition: "margin-left 300ms ease-out",
-          willChange: "margin-left",
-        }}
-      >
+      <div className="flex-1 flex flex-col min-h-screen ml-80">
         {/* Header */}
-        <Header sidebarCollapsed={sidebarCollapsed} />
+        <Header />
 
         {/* Page Content */}
         <main className="pt-20 p-8 flex-1 overflow-x-hidden">

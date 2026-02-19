@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/bpk-ri/dashboard-monitoring/internal/repository"
+	"github.com/bpk-ri/dashboard-monitoring/internal/response"
 	"github.com/gin-gonic/gin"
 )
 
@@ -14,7 +15,7 @@ func GetDashboardRankings(c *gin.Context) {
 
 	rankings, err := repository.GetDashboardRankings(startDate, endDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Internal(c, err)
 		return
 	}
 
@@ -29,7 +30,7 @@ func GetSearchModuleUsage(c *gin.Context) {
 
 	modules, err := repository.GetSearchModuleUsage(startDate, endDate, cluster)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Internal(c, err)
 		return
 	}
 
@@ -44,7 +45,7 @@ func GetExportStats(c *gin.Context) {
 
 	stats, err := repository.GetExportStats(startDate, endDate, cluster)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Internal(c, err)
 		return
 	}
 
@@ -60,7 +61,7 @@ func GetOperationalIntents(c *gin.Context) {
 
 	intents, err := repository.GetOperationalIntents(startDate, endDate, cluster, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Internal(c, err)
 		return
 	}
 
@@ -74,7 +75,7 @@ func GetGlobalEconomicsChart(c *gin.Context) {
 
 	data, err := repository.GetGlobalEconomicsChart(startDate, endDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Internal(c, err)
 		return
 	}
 

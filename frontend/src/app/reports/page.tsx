@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import Footer from "@/components/layout/Footer";
-import { useAppStore } from "@/stores/appStore";
 import { userService } from "@/services/api";
 
 // Import widget components following Clean Architecture
@@ -43,7 +42,6 @@ interface UserData {
  */
 export default function ReportsPage() {
   const router = useRouter();
-  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const downloadHistoryRef = useRef<DownloadHistoryRef>(null);
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -51,14 +49,14 @@ export default function ReportsPage() {
   // Auth check and load user data
   useEffect(() => {
     const loadUserData = async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        router.push('/auth/login');
+        router.push("/auth/login");
         return;
       }
 
       // Get user from localStorage
-      const userStr = localStorage.getItem('user');
+      const userStr = localStorage.getItem("user");
       if (userStr) {
         try {
           const user = JSON.parse(userStr);
@@ -71,17 +69,17 @@ export default function ReportsPage() {
               // Fallback to localStorage data if API fails
               setUserData({
                 ...user,
-                report_access_status: user.report_access_status || 'none'
+                report_access_status: user.report_access_status || "none",
               });
             }
           } else {
             setUserData({
               ...user,
-              report_access_status: user.report_access_status || 'none'
+              report_access_status: user.report_access_status || "none",
             });
           }
         } catch (e) {
-          console.error('Failed to parse user data:', e);
+          console.error("Failed to parse user data:", e);
         }
       }
       setLoading(false);
@@ -98,7 +96,9 @@ export default function ReportsPage() {
         setUserData(response.data as UserData);
       } catch (error) {
         // Update local state to pending
-        setUserData(prev => prev ? { ...prev, report_access_status: 'pending' } : null);
+        setUserData((prev) =>
+          prev ? { ...prev, report_access_status: "pending" } : null,
+        );
       }
     }
   };
@@ -120,9 +120,9 @@ export default function ReportsPage() {
   };
 
   // Determine if user has access
-  const isAdmin = userData?.role === 'admin';
-  const hasAccess = isAdmin || userData?.report_access_status === 'approved';
-  const accessStatus = userData?.report_access_status || 'none';
+  const isAdmin = userData?.role === "admin";
+  const hasAccess = isAdmin || userData?.report_access_status === "approved";
+  const accessStatus = userData?.report_access_status || "none";
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -130,15 +130,9 @@ export default function ReportsPage() {
       <Sidebar />
 
       {/* Main Content Area */}
-      <div
-        className={`flex-1 flex flex-col min-h-screen ${sidebarCollapsed ? "ml-20" : "ml-80"}`}
-        style={{
-          transition: "margin-left 300ms ease-out",
-          willChange: "margin-left",
-        }}
-      >
+      <div className="flex-1 flex flex-col min-h-screen ml-80">
         {/* Header */}
-        <Header sidebarCollapsed={sidebarCollapsed} />
+        <Header />
 
         {/* Page Content */}
         <main className="pt-20 p-8 flex-1">
@@ -150,7 +144,9 @@ export default function ReportsPage() {
             {hasAccess ? (
               <>
                 {/* Report Templates */}
-                <ReportTemplateCards onReportGenerated={handleReportGenerated} />
+                <ReportTemplateCards
+                  onReportGenerated={handleReportGenerated}
+                />
 
                 {/* Download History */}
                 <DownloadHistoryList ref={downloadHistoryRef} limit={5} />
@@ -160,8 +156,8 @@ export default function ReportsPage() {
               </>
             ) : (
               /* Access Locked View for users without access */
-              <AccessLockedView 
-                userId={userData?.id || 0} 
+              <AccessLockedView
+                userId={userData?.id || 0}
                 accessStatus={accessStatus}
                 onRequestSent={handleRequestSent}
               />

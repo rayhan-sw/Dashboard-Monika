@@ -12,23 +12,20 @@ export interface DashboardStats {
 }
 
 export interface ActivityLog {
-  id: string;
+  id: number;
   id_trans: string;
   nama: string;
   satker: string;
   aktifitas: string;
-  scope: string;
-  lokasi: string;
   cluster: string;
-  tanggal: string;
-  token: string;
+  lokasi: string;
   province: string;
-  region: string;
+  scope: string;
+  detail_aktifitas: string;
+  status: string;
+  eselon: string;
+  tanggal: string;
   created_at: string;
-  updated_at: string;
-  status?: string;
-  detail_aktifitas?: string;
-  eselon?: string;
 }
 
 export interface PaginatedResponse<T> {

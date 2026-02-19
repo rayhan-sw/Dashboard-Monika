@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import type { ActivityLog } from "@/types/api";
 import { format } from "date-fns";
@@ -26,6 +26,18 @@ export default function SearchResults({
   onPageChange,
 }: SearchResultsProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("timeline");
+  // Timeline minimalis: cluster diklik baru tampil aktivitasnya. Key: "date|clusterName"
+  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
+
+  const toggleCluster = (date: string, clusterName: string) => {
+    const key = `${date}|${clusterName}`;
+    setExpandedClusters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   if (loading) {
     return (
@@ -58,7 +70,7 @@ export default function SearchResults({
     );
   }
 
-  // Group by date for timeline view
+  // Group by date, sort aktivitas terbaru dulu (newest first)
   const groupedByDate = results.reduce(
     (acc, item) => {
       const date = new Date(item.tanggal).toDateString();
@@ -69,19 +81,41 @@ export default function SearchResults({
     {} as Record<string, ActivityLog[]>,
   );
 
+  // Tanggal: terbaru dulu (newest date first). Aktivitas dalam tiap hari: terlama dulu ke terbaru (oldest first)
+  const sortedDates = Object.keys(groupedByDate).sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime(),
+  );
+  sortedDates.forEach((date) => {
+    groupedByDate[date].sort(
+      (a, b) =>
+        new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime(),
+    );
+  });
+
+  // Timeline minimalis: per tanggal → per cluster (aktivitas baru tampil saat cluster diklik)
+  const byDateByCluster: Record<string, Record<string, ActivityLog[]>> = {};
+  sortedDates.forEach((date) => {
+    byDateByCluster[date] = {};
+    groupedByDate[date].forEach((item) => {
+      const clusterName = item.cluster || item.lokasi || "Lainnya";
+      if (!byDateByCluster[date][clusterName]) byDateByCluster[date][clusterName] = [];
+      byDateByCluster[date][clusterName].push(item);
+    });
+  });
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-600 leading-relaxed">
               Menampilkan{" "}
-              <span className="font-semibold text-gray-800">
+              <span className="font-semibold text-gray-900">
                 {results.length}
               </span>{" "}
               dari{" "}
-              <span className="font-semibold text-gray-800">{totalCount}</span>{" "}
+              <span className="font-semibold text-gray-900">{totalCount}</span>{" "}
               hasil
             </p>
           </div>
@@ -114,30 +148,104 @@ export default function SearchResults({
         </div>
       </div>
 
-      {/* Results */}
+      {/* Results - Timeline minimalis: per tanggal tampil daftar cluster; klik cluster untuk tampilkan aktivitas */}
       {viewMode === "timeline" ? (
-        <div className="space-y-6">
-          {Object.entries(groupedByDate).map(([date, items]) => (
-            <div
-              key={date}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
-            >
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
-                <Icon icon="mdi:calendar" className="w-5 h-5 text-bpk-orange" />
-                <h3 className="text-base font-semibold text-gray-800">
-                  {format(new Date(date), "EEEE, dd MMMM yyyy", {
-                    locale: idLocale,
-                  })}
-                </h3>
-              </div>
+        <div className="space-y-4">
+          {sortedDates.map((date) => {
+            const clustersInDate = byDateByCluster[date] || {};
+            const clusterNames = Object.keys(clustersInDate);
+            return (
+              <div
+                key={date}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col sm:flex-row"
+              >
+                {/* Tanggal di sebelah kiri - sticky */}
+                <div
+                  className="sm:sticky sm:top-24 sm:self-start sm:z-10 sm:w-52 flex-shrink-0 bg-gray-50 border-b sm:border-b-0 sm:border-r border-gray-200 p-4 flex items-center gap-3 sm:min-h-[5rem] sm:shadow-[2px_0_8px_rgba(0,0,0,0.06)]"
+                  style={{ scrollMarginTop: "6rem" }}
+                >
+                  <Icon icon="mdi:calendar" className="w-5 h-5 text-bpk-orange flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-gray-600 uppercase tracking-wider leading-tight">
+                      Tanggal
+                    </p>
+                    <p className="text-base font-semibold text-gray-900 leading-snug mt-0.5">
+                      {format(new Date(date), "EEEE, dd MMM yyyy", {
+                        locale: idLocale,
+                      })}
+                    </p>
+                  </div>
+                </div>
 
-              <div className="space-y-3">
-                {items.map((item) => (
-                  <TimelineItem key={item.id_trans} item={item} />
-                ))}
+                {/* Daftar cluster (minimalis): klik untuk expand aktivitas */}
+                <div className="flex-1 min-w-0 p-4">
+                  <div className="space-y-2">
+                    {clusterNames.map((clusterName) => {
+                      const activities = clustersInDate[clusterName] || [];
+                      const key = `${date}|${clusterName}`;
+                      const isExpanded = expandedClusters.has(key);
+                      const waktuAwal = activities.length > 0 ? new Date(activities[0].tanggal) : null;
+                      const waktuAkhir = activities.length > 0 ? new Date(activities[activities.length - 1].tanggal) : null;
+                      const rentangWaktu =
+                        waktuAwal && waktuAkhir
+                          ? `${format(waktuAwal, "HH:mm:ss")} – ${format(waktuAkhir, "HH:mm:ss")}`
+                          : null;
+
+                      return (
+                        <div key={key} className="rounded-xl border border-gray-200 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => toggleCluster(date, clusterName)}
+                            className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-orange-50/70 transition-colors border-b border-gray-100 last:border-b-0"
+                          >
+                            <span className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-3 min-w-0">
+                              <span className="flex items-center gap-2.5 min-w-0">
+                                <Icon
+                                  icon="mdi:chart-box-outline"
+                                  className="w-5 h-5 text-bpk-orange flex-shrink-0"
+                                />
+                                <span className="text-base font-semibold text-gray-900 leading-snug">
+                                  {clusterName}
+                                </span>
+                                <span className="text-sm text-gray-600">
+                                  ({activities.length} aktivitas)
+                                </span>
+                              </span>
+                              {rentangWaktu && (
+                                <span className="text-sm text-gray-600 font-mono tabular-nums ml-7 sm:ml-0">
+                                  {rentangWaktu}
+                                </span>
+                              )}
+                            </span>
+                            <Icon
+                              icon={isExpanded ? "mdi:chevron-up" : "mdi:chevron-down"}
+                              className="w-5 h-5 text-gray-500 flex-shrink-0"
+                            />
+                          </button>
+                          {isExpanded && (
+                            <div className="bg-gray-50/50 border-t border-gray-100">
+                              {activities.map((item, index) => {
+                                const clusterLabel = item.cluster || item.lokasi || "—";
+                                return (
+                                  <div key={item.id_trans}>
+                                    <TimelineItem
+                                      item={item}
+                                      showCluster={true}
+                                      clusterLabel={clusterLabel}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <TableView results={results} />
@@ -150,7 +258,7 @@ export default function SearchResults({
             <button
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Sebelumnya
             </button>
@@ -177,7 +285,7 @@ export default function SearchResults({
                   <button
                     key={1}
                     onClick={() => onPageChange(1)}
-                    className="px-4 py-2 rounded-lg transition-colors border border-gray-300 hover:bg-gray-50"
+                    className="px-4 py-2.5 text-sm font-medium text-gray-700 rounded-lg transition-colors border border-gray-300 hover:bg-gray-50"
                   >
                     1
                   </button>,
@@ -197,10 +305,10 @@ export default function SearchResults({
                   <button
                     key={page}
                     onClick={() => onPageChange(page)}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
+                    className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                       currentPage === page
                         ? "bg-bpk-orange text-white"
-                        : "border border-gray-300 hover:bg-gray-50"
+                        : "border border-gray-300 text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     {page}
@@ -221,7 +329,7 @@ export default function SearchResults({
                   <button
                     key={totalPages}
                     onClick={() => onPageChange(totalPages)}
-                    className="px-4 py-2 rounded-lg transition-colors border border-gray-300 hover:bg-gray-50"
+                    className="px-4 py-2.5 text-sm font-medium text-gray-700 rounded-lg transition-colors border border-gray-300 hover:bg-gray-50"
                   >
                     {totalPages}
                   </button>,
@@ -234,7 +342,7 @@ export default function SearchResults({
             <button
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Selanjutnya
             </button>
@@ -245,7 +353,15 @@ export default function SearchResults({
   );
 }
 
-function TimelineItem({ item }: { item: ActivityLog }) {
+function TimelineItem({
+  item,
+  showCluster = false,
+  clusterLabel = "",
+}: {
+  item: ActivityLog;
+  showCluster?: boolean;
+  clusterLabel?: string;
+}) {
   const getActivityIcon = (
     activity: string,
   ): { icon: string; color: string; bg: string } => {
@@ -298,38 +414,61 @@ function TimelineItem({ item }: { item: ActivityLog }) {
   };
 
   const activityStyle = getActivityIcon(item.aktifitas);
+  const cluster = clusterLabel || item.cluster || item.lokasi || "—";
 
   return (
-    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100">
+    <div className="flex items-start gap-3 py-3.5 px-4 rounded-lg hover:bg-gray-50/80 transition-colors border-b border-gray-100 last:border-b-0">
       <div className="flex-shrink-0">
         <div
-          className={`w-10 h-10 ${activityStyle.bg} rounded-full flex items-center justify-center`}
+          className={`w-9 h-9 ${activityStyle.bg} rounded-lg flex items-center justify-center`}
         >
           <Icon
             icon={activityStyle.icon}
-            className={`w-5 h-5 ${activityStyle.color}`}
+            className={`w-4 h-4 ${activityStyle.color}`}
           />
         </div>
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-4 mb-2">
-          <div className="flex-1">
-            <p className="font-semibold text-gray-800">{item.aktifitas}</p>
-            <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
-              <span className="flex items-center gap-1">
-                <Icon icon="mdi:clock-outline" className="w-3 h-3" />
-                {format(new Date(item.tanggal), "HH:mm:ss")}
-              </span>
-              <span className="flex items-center gap-1">
-                <Icon icon="mdi:account-outline" className="w-3 h-3" />
-                {item.nama}
-              </span>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[15px] leading-relaxed">
+          <span className="font-semibold text-gray-900">{item.aktifitas}</span>
+          <span className="text-gray-400">•</span>
+          <span className="text-gray-600 flex items-center gap-1.5">
+            <Icon icon="mdi:clock-outline" className="w-4 h-4 flex-shrink-0" />
+            <span className="font-mono tabular-nums">{format(new Date(item.tanggal), "HH:mm:ss")}</span>
+          </span>
+          <span className="text-gray-400">•</span>
+          <span className="text-gray-600 flex items-center gap-1.5">
+            <Icon icon="mdi:account-outline" className="w-4 h-4 flex-shrink-0" />
+            {item.nama}
+          </span>
+        </div>
 
+        {showCluster && (
+          <div className="mt-2 flex items-center gap-1.5 text-sm">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-bpk-orange/10 text-bpk-orange font-medium text-sm">
+              <Icon icon="mdi:chart-box-outline" className="w-4 h-4 flex-shrink-0" />
+              Cluster: {cluster}
+            </span>
+          </div>
+        )}
+
+        {!showCluster && (item.cluster || item.lokasi) && (
+          <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-600">
+            <Icon icon="mdi:map-marker-outline" className="w-4 h-4 flex-shrink-0" />
+            <span>{item.cluster || item.lokasi}</span>
+          </div>
+        )}
+
+        {item.detail_aktifitas && (
+          <p className="text-sm text-gray-600 mt-2 line-clamp-2 leading-relaxed">
+            {item.detail_aktifitas}
+          </p>
+        )}
+
+        <div className="mt-2 flex items-center justify-end">
           <span
-            className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+            className={`px-2.5 py-1 rounded-full text-sm font-medium flex items-center gap-1.5 flex-shrink-0 ${
               item.status === "SUCCESS"
                 ? "bg-green-100 text-green-700"
                 : "bg-red-100 text-red-700"
@@ -337,101 +476,142 @@ function TimelineItem({ item }: { item: ActivityLog }) {
           >
             <Icon
               icon={item.status === "SUCCESS" ? "mdi:check" : "mdi:close"}
-              className="w-3 h-3"
+              className="w-3.5 h-3.5"
             />
             {item.status === "SUCCESS" ? "Berhasil" : "Gagal"}
           </span>
         </div>
-
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center gap-1 text-gray-600">
-            <Icon icon="mdi:office-building-outline" className="w-3 h-3" />
-            <span className="truncate">{item.satker}</span>
-          </div>
-          <div className="flex items-center gap-1 text-gray-600">
-            <Icon icon="mdi:map-marker-outline" className="w-3 h-3" />
-            <span className="truncate">{item.lokasi}</span>
-          </div>
-        </div>
-
-        {item.detail_aktifitas && (
-          <p className="text-xs text-gray-500 mt-2 line-clamp-2">
-            {item.detail_aktifitas}
-          </p>
-        )}
       </div>
     </div>
   );
 }
 
 function TableView({ results }: { results: ActivityLog[] }) {
+  // Kelompokkan per tanggal, urut: tanggal terbaru dulu; dalam tiap hari aktivitas terlama dulu
+  const groupedByDate = results.reduce(
+    (acc, item) => {
+      const date = new Date(item.tanggal).toDateString();
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(item);
+      return acc;
+    },
+    {} as Record<string, ActivityLog[]>,
+  );
+  const sortedDates = Object.keys(groupedByDate).sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime(),
+  );
+  sortedDates.forEach((date) => {
+    groupedByDate[date].sort(
+      (a, b) =>
+        new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime(),
+    );
+  });
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+        <table className="w-full border-collapse">
+          <thead className="bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                Waktu
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                Tanggal
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                Jam
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                 User
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide hidden lg:table-cell">
                 Satker
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                Cluster
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                 Aktivitas
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                Lokasi
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell max-w-[200px]">
+                Detail / Scope
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide w-24">
                 Status
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {results.map((item) => (
-              <tr
-                key={item.id_trans}
-                className="hover:bg-gray-50 transition-colors"
-              >
-                <td className="px-4 py-3 text-sm text-gray-800 whitespace-nowrap">
-                  {format(new Date(item.tanggal), "dd/MM/yy HH:mm")}
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <div>
-                    <p className="font-medium text-gray-800">{item.nama}</p>
-                    <p className="text-xs text-gray-500">{item.eselon}</p>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
-                  {item.satker}
-                </td>
-                <td className="px-4 py-3 text-sm font-medium text-gray-800">
-                  {item.aktifitas}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {item.lokasi}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                      item.status === "SUCCESS"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
+            {sortedDates.map((date) => (
+              <React.Fragment key={date}>
+                {/* Baris pengelompokan tanggal */}
+                <tr
+                  className="bg-bpk-orange/10 border-y border-bpk-orange/20"
+                >
+                  <td
+                    colSpan={8}
+                    className="px-4 py-2.5 text-sm font-semibold text-gray-800 flex items-center gap-2"
                   >
-                    {item.status === "SUCCESS" ? (
-                      <Icon icon="mdi:check-circle" className="w-3 h-3" />
-                    ) : (
-                      <Icon icon="mdi:close-circle" className="w-3 h-3" />
-                    )}
-                    {item.status}
-                  </span>
-                </td>
-              </tr>
+                    <Icon icon="mdi:calendar" className="w-4 h-4 text-bpk-orange" />
+                    {format(new Date(date), "EEEE, dd MMMM yyyy", {
+                      locale: idLocale,
+                    })}
+                  </td>
+                </tr>
+                {/* Baris data per aktivitas */}
+                {groupedByDate[date].map((item) => (
+                  <tr
+                    key={item.id_trans}
+                    className="hover:bg-orange-50/50 transition-colors"
+                  >
+                    <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap">
+                      {format(new Date(item.tanggal), "dd/MM/yyyy")}
+                    </td>
+                    <td className="px-4 py-2.5 text-sm font-medium text-gray-800 whitespace-nowrap">
+                      {format(new Date(item.tanggal), "HH:mm:ss")}
+                    </td>
+                    <td className="px-4 py-2.5 text-sm">
+                      <div>
+                        <p className="font-medium text-gray-800">{item.nama}</p>
+                        {item.eselon && (
+                          <p className="text-xs text-gray-500">{item.eselon}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-gray-600 max-w-[180px] truncate hidden lg:table-cell" title={item.satker}>
+                      {item.satker}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-bpk-orange/10 text-bpk-orange text-xs font-medium">
+                        <Icon icon="mdi:chart-box-outline" className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate max-w-[120px]" title={item.cluster || item.lokasi}>
+                          {item.cluster || item.lokasi || "—"}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-sm font-medium text-gray-800">
+                      {item.aktifitas}
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-gray-500 max-w-[200px] truncate hidden md:table-cell" title={item.detail_aktifitas || item.scope}>
+                      {item.detail_aktifitas || item.scope || "—"}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                          item.status === "SUCCESS"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {item.status === "SUCCESS" ? (
+                          <Icon icon="mdi:check-circle" className="w-3 h-3" />
+                        ) : (
+                          <Icon icon="mdi:close-circle" className="w-3 h-3" />
+                        )}
+                        {item.status === "SUCCESS" ? "Berhasil" : "Gagal"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

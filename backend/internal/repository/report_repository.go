@@ -31,13 +31,13 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 		// Get summary stats
 		var totalActivities, totalUsers int
 
-		query := "SELECT COUNT(*) FROM act_log"
+		query := "SELECT COUNT(*) FROM activity_logs_normalized a"
 		args := []interface{}{}
 		argCount := 0
 
 		if startDate != "" {
 			argCount++
-			query += " WHERE tanggal >= $" + strconv.Itoa(argCount)
+			query += " WHERE a.tanggal >= $" + strconv.Itoa(argCount)
 			args = append(args, startDate)
 		}
 		if endDate != "" {
@@ -47,21 +47,21 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 				query += " AND"
 			}
 			argCount++
-			query += " tanggal <= $" + strconv.Itoa(argCount)
+			query += " a.tanggal <= $" + strconv.Itoa(argCount)
 			args = append(args, endDate)
 		}
 
 		db.Raw(query, args...).Scan(&totalActivities)
 
 		// Count unique users
-		userQuery := "SELECT COUNT(DISTINCT nama) FROM act_log"
+		userQuery := "SELECT COUNT(DISTINCT u.nama) FROM activity_logs_normalized a JOIN user_profiles u ON a.user_id = u.id"
 		if startDate != "" || endDate != "" {
 			userQuery += " WHERE 1=1"
 			if startDate != "" {
-				userQuery += " AND tanggal >= '" + startDate + "'"
+				userQuery += " AND a.tanggal >= '" + startDate + "'"
 			}
 			if endDate != "" {
-				userQuery += " AND tanggal <= '" + endDate + "'"
+				userQuery += " AND a.tanggal <= '" + endDate + "'"
 			}
 		}
 		db.Raw(userQuery).Scan(&totalUsers)
@@ -73,17 +73,18 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 
 		// Get top satker
 		satkerQuery := `
-			SELECT satker, COUNT(*) as count 
-			FROM act_log 
-			WHERE satker IS NOT NULL AND satker != ''
+			SELECT s.satker_name, COUNT(*) as count 
+			FROM activity_logs_normalized a
+			JOIN ref_satker_units s ON a.satker_id = s.id
+			WHERE s.satker_name IS NOT NULL AND s.satker_name != ''
 		`
 		if startDate != "" {
-			satkerQuery += " AND tanggal >= '" + startDate + "'"
+			satkerQuery += " AND a.tanggal >= '" + startDate + "'"
 		}
 		if endDate != "" {
-			satkerQuery += " AND tanggal <= '" + endDate + "'"
+			satkerQuery += " AND a.tanggal <= '" + endDate + "'"
 		}
-		satkerQuery += " GROUP BY satker ORDER BY count DESC LIMIT 10"
+		satkerQuery += " GROUP BY s.satker_name ORDER BY count DESC LIMIT 10"
 
 		rows, err := db.Raw(satkerQuery).Rows()
 		if err != nil {
@@ -107,19 +108,24 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 		// Get login stats
 		var totalLogins, successLogins, failedLogins int
 
-		loginQuery := "SELECT COUNT(*) FROM act_log WHERE aktifitas = 'LOGIN'"
+		loginQuery := `
+			SELECT COUNT(*) 
+			FROM activity_logs_normalized a
+			JOIN ref_activity_types at ON a.activity_type_id = at.id
+			WHERE at.name = 'LOGIN'
+		`
 		if startDate != "" {
-			loginQuery += " AND tanggal >= '" + startDate + "'"
+			loginQuery += " AND a.tanggal >= '" + startDate + "'"
 		}
 		if endDate != "" {
-			loginQuery += " AND tanggal <= '" + endDate + "'"
+			loginQuery += " AND a.tanggal <= '" + endDate + "'"
 		}
 		db.Raw(loginQuery).Scan(&totalLogins)
 
-		successQuery := loginQuery + " AND status = 'SUCCESS'"
+		successQuery := loginQuery + " AND a.status = 'SUCCESS'"
 		db.Raw(successQuery).Scan(&successLogins)
 
-		failedQuery := loginQuery + " AND status = 'FAILED'"
+		failedQuery := loginQuery + " AND a.status = 'FAILED'"
 		db.Raw(failedQuery).Scan(&failedLogins)
 
 		report.Summary = map[string]interface{}{
@@ -130,17 +136,18 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 
 		// Get top active users
 		userQuery := `
-			SELECT nama, COUNT(*) as count 
-			FROM act_log 
-			WHERE nama IS NOT NULL AND nama != ''
+			SELECT u.nama, COUNT(*) as count 
+			FROM activity_logs_normalized a
+			JOIN user_profiles u ON a.user_id = u.id
+			WHERE u.nama IS NOT NULL AND u.nama != ''
 		`
 		if startDate != "" {
-			userQuery += " AND tanggal >= '" + startDate + "'"
+			userQuery += " AND a.tanggal >= '" + startDate + "'"
 		}
 		if endDate != "" {
-			userQuery += " AND tanggal <= '" + endDate + "'"
+			userQuery += " AND a.tanggal <= '" + endDate + "'"
 		}
-		userQuery += " GROUP BY nama ORDER BY count DESC LIMIT 10"
+		userQuery += " GROUP BY u.nama ORDER BY count DESC LIMIT 10"
 
 		rows, err := db.Raw(userQuery).Rows()
 		if err != nil {
@@ -164,31 +171,26 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 		// Get feature usage stats
 		var totalViews, totalDownloads, totalSearches int
 
-		viewQuery := "SELECT COUNT(*) FROM act_log WHERE aktifitas = 'View'"
+		baseQuery := `
+			SELECT COUNT(*) 
+			FROM activity_logs_normalized a
+			JOIN ref_activity_types at ON a.activity_type_id = at.id
+		`
+		dateCondition := ""
 		if startDate != "" {
-			viewQuery += " AND tanggal >= '" + startDate + "'"
+			dateCondition += " AND a.tanggal >= '" + startDate + "'"
 		}
 		if endDate != "" {
-			viewQuery += " AND tanggal <= '" + endDate + "'"
+			dateCondition += " AND a.tanggal <= '" + endDate + "'"
 		}
+
+		viewQuery := baseQuery + " WHERE at.name = 'View'" + dateCondition
 		db.Raw(viewQuery).Scan(&totalViews)
 
-		downloadQuery := "SELECT COUNT(*) FROM act_log WHERE aktifitas ILIKE '%download%'"
-		if startDate != "" {
-			downloadQuery += " AND tanggal >= '" + startDate + "'"
-		}
-		if endDate != "" {
-			downloadQuery += " AND tanggal <= '" + endDate + "'"
-		}
+		downloadQuery := baseQuery + " WHERE at.name ILIKE '%download%'" + dateCondition
 		db.Raw(downloadQuery).Scan(&totalDownloads)
 
-		searchQuery := "SELECT COUNT(*) FROM act_log WHERE (aktifitas ILIKE '%search%' OR aktifitas ILIKE '%pencarian%')"
-		if startDate != "" {
-			searchQuery += " AND tanggal >= '" + startDate + "'"
-		}
-		if endDate != "" {
-			searchQuery += " AND tanggal <= '" + endDate + "'"
-		}
+		searchQuery := baseQuery + " WHERE (at.name ILIKE '%search%' OR at.name ILIKE '%pencarian%')" + dateCondition
 		db.Raw(searchQuery).Scan(&totalSearches)
 
 		report.Summary = map[string]interface{}{
@@ -199,17 +201,18 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 
 		// Get feature breakdown
 		featureQuery := `
-			SELECT aktifitas, COUNT(*) as count 
-			FROM act_log 
-			WHERE aktifitas IS NOT NULL
+			SELECT at.name, COUNT(*) as count 
+			FROM activity_logs_normalized a
+			JOIN ref_activity_types at ON a.activity_type_id = at.id
+			WHERE at.name IS NOT NULL
 		`
 		if startDate != "" {
-			featureQuery += " AND tanggal >= '" + startDate + "'"
+			featureQuery += " AND a.tanggal >= '" + startDate + "'"
 		}
 		if endDate != "" {
-			featureQuery += " AND tanggal <= '" + endDate + "'"
+			featureQuery += " AND a.tanggal <= '" + endDate + "'"
 		}
-		featureQuery += " GROUP BY aktifitas ORDER BY count DESC LIMIT 10"
+		featureQuery += " GROUP BY at.name ORDER BY count DESC LIMIT 10"
 
 		rows, err := db.Raw(featureQuery).Rows()
 		if err != nil {

@@ -22,9 +22,9 @@ Dashboard monitoring aktivitas pengguna BIDICS untuk Badan Pemeriksa Keuangan Re
 # Buat database
 createdb -U postgres daring_bpk
 
-# Jalankan setup script
-cd backend\scripts
-.\setup_database.ps1
+# Jalankan migrasi database
+cd backend
+go run cmd/migrate/main.go
 ```
 
 ### 3. Run Development
@@ -57,14 +57,12 @@ Dashboard-BPK/
 │       ├── services/         # API Client
 │       └── stores/           # Zustand State
 │
-├── backend/                  # Go API Server
-│   ├── cmd/api/              # Entry point
-│   ├── internal/
-│   │   ├── handler/          # HTTP Handlers
-│   │   ├── repository/       # Database Layer
-│   │   └── entity/           # Data Models
-│   ├── migrations/           # SQL Migrations
-│   └── scripts/              # Utility Scripts
+├── backend/                  # Go API Server (lihat backend/README.md untuk struktur lengkap)
+│   ├── cmd/api/              # Entry point API
+│   ├── cmd/import/           # Data import tool
+│   ├── cmd/migrate/          # Database migrations
+│   ├── internal/             # auth, dto, entity, handler, middleware, repository, response, server
+│   └── migrations/           # SQL Migrations
 │
 ├── start-dev.ps1             # Start all servers
 └── stop-dev.ps1              # Stop all servers
@@ -114,7 +112,8 @@ cd frontend && npm run build && npm start
 
 # Database reset
 psql -U postgres -c "DROP DATABASE daring_bpk;"
-cd backend\scripts && .\setup_database.ps1
+psql -U postgres -c "CREATE DATABASE daring_bpk;"
+cd backend && go run cmd/migrate/main.go
 ```
 
 ---

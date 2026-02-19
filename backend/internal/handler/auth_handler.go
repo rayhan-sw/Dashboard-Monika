@@ -5,7 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/auth"
 	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
+	"github.com/bpk-ri/dashboard-monitoring/internal/response"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -50,8 +52,11 @@ func Login(c *gin.Context) {
 	user.LastLogin = &now
 	db.Save(&user)
 
-	// Generate session token (simple implementation - in production use JWT)
-	token := generateSessionToken(user.ID)
+	token, err := auth.GenerateToken(user.ID, user.Role)
+	if err != nil {
+		response.Internal(c, err)
+		return
+	}
 
 	c.JSON(http.StatusOK, entity.LoginResponse{
 		Token:   token,
@@ -98,7 +103,7 @@ func Register(c *gin.Context) {
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat akun"})
+		response.Internal(c, err)
 		return
 	}
 
@@ -113,7 +118,7 @@ func Register(c *gin.Context) {
 	}
 
 	if err := db.Create(&newUser).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat akun"})
+		response.Internal(c, err)
 		return
 	}
 
@@ -149,14 +154,14 @@ func ForgotPassword(c *gin.Context) {
 	// Hash new password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengubah password"})
+		response.Internal(c, err)
 		return
 	}
 
 	// Update password
 	user.PasswordHash = string(hashedPassword)
 	if err := db.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengubah password"})
+		response.Internal(c, err)
 		return
 	}
 
@@ -165,16 +170,9 @@ func ForgotPassword(c *gin.Context) {
 	})
 }
 
-// Logout handles user logout
+// Logout handles user logout (client should discard the token)
 func Logout(c *gin.Context) {
-	// Clear session/token (implementation depends on your session management)
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logout berhasil",
 	})
-}
-
-// Helper function to generate session token (simplified)
-func generateSessionToken(userID int) string {
-	// In production, use JWT or proper session management
-	return "session_token_" + time.Now().Format("20060102150405")
 }

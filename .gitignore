@@ -42,6 +42,12 @@ frontend/yarn-error.log*
 # Vercel
 frontend/.vercel
 
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
 # Golang
 backend/*.exe
 backend/*.exe~

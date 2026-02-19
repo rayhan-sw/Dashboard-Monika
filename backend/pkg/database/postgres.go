@@ -13,17 +13,27 @@ import (
 
 var DB *gorm.DB
 
-// InitDB initializes the PostgreSQL database connection
-func InitDB() error {
-	dsn := fmt.Sprintf(
+// BuildDSN returns the PostgreSQL DSN string from environment variables.
+// DB_SSLMODE defaults to "disable" if not set. Used by InitDB and cmd/migrate.
+func BuildDSN() string {
+	sslmode := os.Getenv("DB_SSLMODE")
+	if sslmode == "" {
+		sslmode = "disable"
+	}
+	return fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		os.Getenv("DB_HOST"),
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_NAME"),
 		os.Getenv("DB_PORT"),
-		os.Getenv("DB_SSLMODE"),
+		sslmode,
 	)
+}
+
+// InitDB initializes the PostgreSQL database connection
+func InitDB() error {
+	dsn := BuildDSN()
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{

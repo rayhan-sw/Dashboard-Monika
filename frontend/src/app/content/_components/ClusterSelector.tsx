@@ -32,10 +32,11 @@ export default function ClusterSelector({
         dateRange.startDate,
         dateRange.endDate,
       );
-      // Map API response to expected format
+      // API returns: { rank, name, count, percentage }[]
+      // We only need name and count
       const mappedClusters = (response.data || []).map(
-        (item: { cluster: string; count: number }) => ({
-          name: item.cluster,
+        (item) => ({
+          name: item.name,
           count: item.count,
         }),
       );
