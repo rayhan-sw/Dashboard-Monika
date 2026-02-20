@@ -280,6 +280,11 @@ func GetRecentDownloads(c *gin.Context) {
 	// Get downloads from database with optional date filters
 	downloads, err := repository.GetRecentDownloadsWithFilter(limit, startDate, endDate)
 	if err != nil {
+		// If table report_downloads does not exist (migration 007 not applied), return empty list so UI does not break
+		if strings.Contains(err.Error(), "report_downloads") && strings.Contains(err.Error(), "does not exist") {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch downloads"})
 		return
 	}

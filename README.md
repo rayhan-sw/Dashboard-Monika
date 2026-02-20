@@ -27,6 +27,8 @@ cd backend
 go run cmd/migrate/main.go
 ```
 
+**Agar isi data sama persis dengan tim:** lihat [SETUP_DATA.md](SETUP_DATA.md) (export/import dump data).
+
 ### 3. Run Development
 
 ```powershell

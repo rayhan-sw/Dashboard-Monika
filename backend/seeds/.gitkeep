@@ -1,0 +1,2 @@
+# Folder untuk file dump/seed data.
+# File daring_bpk_data.dump di-ignore (lihat .gitignore); isi dengan export dari script scripts/export-db.*

@@ -25,8 +25,9 @@ type ReportGenerator struct {
 	OutputDir string
 }
 
-// NewReportGenerator creates a new report generator
+// NewReportGenerator creates a new report generator and ensures the output directory exists.
 func NewReportGenerator(outputDir string) *ReportGenerator {
+	_ = os.MkdirAll(outputDir, 0755)
 	return &ReportGenerator{
 		OutputDir: outputDir,
 	}
@@ -83,6 +84,9 @@ func (rg *ReportGenerator) generateFilename(templateID, format string) string {
 
 // Helper function to write CSV content to file
 func (rg *ReportGenerator) writeCSVFile(filename, content string) error {
+	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+		return err
+	}
 	file, err := os.Create(filename)
 	if err != nil {
 		return err

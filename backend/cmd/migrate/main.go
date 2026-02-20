@@ -14,11 +14,10 @@ import (
 )
 
 func main() {
-	// Load .env from backend root (two levels up from cmd/migrate)
-	envPath := filepath.Join("..", "..", ".env")
+	// Load .env from backend root (run from backend folder: go run cmd/migrate/main.go)
+	envPath := filepath.Join(".env")
 	if err := godotenv.Load(envPath); err != nil {
-		// Try current directory
-		if err2 := godotenv.Load(); err2 != nil {
+		if err2 := godotenv.Load(filepath.Join("..", ".env")); err2 != nil {
 			log.Println("No .env file found, using system environment")
 		}
 	}
@@ -37,8 +36,8 @@ func main() {
 		applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)`)
 
-	// Find migration files
-	migrationsDir := filepath.Join("..", "..", "migrations")
+	// Find migration files (run from backend folder so migrations = backend/migrations)
+	migrationsDir := filepath.Join("migrations")
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		log.Fatal("Failed to read migrations directory:", err)
