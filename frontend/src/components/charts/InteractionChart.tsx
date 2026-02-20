@@ -15,11 +15,11 @@ import type { ClusterData } from "@/types/api";
 import { PieChart as PieChartIcon } from "lucide-react";
 
 const COLORS: Record<string, string> = {
-  "system auth": "#10B981", // green
   "monitoring & view": "#3B82F6", // blue
-  discovery: "#F59E0B", // amber
-  "data extraction": "#8B5CF6", // purple
-  other: "#6B7280", // gray
+  "system auth": "#10B981",       // green
+  discovery: "#F59E0B",           // amber
+  "data extraction": "#8B5CF6",   // purple
+  other: "#6B7280",               // gray
 };
 
 export default function InteractionChart() {

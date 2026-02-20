@@ -4,21 +4,21 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/bpk-ri/dashboard-monitoring/internal/repository"
-	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
+	"github.com/bpk-ri/dashboard-monitoring/internal/dto"
+	"github.com/bpk-ri/dashboard-monitoring/internal/response"
 	"github.com/gin-gonic/gin"
 )
 
 // GetDashboardStats returns dashboard statistics
 func GetDashboardStats(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	repo := getActivityLogRepo()
 
 	// Parse date range, cluster, and eselon from query params
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 	cluster := c.Query("cluster")
 	eselon := c.Query("eselon")
-	
+
 	var startPtr, endPtr, clusterPtr, eselonPtr *string
 	if startDate != "" {
 		startPtr = &startDate
@@ -36,35 +36,35 @@ func GetDashboardStats(c *gin.Context) {
 	// Get total users (unique tokens)
 	totalUsers, err := repo.GetUniqueUsersCount(startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
 	// Get successful logins
 	successLogins, err := repo.GetCountByStatus("SUCCESS", startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
 	// Get total activities
 	totalActivities, err := repo.GetTotalCount(startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
 	// Get logout errors
 	logoutErrors, err := repo.GetCountByStatus("FAILED", startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
 	// Get busiest hour
 	busiestHour, count, err := repo.GetBusiestHour(startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
@@ -82,7 +82,7 @@ func GetDashboardStats(c *gin.Context) {
 
 // GetActivities returns paginated activity logs
 func GetActivities(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	repo := getActivityLogRepo()
 
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -104,7 +104,7 @@ func GetActivities(c *gin.Context) {
 	endDate := c.Query("end_date")
 	cluster := c.Query("cluster")
 	eselon := c.Query("eselon")
-	
+
 	var startPtr, endPtr, clusterPtr, eselonPtr *string
 	if startDate != "" {
 		startPtr = &startDate
@@ -122,19 +122,25 @@ func GetActivities(c *gin.Context) {
 	// Get recent activities
 	activities, err := repo.GetRecentActivities(page, pageSize, startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
 	// Get total count
 	total, err := repo.GetTotalCount(startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
+	// Map to flat DTOs
+	dtos := make([]dto.ActivityLogDTO, len(activities))
+	for i, a := range activities {
+		dtos[i] = dto.ToDTO(a)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"data":        activities,
+		"data":        dtos,
 		"page":        page,
 		"page_size":   pageSize,
 		"total":       total,
@@ -145,14 +151,14 @@ func GetActivities(c *gin.Context) {
 // GetChartData returns chart data based on type
 func GetChartData(c *gin.Context) {
 	chartType := c.Param("type")
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	repo := getActivityLogRepo()
 
 	// Parse date range, cluster, and eselon from query params
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 	cluster := c.Query("cluster")
 	eselon := c.Query("eselon")
-	
+
 	var startPtr, endPtr, clusterPtr, eselonPtr *string
 	if startDate != "" {
 		startPtr = &startDate
@@ -171,7 +177,7 @@ func GetChartData(c *gin.Context) {
 	case "hourly":
 		data, err := repo.GetActivityCountByHour(startPtr, endPtr, clusterPtr, eselonPtr)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"data": data})
@@ -179,7 +185,7 @@ func GetChartData(c *gin.Context) {
 	case "cluster":
 		data, err := repo.GetActivityCountByScope(startPtr, endPtr, clusterPtr, eselonPtr)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"data": data})
@@ -187,7 +193,7 @@ func GetChartData(c *gin.Context) {
 	case "province":
 		data, err := repo.GetActivityCountByProvince(startPtr, endPtr, clusterPtr, eselonPtr)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"data": data})
@@ -199,7 +205,7 @@ func GetChartData(c *gin.Context) {
 
 // GetAccessSuccessRate returns access success rate over time
 func GetAccessSuccessRate(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	repo := getActivityLogRepo()
 
 	// Get date range, cluster, and eselon from query params
 	startDate := c.Query("start_date")
@@ -224,7 +230,7 @@ func GetAccessSuccessRate(c *gin.Context) {
 	// Get success/failed counts by date
 	data, err := repo.GetAccessSuccessRateByDate(startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
@@ -233,14 +239,14 @@ func GetAccessSuccessRate(c *gin.Context) {
 
 // GetProvinces returns provincial statistics
 func GetProvinces(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	repo := getActivityLogRepo()
 
 	// Parse date range, cluster, and eselon from query params
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 	cluster := c.Query("cluster")
 	eselon := c.Query("eselon")
-	
+
 	var startPtr, endPtr, clusterPtr, eselonPtr *string
 	if startDate != "" {
 		startPtr = &startDate
@@ -257,7 +263,7 @@ func GetProvinces(c *gin.Context) {
 
 	data, err := repo.GetActivityCountByProvince(startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
@@ -266,14 +272,14 @@ func GetProvinces(c *gin.Context) {
 
 // GetLokasi returns location statistics based on lokasi field
 func GetLokasi(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	repo := getActivityLogRepo()
 
 	// Parse date range, cluster, and eselon from query params
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 	cluster := c.Query("cluster")
 	eselon := c.Query("eselon")
-	
+
 	var startPtr, endPtr, clusterPtr, eselonPtr *string
 	if startDate != "" {
 		startPtr = &startDate
@@ -288,9 +294,10 @@ func GetLokasi(c *gin.Context) {
 		eselonPtr = &eselon
 	}
 
-	data, err := repo.GetActivityCountByLokasi(startPtr, endPtr, clusterPtr, eselonPtr)
+	// Use satker province-based data for map visualization
+	data, err := repo.GetActivityCountBySatkerProvince(startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
@@ -299,7 +306,7 @@ func GetLokasi(c *gin.Context) {
 
 // GetUnits returns unit/satker statistics
 func GetUnits(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	repo := getActivityLogRepo()
 
 	// Parse pagination
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -317,7 +324,7 @@ func GetUnits(c *gin.Context) {
 	endDate := c.Query("end_date")
 	cluster := c.Query("cluster")
 	eselon := c.Query("eselon")
-	
+
 	var startPtr, endPtr, clusterPtr, eselonPtr *string
 	if startDate != "" {
 		startPtr = &startDate
@@ -334,14 +341,14 @@ func GetUnits(c *gin.Context) {
 
 	data, err := repo.GetActivityCountBySatker(page, pageSize, startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
 	// Get total count
 	total, err := repo.GetTotalCount(startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
@@ -355,11 +362,11 @@ func GetUnits(c *gin.Context) {
 
 // GetClusters returns list of unique clusters
 func GetClusters(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	repo := getActivityLogRepo()
 
 	clusters, err := repo.GetUniqueClusters()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
@@ -368,8 +375,8 @@ func GetClusters(c *gin.Context) {
 
 // GetHourlyDataForSatker returns hourly activity distribution for a specific satker
 func GetHourlyDataForSatker(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
-	
+	repo := getActivityLogRepo()
+
 	// Get satker from query parameter
 	satker := c.Query("satker")
 	if satker == "" {
@@ -382,7 +389,7 @@ func GetHourlyDataForSatker(c *gin.Context) {
 	endDate := c.Query("end_date")
 	cluster := c.Query("cluster")
 	eselon := c.Query("eselon")
-	
+
 	var startPtr, endPtr, clusterPtr, eselonPtr *string
 	if startDate != "" {
 		startPtr = &startDate
@@ -399,7 +406,7 @@ func GetHourlyDataForSatker(c *gin.Context) {
 
 	data, err := repo.GetActivityCountByHourForSatker(satker, startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
@@ -408,7 +415,7 @@ func GetHourlyDataForSatker(c *gin.Context) {
 
 // GetTopContributors returns top contributors (users with most activities)
 func GetTopContributors(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	repo := getActivityLogRepo()
 
 	// Parse limit from query params (default 10)
 	limitStr := c.DefaultQuery("limit", "10")
@@ -442,7 +449,7 @@ func GetTopContributors(c *gin.Context) {
 
 	data, err := repo.GetTopContributors(limit, startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
@@ -451,7 +458,7 @@ func GetTopContributors(c *gin.Context) {
 
 // GetLogoutErrors returns users with most logout errors (sorted by latest error)
 func GetLogoutErrors(c *gin.Context) {
-	repo := repository.NewActivityLogRepository(database.GetDB())
+	repo := getActivityLogRepo()
 
 	// Parse limit from query params (default 10)
 	limitStr := c.DefaultQuery("limit", "10")
@@ -485,10 +492,9 @@ func GetLogoutErrors(c *gin.Context) {
 
 	data, err := repo.GetLogoutErrors(limit, startPtr, endPtr, clusterPtr, eselonPtr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Internal(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
-

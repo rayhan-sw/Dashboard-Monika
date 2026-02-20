@@ -11,6 +11,8 @@ import (
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func main() {
@@ -25,7 +27,7 @@ func main() {
 	}
 	defer database.CloseDB()
 
-	log.Println("Database connected")
+	log.Println("Database connected to:", os.Getenv("DB_NAME"))
 
 	// Check if CSV file path is provided
 	if len(os.Args) < 2 {
@@ -70,13 +72,17 @@ func main() {
 		colMap[strings.TrimSpace(strings.ToLower(col))] = i
 	}
 
-	// Batch insert
-	batchSize := 1000
-	var batch []entity.ActivityLog
+	db := database.GetDB()
+
+	// In-memory caches to avoid repeated DB lookups
+	clusterCache := make(map[string]int64)
+	activityTypeCache := make(map[string]int64)
+	locationCache := make(map[string]int64)
+	satkerCache := make(map[string]int64)
+	userCache := make(map[string]int64) // key: nama|token
+
 	totalInserted := 0
 	skipped := 0
-
-	db := database.GetDB()
 
 	for i := 1; i < len(records); i++ {
 		record := records[i]
@@ -87,28 +93,26 @@ func main() {
 			continue
 		}
 
-		// Parse UUID fields
-		idTrans, err := uuid.Parse(strings.TrimSpace(record[colMap["id_trans"]]))
+		getCol := func(name string) string {
+			idx, ok := colMap[name]
+			if !ok || idx >= len(record) {
+				return ""
+			}
+			return strings.TrimSpace(record[idx])
+		}
+
+		// Parse UUID
+		idTrans, err := uuid.Parse(getCol("id_trans"))
 		if err != nil {
 			log.Printf("Row %d: Invalid id_trans UUID: %v\n", i+1, err)
 			skipped++
 			continue
 		}
 
-		var token uuid.UUID
-		tokenStr := strings.TrimSpace(record[colMap["token"]])
-		if tokenStr != "" && tokenStr != "NULL" {
-			token, err = uuid.Parse(tokenStr)
-			if err != nil {
-				log.Printf("Row %d: Invalid token UUID, using nil\n", i+1)
-			}
-		}
-
 		// Parse timestamp
-		tanggalStr := strings.TrimSpace(record[colMap["tanggal"]])
+		tanggalStr := getCol("tanggal")
 		tanggal, err := time.Parse("2006-01-02 15:04:05", tanggalStr)
 		if err != nil {
-			// Try alternative format
 			tanggal, err = time.Parse("02/01/2006 15:04", tanggalStr)
 			if err != nil {
 				log.Printf("Row %d: Invalid date format: %s\n", i+1, tanggalStr)
@@ -117,47 +121,92 @@ func main() {
 			}
 		}
 
-		// Extract province from satker
-		satker := strings.TrimSpace(record[colMap["satker"]])
-		province := extractProvince(satker)
-		region := getRegion(province)
-
-		// Create activity log
-		activity := entity.ActivityLog{
-			IDTrans:   idTrans,
-			Nama:      strings.TrimSpace(record[colMap["nama"]]),
-			Satker:    satker,
-			Aktifitas: strings.TrimSpace(record[colMap["aktifitas"]]),
-			Scope:     strings.TrimSpace(record[colMap["scope"]]),
-			Lokasi:    strings.TrimSpace(record[colMap["lokasi"]]),
-			Cluster:   strings.TrimSpace(record[colMap["cluster"]]),
-			Tanggal:   tanggal,
-			Token:     token,
-			Province:  province,
-			Region:    region,
+		nama := getCol("nama")
+		satkerName := getCol("satker")
+		aktifitas := getCol("aktifitas")
+		scope := getCol("scope")
+		lokasi := getCol("lokasi")
+		clusterName := getCol("cluster")
+		tokenStr := getCol("token")
+		status := getCol("status")
+		if status == "" {
+			status = "SUCCESS"
 		}
 
-		batch = append(batch, activity)
-
-		// Insert batch when size is reached
-		if len(batch) >= batchSize {
-			if err := db.Create(&batch).Error; err != nil {
-				log.Printf("Failed to insert batch: %v\n", err)
+		// --- Resolve cluster_id ---
+		var clusterID *int64
+		if clusterName != "" {
+			if id, ok := clusterCache[clusterName]; ok {
+				clusterID = &id
 			} else {
-				totalInserted += len(batch)
-				log.Printf("Inserted %d records (Total: %d)\n", len(batch), totalInserted)
+				id := getOrCreateCluster(db, clusterName)
+				clusterCache[clusterName] = id
+				clusterID = &id
 			}
-			batch = []entity.ActivityLog{}
 		}
-	}
 
-	// Insert remaining batch
-	if len(batch) > 0 {
-		if err := db.Create(&batch).Error; err != nil {
-			log.Printf("Failed to insert final batch: %v\n", err)
+		// --- Resolve activity_type_id ---
+		actTypeID := getOrCreateActivityType(db, aktifitas, activityTypeCache)
+
+		// --- Resolve location_id ---
+		var locationID *int64
+		if lokasi != "" {
+			province := extractProvince(satkerName)
+			if id, ok := locationCache[lokasi]; ok {
+				locationID = &id
+			} else {
+				id := getOrCreateLocation(db, lokasi, province)
+				locationCache[lokasi] = id
+				locationID = &id
+			}
+		}
+
+		// --- Resolve satker_id ---
+		var satkerID *int64
+		if satkerName != "" {
+			if id, ok := satkerCache[satkerName]; ok {
+				satkerID = &id
+			} else {
+				id := getOrCreateSatker(db, satkerName)
+				satkerCache[satkerName] = id
+				satkerID = &id
+			}
+		}
+
+		// --- Resolve user_id ---
+		userKey := nama + "|" + tokenStr
+		var userID int64
+		if id, ok := userCache[userKey]; ok {
+			userID = id
 		} else {
-			totalInserted += len(batch)
-			log.Printf("Inserted %d records (Total: %d)\n", len(batch), totalInserted)
+			userID = getOrCreateUser(db, nama, tokenStr, satkerID)
+			userCache[userKey] = userID
+		}
+
+		activity := entity.ActivityLog{
+			IDTrans:        idTrans,
+			UserID:         userID,
+			SatkerID:       satkerID,
+			ActivityTypeID: actTypeID,
+			ClusterID:      clusterID,
+			LocationID:     locationID,
+			Scope:          scope,
+			Status:         status,
+			Tanggal:        tanggal,
+		}
+
+		if err := db.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "id_trans"}},
+			DoNothing: true,
+		}).Create(&activity).Error; err != nil {
+			log.Printf("Row %d: Failed to insert: %v\n", i+1, err)
+			skipped++
+			continue
+		}
+		totalInserted++
+
+		if totalInserted%1000 == 0 {
+			log.Printf("Inserted %d records...\n", totalInserted)
 		}
 	}
 
@@ -168,12 +217,59 @@ func main() {
 	log.Println("\n CSV import completed!")
 }
 
+func getOrCreateCluster(db *gorm.DB, name string) int64 {
+	var c entity.Cluster
+	db.Where("name = ?", name).FirstOrCreate(&c, entity.Cluster{Name: name})
+	return c.ID
+}
+
+func getOrCreateActivityType(db *gorm.DB, name string, cache map[string]int64) int64 {
+	if id, ok := cache[name]; ok {
+		return id
+	}
+	var at entity.ActivityType
+	db.Where("name = ?", name).FirstOrCreate(&at, entity.ActivityType{Name: name})
+	cache[name] = at.ID
+	return at.ID
+}
+
+func getOrCreateLocation(db *gorm.DB, locationName, province string) int64 {
+	var l entity.Location
+	db.Where("location_name = ?", locationName).FirstOrCreate(&l, entity.Location{
+		LocationName: locationName,
+		Province:     province,
+	})
+	return l.ID
+}
+
+func getOrCreateSatker(db *gorm.DB, satkerName string) int64 {
+	var s entity.SatkerUnit
+	db.Where("satker_name = ?", satkerName).FirstOrCreate(&s, entity.SatkerUnit{SatkerName: satkerName})
+	return s.ID
+}
+
+func getOrCreateUser(db *gorm.DB, nama, token string, satkerID *int64) int64 {
+	var u entity.UserProfile
+	query := db.Where("nama = ?", nama)
+	if token != "" && token != "NULL" {
+		query = query.Where("token = ?", token)
+	}
+	if query.First(&u).Error != nil {
+		u = entity.UserProfile{
+			Nama:     nama,
+			Token:    token,
+			SatkerID: satkerID,
+			IsActive: true,
+		}
+		db.Create(&u)
+	}
+	return u.ID
+}
+
 // extractProvince extracts province name from satker string
 func extractProvince(satker string) string {
-	// Example: "Subauditorat Sulawesi Utara I" -> "Sulawesi Utara"
 	satker = strings.ToLower(satker)
 
-	// List of provinces
 	provinces := []string{
 		"aceh", "sumatera utara", "sumatera barat", "riau", "jambi",
 		"sumatera selatan", "bengkulu", "lampung", "kepulauan bangka belitung",
@@ -189,7 +285,6 @@ func extractProvince(satker string) string {
 
 	for _, province := range provinces {
 		if strings.Contains(satker, province) {
-			// Capitalize first letter of each word
 			words := strings.Split(province, " ")
 			for i, word := range words {
 				if len(word) > 0 {
@@ -197,57 +292,6 @@ func extractProvince(satker string) string {
 				}
 			}
 			return strings.Join(words, " ")
-		}
-	}
-
-	return "Lainnya"
-}
-
-// getRegion returns region based on province
-func getRegion(province string) string {
-	province = strings.ToLower(province)
-
-	sumatera := []string{"aceh", "sumatera utara", "sumatera barat", "riau", "jambi", "sumatera selatan", "bengkulu", "lampung", "kepulauan bangka belitung", "kepulauan riau"}
-	jawa := []string{"dki jakarta", "jawa barat", "jawa tengah", "yogyakarta", "di yogyakarta", "jawa timur", "banten"}
-	kalimantan := []string{"kalimantan barat", "kalimantan tengah", "kalimantan selatan", "kalimantan timur", "kalimantan utara"}
-	sulawesi := []string{"sulawesi utara", "sulawesi tengah", "sulawesi selatan", "sulawesi tenggara", "gorontalo", "sulawesi barat"}
-	nusaTenggara := []string{"bali", "nusa tenggara barat", "nusa tenggara timur"}
-	maluku := []string{"maluku", "maluku utara"}
-	papua := []string{"papua", "papua barat", "papua selatan", "papua tengah", "papua pegunungan", "papua barat daya"}
-
-	for _, p := range sumatera {
-		if strings.Contains(province, p) {
-			return "Sumatera"
-		}
-	}
-	for _, p := range jawa {
-		if strings.Contains(province, p) {
-			return "Jawa"
-		}
-	}
-	for _, p := range kalimantan {
-		if strings.Contains(province, p) {
-			return "Kalimantan"
-		}
-	}
-	for _, p := range sulawesi {
-		if strings.Contains(province, p) {
-			return "Sulawesi"
-		}
-	}
-	for _, p := range nusaTenggara {
-		if strings.Contains(province, p) {
-			return "Nusa Tenggara"
-		}
-	}
-	for _, p := range maluku {
-		if strings.Contains(province, p) {
-			return "Maluku"
-		}
-	}
-	for _, p := range papua {
-		if strings.Contains(province, p) {
-			return "Papua"
 		}
 	}
 

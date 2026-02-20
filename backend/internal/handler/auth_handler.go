@@ -1,15 +1,19 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
+	"strings"
+	"time"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/auth"
 	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
-	"github.com/bpk-ri/dashboard-monitoring/internal/service"
+	"github.com/bpk-ri/dashboard-monitoring/internal/response"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
+// Login handles user authentication
 func Login(c *gin.Context) {
 	var req entity.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -17,25 +21,51 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	authService := service.NewAuthService(database.GetDB())
-	user, token, err := authService.Login(req.Username, req.Password)
+	db := database.GetDB()
+
+	// Find user by username or email
+	var user entity.User
+	var err error
+
+	// Check if input contains '@' to determine if it's email or username
+	if strings.Contains(req.Username, "@") {
+		// Login with email
+		err = db.Where("email = ? AND is_active = ?", req.Username, true).First(&user).Error
+	} else {
+		// Login with username
+		err = db.Where("username = ? AND is_active = ?", req.Username, true).First(&user).Error
+	}
 
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidCredentials) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal melakukan login"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Username/Email atau password salah"})
+		return
+	}
+
+	// Verify password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Username/Email atau password salah"})
+		return
+	}
+
+	// Update last login
+	now := time.Now()
+	user.LastLogin = &now
+	db.Save(&user)
+
+	token, err := auth.GenerateToken(user.ID, user.Role)
+	if err != nil {
+		response.Internal(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, entity.LoginResponse{
 		Token:   token,
-		User:    *user,
+		User:    user,
 		Message: "Login berhasil",
 	})
 }
 
+// Register handles user registration
 func Register(c *gin.Context) {
 	var req entity.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -43,31 +73,62 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	authService := service.NewAuthService(database.GetDB())
-	user, err := authService.Register(req)
+	// Validate email domain
+	if !strings.HasSuffix(req.Email, "@bpk.go.id") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email harus menggunakan domain @bpk.go.id"})
+		return
+	}
 
+	// Validate password confirmation
+	if req.Password != req.ConfirmPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password dan konfirmasi password tidak cocok"})
+		return
+	}
+
+	db := database.GetDB()
+
+	// Check if username already exists
+	var existingUser entity.User
+	if err := db.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Username sudah digunakan"})
+		return
+	}
+
+	// Check if email already exists
+	if err := db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Email sudah digunakan"})
+		return
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		switch err {
-		case service.ErrInvalidEmail:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		case service.ErrPasswordMismatch:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		case service.ErrUsernameExists:
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		case service.ErrEmailExists:
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat akun"})
-		}
+		response.Internal(c, err)
+		return
+	}
+
+	// Create new user
+	newUser := entity.User{
+		Username:     req.Username,
+		PasswordHash: string(hashedPassword),
+		Role:         "user", // Default role
+		FullName:     req.FullName,
+		Email:        req.Email,
+		IsActive:     true,
+	}
+
+	if err := db.Create(&newUser).Error; err != nil {
+		response.Internal(c, err)
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Akun berhasil dibuat",
-		"user":    user,
+		"user":    newUser,
 	})
 }
 
+// ForgotPassword handles password reset
 func ForgotPassword(c *gin.Context) {
 	var req entity.ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -75,18 +136,32 @@ func ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	authService := service.NewAuthService(database.GetDB())
-	err := authService.ResetPassword(req.Username, req.NewPassword, req.ConfirmPassword)
+	// Validate password confirmation
+	if req.NewPassword != req.ConfirmPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password dan konfirmasi password tidak cocok"})
+		return
+	}
 
+	db := database.GetDB()
+
+	// Find user
+	var user entity.User
+	if err := db.Where("username = ?", req.Username).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Username tidak ditemukan"})
+		return
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		switch err {
-		case service.ErrUserNotFound:
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		case service.ErrPasswordMismatch:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengubah password"})
-		}
+		response.Internal(c, err)
+		return
+	}
+
+	// Update password
+	user.PasswordHash = string(hashedPassword)
+	if err := db.Save(&user).Error; err != nil {
+		response.Internal(c, err)
 		return
 	}
 
@@ -95,6 +170,7 @@ func ForgotPassword(c *gin.Context) {
 	})
 }
 
+// Logout handles user logout (client should discard the token)
 func Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logout berhasil",

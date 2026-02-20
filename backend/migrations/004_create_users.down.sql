@@ -1,0 +1,2 @@
+-- Migration 004 DOWN
+DROP TABLE IF EXISTS users CASCADE;

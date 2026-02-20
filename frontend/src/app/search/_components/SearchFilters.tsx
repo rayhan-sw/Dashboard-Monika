@@ -3,14 +3,15 @@
 import { Icon } from "@iconify/react";
 import { useState, useEffect } from "react";
 import { dashboardService } from "@/services/api";
+import BPKTreeView from "./BPKTreeView";
 
 export interface SearchFiltersState {
   dateRange: string;
   customStart?: string;
   customEnd?: string;
   satker: string;
+  satkerIds: number[];
   cluster: string;
-  eselon: string;
   status: "all" | "success" | "failed";
   activityTypes: string[];
   location: string;
@@ -454,9 +455,8 @@ export default function SearchFilters({
 }: SearchFiltersProps) {
   const [showCustomDate, setShowCustomDate] = useState(false);
   const [clusters, setClusters] = useState<string[]>([]);
-  const [satkerSearch, setSatkerSearch] = useState("");
   const [clusterDropdownOpen, setClusterDropdownOpen] = useState(false);
-  const [eselonDropdownOpen, setEselonDropdownOpen] = useState(false);
+  const [showTreeView, setShowTreeView] = useState(true);
 
   useEffect(() => {
     loadClusters();
@@ -478,14 +478,6 @@ export default function SearchFilters({
 
     onChange({ ...filters, activityTypes: updated });
   };
-
-  // Get satker list based on selected eselon and filter by search
-  const satkerList = filters.eselon
-    ? SATKER_BY_ESELON[filters.eselon] || []
-    : [];
-  const filteredSatker = satkerList.filter((s) =>
-    s.toLowerCase().includes(satkerSearch.toLowerCase()),
-  );
 
   return (
     <div className="bg-white rounded-lg-bpk shadow-sm border border-gray-200 p-5 sticky top-24">
@@ -589,7 +581,6 @@ export default function SearchFilters({
           <button
             onClick={() => {
               setClusterDropdownOpen(!clusterDropdownOpen);
-              setEselonDropdownOpen(false);
             }}
             className="w-full px-3 py-2.5 text-sm bg-white border-2 border-bpk-orange rounded-lg-bpk focus:ring-2 focus:ring-bpk-orange/20 focus:outline-none flex items-center justify-between font-medium cursor-pointer"
           >
@@ -642,156 +633,32 @@ export default function SearchFilters({
           )}
         </div>
 
-        {/* Eselon - Custom Dropdown */}
-        <div className="relative">
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">
-            Eselon
-          </label>
-          <button
-            onClick={() => {
-              setEselonDropdownOpen(!eselonDropdownOpen);
-              setClusterDropdownOpen(false);
-            }}
-            className="w-full px-3 py-2.5 text-sm bg-white border-2 border-bpk-orange rounded-lg-bpk focus:ring-2 focus:ring-bpk-orange/20 focus:outline-none flex items-center justify-between font-medium cursor-pointer"
-          >
-            <span
-              className={filters.eselon ? "text-gray-800" : "text-gray-500"}
-            >
-              {filters.eselon || "Semua Eselon"}
-            </span>
-            <Icon
-              icon={eselonDropdownOpen ? "mdi:chevron-up" : "mdi:chevron-down"}
-              className="w-4 h-4 text-bpk-orange"
-            />
-          </button>
-
-          {/* Dropdown List */}
-          {eselonDropdownOpen && (
-            <div className="absolute z-10 w-full mt-1 bg-white border-2 border-bpk-orange rounded-lg-bpk shadow-lg overflow-hidden">
-              <button
-                onClick={() => {
-                  onChange({ ...filters, eselon: "", satker: "" });
-                  setSatkerSearch("");
-                  setEselonDropdownOpen(false);
-                }}
-                className={`w-full px-3 py-2.5 text-left text-sm border-b border-gray-100 transition-colors ${
-                  !filters.eselon
-                    ? "bg-orange-50 text-bpk-orange font-semibold"
-                    : "hover:bg-gray-50"
-                }`}
-              >
-                Semua Eselon
-              </button>
-              {["Eselon 1", "Eselon 2", "Eselon 3", "Eselon 4"].map(
-                (eselon) => (
-                  <button
-                    key={eselon}
-                    onClick={() => {
-                      onChange({ ...filters, eselon: eselon, satker: "" });
-                      setSatkerSearch("");
-                      setEselonDropdownOpen(false);
-                    }}
-                    className={`w-full px-3 py-2.5 text-left text-sm border-b border-gray-100 last:border-0 transition-colors ${
-                      filters.eselon === eselon
-                        ? "bg-orange-50 text-bpk-orange font-semibold"
-                        : "hover:bg-gray-50"
-                    }`}
-                  >
-                    {eselon}
-                  </button>
-                ),
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Satker - Search + Scrollable List based on Eselon */}
+        {/* Satker - BPK Tree View */}
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">
-            Satuan Kerja
-            {filters.eselon && (
-              <span className="text-bpk-orange ml-1">
-                ({satkerList.length})
-              </span>
-            )}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Satuan Kerja
+            </label>
+            <button
+              onClick={() => setShowTreeView(!showTreeView)}
+              className="text-xs text-bpk-orange hover:underline font-medium flex items-center gap-1"
+            >
+              <Icon
+                icon={showTreeView ? "mdi:eye-off" : "mdi:file-tree"}
+                className="w-3.5 h-3.5"
+              />
+              {showTreeView ? "Sembunyikan" : "Tampilkan"}
+            </button>
+          </div>
 
-          {!filters.eselon ? (
-            <div className="px-3 py-2.5 text-sm text-gray-400 bg-gray-50 border-2 border-gray-100 rounded-lg-bpk">
-              Pilih eselon terlebih dahulu
-            </div>
-          ) : (
-            <>
-              {/* Search Input */}
-              <div className="relative mb-2">
-                <Icon
-                  icon="mdi:magnify"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                />
-                <input
-                  type="text"
-                  placeholder={`Cari satker di ${filters.eselon}...`}
-                  value={satkerSearch}
-                  onChange={(e) => setSatkerSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-white border-2 border-gray-200 rounded-lg-bpk focus:border-bpk-orange focus:ring-2 focus:ring-bpk-orange/20 focus:outline-none transition-colors"
-                />
-                {satkerSearch && (
-                  <button
-                    onClick={() => setSatkerSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <Icon icon="mdi:close" className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* Scrollable List */}
-              <div className="border-2 border-bpk-orange rounded-lg-bpk overflow-hidden">
-                <div className="max-h-[160px] overflow-auto">
-                  {/* Semua Satker option */}
-                  <button
-                    onClick={() => onChange({ ...filters, satker: "" })}
-                    className={`w-full px-3 py-2 text-left text-sm border-b border-gray-100 transition-colors ${
-                      !filters.satker
-                        ? "bg-orange-50 text-bpk-orange font-semibold"
-                        : "hover:bg-gray-50"
-                    }`}
-                  >
-                    Semua Satker
-                  </button>
-
-                  {filteredSatker.length > 0 ? (
-                    filteredSatker.map((satker) => (
-                      <button
-                        key={satker}
-                        onClick={() => onChange({ ...filters, satker: satker })}
-                        className={`w-full px-3 py-2 text-left text-sm border-b border-gray-100 last:border-0 transition-colors ${
-                          filters.satker === satker
-                            ? "bg-orange-50 text-bpk-orange font-semibold"
-                            : "hover:bg-gray-50"
-                        }`}
-                      >
-                        {satker}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-3 py-4 text-center text-sm text-gray-400">
-                      Tidak ditemukan satker "{satkerSearch}"
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Info text */}
-              <p className="text-xs text-gray-400 mt-1">
-                {filteredSatker.length} dari {satkerList.length} satker
-                {filters.satker && (
-                  <span className="text-bpk-orange ml-1">
-                    • Terpilih: {filters.satker}
-                  </span>
-                )}
-              </p>
-            </>
+          {showTreeView && (
+            <BPKTreeView
+              selectedIds={filters.satkerIds || []}
+              onSelectionChange={(ids) =>
+                onChange({ ...filters, satkerIds: ids, satker: "" })
+              }
+              maxHeight="400px"
+            />
           )}
         </div>
 

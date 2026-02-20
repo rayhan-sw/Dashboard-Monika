@@ -13,12 +13,15 @@
   }
 
   body {
-    @apply bg-gray-6 text-gray-1 font-sans;
+    @apply bg-gray-6 text-gray-1 font-sans antialiased;
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
-    /* Prevent CLS from font loading */
     font-display: swap;
+    /* Lebih nyaman dibaca di layar */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: 0.01em;
   }
 
   /* Prevent layout shift from scrollbar */
@@ -72,5 +75,26 @@
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #D1D5DB;
+  }
+
+  /* Performance optimization utilities */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
+  .smooth-transition {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Optimize animations for reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

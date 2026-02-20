@@ -10,11 +10,11 @@ $projectRoot = "c:\Users\Rayhansw\KULIAH\MagangBPK\Dashboard-BPK"
 # Check if PostgreSQL is running
 Write-Host "Checking PostgreSQL..." -ForegroundColor Yellow
 try {
-    $pgCheck = & psql -U postgres -d dashboard_bpk -c "SELECT 1;" 2>&1
+    $pgCheck = & psql -U postgres -d daring_bpk -c "SELECT 1;" 2>&1
     Write-Host "✓ PostgreSQL is running" -ForegroundColor Green
 } catch {
     Write-Host "WARNING: PostgreSQL might not be running or database not created" -ForegroundColor Red
-    Write-Host "   Run: createdb dashboard_bpk" -ForegroundColor Yellow
+    Write-Host "   Run: createdb daring_bpk" -ForegroundColor Yellow
 }
 
 Write-Host "`nStarting Backend Server (Port 8080)..." -ForegroundColor Cyan

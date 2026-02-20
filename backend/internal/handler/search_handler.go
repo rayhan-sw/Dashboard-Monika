@@ -6,14 +6,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/dto"
 	"github.com/bpk-ri/dashboard-monitoring/internal/repository"
-	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
+	"github.com/bpk-ri/dashboard-monitoring/internal/response"
 	"github.com/gin-gonic/gin"
 )
 
 // GlobalSearch handles the main search endpoint
 func GlobalSearch(c *gin.Context) {
-	repo := repository.NewSearchRepository(database.GetDB())
+	repo := getSearchRepo()
 
 	// Parse query parameters
 	query := c.Query("q")
@@ -21,8 +22,8 @@ func GlobalSearch(c *gin.Context) {
 	startDate := c.Query("startDate")
 	endDate := c.Query("endDate")
 	satker := c.Query("satker")
+	satkerIdsStr := c.Query("satkerIds")
 	cluster := c.Query("cluster")
-	eselon := c.Query("eselon")
 	status := c.Query("status")
 	activityTypes := c.Query("activityTypes")
 
@@ -75,12 +76,24 @@ func GlobalSearch(c *gin.Context) {
 		activityTypesList = strings.Split(activityTypes, ",")
 	}
 
+	// Parse satker IDs
+	var satkerIds []int64
+	if satkerIdsStr != "" {
+		idStrs := strings.Split(satkerIdsStr, ",")
+		for _, idStr := range idStrs {
+			id, err := strconv.ParseInt(strings.TrimSpace(idStr), 10, 64)
+			if err == nil {
+				satkerIds = append(satkerIds, id)
+			}
+		}
+	}
+
 	// Build search params
 	params := repository.SearchParams{
 		Query:         query,
 		Satker:        satker,
+		SatkerIds:     satkerIds,
 		Cluster:       cluster,
-		Eselon:        eselon,
 		Status:        status,
 		ActivityTypes: activityTypesList,
 		StartDate:     startDateTime,
@@ -92,16 +105,20 @@ func GlobalSearch(c *gin.Context) {
 	// Execute search
 	results, total, err := repo.Search(params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to execute search",
-		})
+		response.Internal(c, err)
 		return
+	}
+
+	// Map to flat DTOs
+	dtos := make([]dto.ActivityLogDTO, len(results))
+	for i, a := range results {
+		dtos[i] = dto.ToDTO(a)
 	}
 
 	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
 
 	c.JSON(http.StatusOK, gin.H{
-		"data":        results,
+		"data":        dtos,
 		"page":        page,
 		"page_size":   pageSize,
 		"total_count": total,
@@ -111,7 +128,7 @@ func GlobalSearch(c *gin.Context) {
 
 // GetSearchSuggestions provides autocomplete suggestions
 func GetSearchSuggestions(c *gin.Context) {
-	repo := repository.NewSearchRepository(database.GetDB())
+	repo := getSearchRepo()
 	query := c.Query("q")
 
 	if query == "" {
@@ -123,9 +140,7 @@ func GetSearchSuggestions(c *gin.Context) {
 
 	suggestions, err := repo.GetSuggestions(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get suggestions",
-		})
+		response.Internal(c, err)
 		return
 	}
 
@@ -136,7 +151,7 @@ func GetSearchSuggestions(c *gin.Context) {
 
 // SearchUsers finds users by name or email
 func SearchUsers(c *gin.Context) {
-	repo := repository.NewSearchRepository(database.GetDB())
+	repo := getSearchRepo()
 	query := c.Query("q")
 
 	if query == "" {
@@ -148,9 +163,7 @@ func SearchUsers(c *gin.Context) {
 
 	users, err := repo.SearchUsers(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to search users",
-		})
+		response.Internal(c, err)
 		return
 	}
 
@@ -161,7 +174,7 @@ func SearchUsers(c *gin.Context) {
 
 // SearchSatker finds satker by name
 func SearchSatker(c *gin.Context) {
-	repo := repository.NewSearchRepository(database.GetDB())
+	repo := getSearchRepo()
 	query := c.Query("q")
 
 	if query == "" {
@@ -173,9 +186,7 @@ func SearchSatker(c *gin.Context) {
 
 	satker, err := repo.SearchSatker(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to search satker",
-		})
+		response.Internal(c, err)
 		return
 	}
 

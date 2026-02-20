@@ -35,10 +35,10 @@ interface Notification {
 }
 
 interface HeaderProps {
-  sidebarCollapsed?: boolean;
+  // No props needed
 }
 
-export default function Header({ sidebarCollapsed = false }: HeaderProps) {
+export default function Header() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [clusters, setClusters] = useState<string[]>([]);
@@ -48,7 +48,11 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [currentUser, setCurrentUser] = useState<{ id: number; username: string; role: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{
+    id: number;
+    username: string;
+    role: string;
+  } | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [tempStartDate, setTempStartDate] = useState<Date | null>(null);
   const [tempEndDate, setTempEndDate] = useState<Date | null>(null);
@@ -69,9 +73,9 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
   useEffect(() => {
     loadClusters();
     setTempSelectedCluster(selectedCluster);
-    
+
     // Load current user from localStorage
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem("user");
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
@@ -81,7 +85,7 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
           loadNotifications(user.id);
         }
       } catch (e) {
-        console.error('Failed to parse user data:', e);
+        console.error("Failed to parse user data:", e);
       }
     }
   }, [selectedCluster]);
@@ -92,7 +96,7 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
       setNotifications(response.data || []);
       setUnreadCount(response.unread_count || 0);
     } catch (error) {
-      console.error('Failed to load notifications:', error);
+      console.error("Failed to load notifications:", error);
     }
   };
 
@@ -100,12 +104,12 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
     try {
       await notificationService.markAsRead(notifId);
       // Update local state
-      setNotifications(prev => 
-        prev.map(n => n.id === notifId ? { ...n, is_read: true } : n)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n)),
       );
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      console.error("Failed to mark notification as read:", error);
     }
   };
 
@@ -248,20 +252,16 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
 
   const handleLogout = () => {
     // Clear auth data
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
     // Redirect to login
-    router.push('/auth/login');
+    router.push("/auth/login");
   };
 
   return (
     <header
-      className={`h-20 bg-white border-b border-gray-5 fixed top-0 right-0 z-[100] ${sidebarCollapsed ? "left-20" : "left-80"}`}
-      style={{
-        transition: "left 300ms ease-out",
-        willChange: "left",
-      }}
+      className="h-20 bg-white border-b border-gray-5 fixed top-0 right-0 left-80 z-[100]"
     >
       <div className="h-full px-6 flex items-center justify-between">
         {/* Search Bar */}
@@ -517,30 +517,44 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
                 <div className="px-4 py-3 border-b border-gray-5">
                   <h3 className="font-semibold text-gray-1">Notifikasi</h3>
                 </div>
-                
+
                 <div className="max-h-[300px] overflow-y-auto">
                   {notifications.length > 0 ? (
                     notifications.map((notif) => (
                       <div
                         key={notif.id}
-                        onClick={() => !notif.is_read && handleMarkNotificationRead(notif.id)}
+                        onClick={() =>
+                          !notif.is_read && handleMarkNotificationRead(notif.id)
+                        }
                         className={`px-4 py-3 border-b border-gray-5 last:border-0 cursor-pointer hover:bg-gray-6 transition-colors ${
-                          !notif.is_read ? 'bg-orange-50' : ''
+                          !notif.is_read ? "bg-orange-50" : ""
                         }`}
                       >
                         <div className="flex items-start gap-2">
-                          <div className={`mt-0.5 ${
-                            notif.type === 'success' ? 'text-emerald-500' :
-                            notif.type === 'error' ? 'text-red-500' :
-                            'text-blue-500'
-                          }`}>
-                            {notif.type === 'success' ? <CheckCircle className="w-4 h-4" /> :
-                             notif.type === 'error' ? <XCircle className="w-4 h-4" /> :
-                             <Info className="w-4 h-4" />}
+                          <div
+                            className={`mt-0.5 ${
+                              notif.type === "success"
+                                ? "text-emerald-500"
+                                : notif.type === "error"
+                                  ? "text-red-500"
+                                  : "text-blue-500"
+                            }`}
+                          >
+                            {notif.type === "success" ? (
+                              <CheckCircle className="w-4 h-4" />
+                            ) : notif.type === "error" ? (
+                              <XCircle className="w-4 h-4" />
+                            ) : (
+                              <Info className="w-4 h-4" />
+                            )}
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-1">{notif.title}</p>
-                            <p className="text-xs text-gray-3">{notif.message}</p>
+                            <p className="text-sm font-medium text-gray-1">
+                              {notif.title}
+                            </p>
+                            <p className="text-xs text-gray-3">
+                              {notif.message}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -579,10 +593,10 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
               </div>
               <div className="hidden md:block text-left">
                 <div className="text-caption font-semibold text-gray-1">
-                  {currentUser?.username || 'User'}
+                  {currentUser?.username || "User"}
                 </div>
                 <div className="text-overline text-gray-3">
-                  {currentUser?.role === 'admin' ? 'Administrator' : 'User'}
+                  {currentUser?.role === "admin" ? "Administrator" : "User"}
                 </div>
               </div>
               <ChevronDown
@@ -595,13 +609,13 @@ export default function Header({ sidebarCollapsed = false }: HeaderProps) {
               <div className="absolute top-full right-0 mt-2 bg-white rounded-lg-bpk shadow-lg border border-gray-5 py-2 z-[200] min-w-[200px]">
                 <div className="px-4 py-2 border-b border-gray-5">
                   <div className="text-caption font-semibold text-gray-1">
-                    {currentUser?.username || 'User'}
+                    {currentUser?.username || "User"}
                   </div>
                   <div className="text-overline text-gray-3">
-                    {currentUser?.role === 'admin' ? 'Administrator' : 'User'}
+                    {currentUser?.role === "admin" ? "Administrator" : "User"}
                   </div>
                 </div>
-                
+
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 transition-colors text-left group"

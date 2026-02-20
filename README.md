@@ -1,6 +1,6 @@
-# Dashboard Monitoring BIDICS BPK RI
+# Dashboard Monitoring Monika
 
-Dashboard monitoring aktivitas pengguna BIDICS untuk Badan Pemeriksa Keuangan Republik Indonesia.
+Dashboard monitoring aktivitas pengguna
 
 ## Tech Stack
 
@@ -22,9 +22,9 @@ Dashboard monitoring aktivitas pengguna BIDICS untuk Badan Pemeriksa Keuangan Re
 # Buat database
 createdb -U postgres daring_bpk
 
-# Jalankan setup script
-cd backend\scripts
-.\setup_database.ps1
+# Jalankan migrasi database
+cd backend
+go run cmd/migrate/main.go
 ```
 
 ### 3. Run Development
@@ -53,77 +53,23 @@ Dashboard-BPK/
 ├── frontend/                 # Next.js Application
 │   └── src/
 │       ├── app/              # Pages (dashboard, regional, search, dll)
-│       │   └── auth/
-│       │       ├── _hooks/   # Controller layer (custom hooks)
-│       │       └── _services/# Model layer (API calls)
-│       ├── components/       # View layer (UI Components)
+│       ├── components/       # UI Components
 │       ├── services/         # API Client
-│       └── stores/           # Zustand State Management
+│       └── stores/           # Zustand State
 │
-├── backend/                  # Go API Server
-│   ├── cmd/api/              # Application entry point
-│   ├── internal/
-│   │   ├── entity/           # Domain models (Model)
-│   │   ├── service/          # Business logic layer
-│   │   ├── handler/          # HTTP handlers (Controller)
-│   │   ├── repository/       # Data access layer (Model)
-│   │   └── middleware/       # Cross-cutting concerns
-│   ├── migrations/           # SQL Migrations
-│   └── scripts/              # Utility Scripts
+├── backend/                  # Go API Server (lihat backend/README.md untuk struktur lengkap)
+│   ├── cmd/api/              # Entry point API
+│   ├── cmd/import/           # Data import tool
+│   ├── cmd/migrate/          # Database migrations
+│   ├── internal/             # auth, dto, entity, handler, middleware, repository, response, server
+│   └── migrations/           # SQL Migrations
 │
-├── ARCHITECTURE.md           # Architecture documentation
-├── REFACTORING_SUMMARY.md    # Recent refactoring details
 ├── start-dev.ps1             # Start all servers
 └── stop-dev.ps1              # Stop all servers
 ```
 
-## Architecture
 
-This project follows **Clean Architecture** and **MVC (Model-View-Controller)** principles:
 
-### Backend (Go)
-- **Controllers**: `handler/` - HTTP request/response handling
-- **Services**: `service/` - Business logic and orchestration
-- **Models**: `entity/` + `repository/` - Data models and persistence
-- **Clear separation** of concerns with dependency injection
-
-### Frontend (Next.js/React)
-- **View**: React components for presentation
-- **Controller**: Custom hooks for state and logic
-- **Model**: API services for data access
-
-📖 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation.
-📊 See [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) for recent improvements.
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Health check |
-| GET | `/api/dashboard/stats` | Dashboard statistics |
-| GET | `/api/dashboard/activities` | Activity logs |
-| GET | `/api/dashboard/charts/:type` | Chart data (interaction/hourly) |
-| GET | `/api/regional/provinces` | Province list |
-| GET | `/api/regional/units` | Unit list |
-| GET | `/api/search` | Global search |
-
-## Environment Variables
-
-Backend `.env`:
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=yourpassword
-DB_NAME=daring_bpk
-```
-
-## Design System
-
-- **Design File**: [Figma](https://www.figma.com/design/yHuEwRXxFOAhq600fRXWzp/BPK-DASHBOARD--Dev-Mode-)
-- **Primary Color**: #FEB800 (BPK Gold)
-- **Secondary Color**: #E27200 (Orange)
-- **Font**: Plus Jakarta Sans
 
 ## Common Commands
 
@@ -139,8 +85,7 @@ cd frontend && npm run build && npm start
 
 # Database reset
 psql -U postgres -c "DROP DATABASE daring_bpk;"
-cd backend\scripts && .\setup_database.ps1
+psql -U postgres -c "CREATE DATABASE daring_bpk;"
+cd backend && go run cmd/migrate/main.go
 ```
 
----
-**BPK RI** - Badan Pemeriksa Keuangan Republik Indonesia

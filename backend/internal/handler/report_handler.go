@@ -11,6 +11,7 @@ import (
 
 	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
 	"github.com/bpk-ri/dashboard-monitoring/internal/repository"
+	"github.com/bpk-ri/dashboard-monitoring/internal/response"
 	"github.com/bpk-ri/dashboard-monitoring/internal/service"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
@@ -124,7 +125,7 @@ func GenerateReport(c *gin.Context) {
 	// Generate report data based on template
 	reportData, err := repository.GenerateReportData(req.TemplateID, req.StartDate, req.EndDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Internal(c, err)
 		return
 	}
 
@@ -322,7 +323,7 @@ func GetAccessRequests(c *gin.Context) {
 	// Get all access requests with user data
 	var requests []entity.ReportAccessRequest
 	if err := db.Preload("User").Order("requested_at DESC").Find(&requests).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch access requests"})
+		response.Internal(c, err)
 		return
 	}
 
@@ -416,13 +417,13 @@ func RequestAccess(c *gin.Context) {
 	}
 
 	if err := db.Create(&accessRequest).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat permintaan akses"})
+		response.Internal(c, err)
 		return
 	}
 
 	// Update user's report access status
 	if err := db.Model(&user).Update("report_access_status", "pending").Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui status"})
+		response.Internal(c, err)
 		return
 	}
 
@@ -473,7 +474,7 @@ func UpdateAccessRequest(c *gin.Context) {
 	accessRequest.AdminNotes = req.AdminNotes
 
 	if err := db.Save(&accessRequest).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update request"})
+		response.Internal(c, err)
 		return
 	}
 
@@ -483,7 +484,7 @@ func UpdateAccessRequest(c *gin.Context) {
 		newStatus = "none" // Reset to none so they can request again
 	}
 	if err := db.Model(&entity.User{}).Where("id = ?", accessRequest.UserID).Update("report_access_status", newStatus).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user status"})
+		response.Internal(c, err)
 		return
 	}
 

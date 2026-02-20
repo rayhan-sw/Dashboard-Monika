@@ -23,8 +23,12 @@ function SearchPageContent() {
     customStart: "",
     customEnd: "",
     satker: searchParams.get("satker") || "",
+    satkerIds: searchParams
+      .get("satkerIds")
+      ?.split(",")
+      .map(Number)
+      .filter(Boolean) || [],
     cluster: searchParams.get("cluster") || "",
-    eselon: searchParams.get("eselon") || "",
     status:
       (searchParams.get("status") as "all" | "success" | "failed") || "all",
     activityTypes:
@@ -75,8 +79,10 @@ function SearchPageContent() {
       params.set("startDate", activeFilters.customStart);
     if (activeFilters.customEnd) params.set("endDate", activeFilters.customEnd);
     if (activeFilters.satker) params.set("satker", activeFilters.satker);
+    if (activeFilters.satkerIds && activeFilters.satkerIds.length > 0) {
+      params.set("satkerIds", activeFilters.satkerIds.join(","));
+    }
     if (activeFilters.cluster) params.set("cluster", activeFilters.cluster);
-    if (activeFilters.eselon) params.set("eselon", activeFilters.eselon);
     if (activeFilters.status && activeFilters.status !== "all") {
       params.set("status", activeFilters.status.toUpperCase());
     }
@@ -157,8 +163,8 @@ function SearchPageContent() {
                       customStart: "",
                       customEnd: "",
                       satker: "",
+                      satkerIds: [],
                       cluster: "",
-                      eselon: "",
                       status: "all",
                       activityTypes: [],
                       location: "",

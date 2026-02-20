@@ -52,12 +52,10 @@ func GetDashboardRankings(startDate, endDate string) ([]DashboardRanking, error)
 
 	query := `
 		SELECT 
-			CASE 
-				WHEN cluster IS NULL OR cluster = '' THEN 'Tidak Terkategori'
-				ELSE cluster
-			END as name,
-			COUNT(*) as count
-		FROM act_log
+			COALESCE(c.name, 'Tidak Terkategori') as name,
+			COUNT(a.id) as count
+		FROM activity_logs_normalized a
+		LEFT JOIN ref_clusters c ON a.cluster_id = c.id
 		WHERE 1=1
 	`
 
@@ -66,21 +64,17 @@ func GetDashboardRankings(startDate, endDate string) ([]DashboardRanking, error)
 
 	if startDate != "" {
 		argCount++
-		query += " AND tanggal >= $" + strconv.Itoa(argCount)
+		query += " AND a.tanggal >= $" + strconv.Itoa(argCount)
 		args = append(args, startDate)
 	}
 	if endDate != "" {
 		argCount++
-		query += " AND tanggal <= $" + strconv.Itoa(argCount)
+		query += " AND a.tanggal <= $" + strconv.Itoa(argCount)
 		args = append(args, endDate)
 	}
 
 	query += `
-		GROUP BY 
-			CASE 
-				WHEN cluster IS NULL OR cluster = '' THEN 'Tidak Terkategori'
-				ELSE cluster
-			END
+		GROUP BY c.name
 		ORDER BY count DESC
 	`
 
@@ -140,17 +134,19 @@ func GetSearchModuleUsage(startDate, endDate, cluster string) ([]SearchModule, e
 		FROM (
 			SELECT 
 				CASE 
-					WHEN scope ILIKE '%search%' OR scope ILIKE '%pencarian%' THEN 
-						COALESCE(NULLIF(scope, ''), 'Lainnya')
-					ELSE COALESCE(NULLIF(detail_aktifitas, ''), 'Lainnya')
+					WHEN a.scope ILIKE '%search%' OR a.scope ILIKE '%pencarian%' THEN 
+						COALESCE(NULLIF(a.scope, ''), 'Lainnya')
+					ELSE COALESCE(NULLIF(a.detail_aktifitas, ''), 'Lainnya')
 				END as module_name,
 				COUNT(*) as count
-			FROM act_log
+			FROM activity_logs_normalized a
+			LEFT JOIN ref_activity_types at ON a.activity_type_id = at.id
+			LEFT JOIN ref_clusters c ON a.cluster_id = c.id
 			WHERE (
-				aktifitas ILIKE '%search%' 
-				OR aktifitas ILIKE '%pencarian%'
-				OR scope ILIKE '%search%'
-				OR detail_aktifitas ILIKE '%pencarian%'
+				at.name ILIKE '%search%' 
+				OR at.name ILIKE '%pencarian%'
+				OR a.scope ILIKE '%search%'
+				OR a.detail_aktifitas ILIKE '%pencarian%'
 			)
 	`
 
@@ -159,18 +155,18 @@ func GetSearchModuleUsage(startDate, endDate, cluster string) ([]SearchModule, e
 
 	if cluster != "" {
 		argCount++
-		query += " AND cluster = $" + strconv.Itoa(argCount)
+		query += " AND c.name = $" + strconv.Itoa(argCount)
 		args = append(args, cluster)
 	}
 
 	if startDate != "" {
 		argCount++
-		query += " AND tanggal >= $" + strconv.Itoa(argCount)
+		query += " AND a.tanggal >= $" + strconv.Itoa(argCount)
 		args = append(args, startDate)
 	}
 	if endDate != "" {
 		argCount++
-		query += " AND tanggal <= $" + strconv.Itoa(argCount)
+		query += " AND a.tanggal <= $" + strconv.Itoa(argCount)
 		args = append(args, endDate)
 	}
 
@@ -209,35 +205,41 @@ func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 	dateFilter := ""
 	if cluster != "" {
 		argCount++
-		dateFilter += " AND cluster = $" + strconv.Itoa(argCount)
+		dateFilter += " AND c.name = $" + strconv.Itoa(argCount)
 		args = append(args, cluster)
 	}
 	if startDate != "" {
 		argCount++
-		dateFilter += " AND tanggal >= $" + strconv.Itoa(argCount)
+		dateFilter += " AND a.tanggal >= $" + strconv.Itoa(argCount)
 		args = append(args, startDate)
 	}
 	if endDate != "" {
 		argCount++
-		dateFilter += " AND tanggal <= $" + strconv.Itoa(argCount)
+		dateFilter += " AND a.tanggal <= $" + strconv.Itoa(argCount)
 		args = append(args, endDate)
 	}
 
 	// View Data count (activities with 'view' but not 'download' or 'export')
 	var viewCount int
 	viewQuery := `
-		SELECT COUNT(*) FROM act_log
-		WHERE aktifitas ILIKE '%view%' 
-		AND aktifitas NOT ILIKE '%download%' 
-		AND aktifitas NOT ILIKE '%export%'
+		SELECT COUNT(*) 
+		FROM activity_logs_normalized a
+		JOIN ref_activity_types at ON a.activity_type_id = at.id
+		LEFT JOIN ref_clusters c ON a.cluster_id = c.id
+		WHERE at.name ILIKE '%view%' 
+		AND at.name NOT ILIKE '%download%' 
+		AND at.name NOT ILIKE '%export%'
 	` + dateFilter
 	db.Raw(viewQuery, args...).Scan(&viewCount)
 
 	// Download Data count (activities with 'download' only)
 	var downloadCount int
 	downloadQuery := `
-		SELECT COUNT(*) FROM act_log
-		WHERE aktifitas ILIKE '%download%'
+		SELECT COUNT(*) 
+		FROM activity_logs_normalized a
+		JOIN ref_activity_types at ON a.activity_type_id = at.id
+		LEFT JOIN ref_clusters c ON a.cluster_id = c.id
+		WHERE at.name ILIKE '%download%'
 	` + dateFilter
 	db.Raw(downloadQuery, args...).Scan(&downloadCount)
 
@@ -245,12 +247,14 @@ func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 	var viewDetails []DetailActivityCount
 	viewDetailQuery := `
 		SELECT 
-			COALESCE(NULLIF(detail_aktifitas, ''), scope, aktifitas) as detail,
+			COALESCE(NULLIF(a.detail_aktifitas, ''), a.scope, at.name) as detail,
 			COUNT(*) as count
-		FROM act_log
-		WHERE aktifitas ILIKE '%view%' 
-		AND aktifitas NOT ILIKE '%download%' 
-		AND aktifitas NOT ILIKE '%export%'
+		FROM activity_logs_normalized a
+		JOIN ref_activity_types at ON a.activity_type_id = at.id
+		LEFT JOIN ref_clusters c ON a.cluster_id = c.id
+		WHERE at.name ILIKE '%view%' 
+		AND at.name NOT ILIKE '%download%' 
+		AND at.name NOT ILIKE '%export%'
 	` + dateFilter + `
 		GROUP BY detail
 		ORDER BY count DESC
@@ -262,10 +266,12 @@ func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 	var downloadDetails []DetailActivityCount
 	downloadDetailQuery := `
 		SELECT 
-			COALESCE(NULLIF(detail_aktifitas, ''), scope, aktifitas) as detail,
+			COALESCE(NULLIF(a.detail_aktifitas, ''), a.scope, at.name) as detail,
 			COUNT(*) as count
-		FROM act_log
-		WHERE aktifitas ILIKE '%download%'
+		FROM activity_logs_normalized a
+		JOIN ref_activity_types at ON a.activity_type_id = at.id
+		LEFT JOIN ref_clusters c ON a.cluster_id = c.id
+		WHERE at.name ILIKE '%download%'
 	` + dateFilter + `
 		GROUP BY detail
 		ORDER BY count DESC
@@ -293,11 +299,13 @@ func GetOperationalIntents(startDate, endDate, cluster, limitStr string) ([]Oper
 	query := `
 		SELECT intent_name, count FROM (
 			SELECT 
-				COALESCE(NULLIF(scope, ''), detail_aktifitas, aktifitas) as intent_name,
+				COALESCE(NULLIF(a.scope, ''), a.detail_aktifitas, at.name) as intent_name,
 				COUNT(*) as count
-			FROM act_log
-			WHERE aktifitas IS NOT NULL
-			AND aktifitas NOT IN ('LOGIN', 'LOGOUT')
+			FROM activity_logs_normalized a
+			JOIN ref_activity_types at ON a.activity_type_id = at.id
+			LEFT JOIN ref_clusters c ON a.cluster_id = c.id
+			WHERE at.name IS NOT NULL
+			AND at.name NOT IN ('LOGIN', 'LOGOUT')
 	`
 
 	args := []interface{}{}
@@ -305,18 +313,18 @@ func GetOperationalIntents(startDate, endDate, cluster, limitStr string) ([]Oper
 
 	if cluster != "" {
 		argCount++
-		query += " AND cluster = $" + strconv.Itoa(argCount)
+		query += " AND c.name = $" + strconv.Itoa(argCount)
 		args = append(args, cluster)
 	}
 
 	if startDate != "" {
 		argCount++
-		query += " AND tanggal >= $" + strconv.Itoa(argCount)
+		query += " AND a.tanggal >= $" + strconv.Itoa(argCount)
 		args = append(args, startDate)
 	}
 	if endDate != "" {
 		argCount++
-		query += " AND tanggal <= $" + strconv.Itoa(argCount)
+		query += " AND a.tanggal <= $" + strconv.Itoa(argCount)
 		args = append(args, endDate)
 	}
 
@@ -355,16 +363,17 @@ func GetGlobalEconomicsChart(startDate, endDate string) ([]GlobalEconomicsData, 
 		SELECT category, count FROM (
 			SELECT 
 				CASE 
-					WHEN scope ILIKE '%ntpn%' THEN 'NTPN'
-					WHEN scope ILIKE '%komdlng%' OR scope ILIKE '%eri%' THEN 'KOMDLNG'
-					WHEN scope ILIKE '%ink%' OR scope ILIKE '%garuda%' THEN 'INK'
-					WHEN scope ILIKE '%trust%' OR scope ILIKE '%bkn%' THEN 'Trust'
+					WHEN a.scope ILIKE '%ntpn%' THEN 'NTPN'
+					WHEN a.scope ILIKE '%komdlng%' OR a.scope ILIKE '%eri%' THEN 'KOMDLNG'
+					WHEN a.scope ILIKE '%ink%' OR a.scope ILIKE '%garuda%' THEN 'INK'
+					WHEN a.scope ILIKE '%trust%' OR a.scope ILIKE '%bkn%' THEN 'Trust'
 					ELSE 'Other'
 				END as category,
 				COUNT(*) as count
-			FROM act_log
-			WHERE cluster = 'pencarian'
-			OR scope ILIKE '%search%'
+			FROM activity_logs_normalized a
+			LEFT JOIN ref_clusters c ON a.cluster_id = c.id
+			WHERE c.name = 'pencarian'
+			OR a.scope ILIKE '%search%'
 	`
 
 	args := []interface{}{}
@@ -372,12 +381,12 @@ func GetGlobalEconomicsChart(startDate, endDate string) ([]GlobalEconomicsData, 
 
 	if startDate != "" {
 		argCount++
-		query += " AND tanggal >= $" + strconv.Itoa(argCount)
+		query += " AND a.tanggal >= $" + strconv.Itoa(argCount)
 		args = append(args, startDate)
 	}
 	if endDate != "" {
 		argCount++
-		query += " AND tanggal <= $" + strconv.Itoa(argCount)
+		query += " AND a.tanggal <= $" + strconv.Itoa(argCount)
 		args = append(args, endDate)
 	}
 
