@@ -5,8 +5,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 )
+
+// ErrJWTSecretNotSet is returned when JWT_SECRET is not set (required in production).
+var ErrJWTSecretNotSet = errors.New("JWT_SECRET is not set; set it in environment for security")
 
 // Claims holds JWT claims (user_id, role) plus standard exp.
 type Claims struct {
@@ -15,21 +19,15 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-const defaultExpiry = 24 * time.Hour
-
 // GenerateToken creates a JWT for the given user. Uses JWT_SECRET and JWT_EXPIRY from env.
+// Returns ErrJWTSecretNotSet if JWT_SECRET is empty (no fallback for production safety).
 func GenerateToken(userID int, role string) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "change_me_in_production" // fallback for local dev; .env.example has JWT_SECRET
+		return "", ErrJWTSecretNotSet
 	}
 
-	expiry := defaultExpiry
-	if s := os.Getenv("JWT_EXPIRY"); s != "" {
-		if d, err := time.ParseDuration(s); err == nil {
-			expiry = d
-		}
-	}
+	expiry := config.GetJWTExpiry()
 
 	claims := Claims{
 		UserID: userID,
@@ -45,10 +43,11 @@ func GenerateToken(userID int, role string) (string, error) {
 }
 
 // ValidateToken parses and validates the JWT, returns userID and role or error.
+// Returns ErrJWTSecretNotSet if JWT_SECRET is empty.
 func ValidateToken(tokenString string) (userID int, role string, err error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "change_me_in_production"
+		return 0, "", ErrJWTSecretNotSet
 	}
 
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(t *jwt.Token) (interface{}, error) {

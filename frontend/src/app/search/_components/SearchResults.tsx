@@ -131,7 +131,7 @@ export default function SearchResults({
               }`}
             >
               <Icon icon="mdi:format-list-bulleted" className="w-4 h-4" />
-              <span className="text-sm font-medium">Timeline</span>
+              <span className="text-sm font-medium">Linimasa</span>
             </button>
             <button
               onClick={() => setViewMode("table")}

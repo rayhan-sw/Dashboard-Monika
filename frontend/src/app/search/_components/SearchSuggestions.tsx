@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { User, Building, Clock } from "lucide-react";
+import { searchService } from "@/services/api";
 
 interface SearchSuggestionsProps {
   query: string;
@@ -30,11 +31,15 @@ export default function SearchSuggestions({
 
       setLoading(true);
       try {
-        const response = await fetch(
-          `http://localhost:8080/api/search/suggestions?q=${encodeURIComponent(query)}`,
-        );
-        const data = await response.json();
-        setSuggestions(data.data || []);
+        const data = await searchService.getSuggestions(query);
+        // Backend returns { suggestions: [{ type, value, label }] }
+        const raw = data.suggestions || (data.data as { type?: string; value?: string; label?: string; text?: string; subtitle?: string }[] | undefined) || [];
+        const mapped: Suggestion[] = raw.map((s) => ({
+          type: (s.type as "user" | "satker" | "recent") || "user",
+          text: s.text ?? s.value ?? s.label ?? "",
+          subtitle: s.subtitle,
+        }));
+        setSuggestions(mapped);
       } catch (error) {
         console.error("Failed to fetch suggestions:", error);
         setSuggestions([]);

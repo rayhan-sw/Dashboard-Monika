@@ -12,6 +12,7 @@ import {
 } from "./_components";
 import type { ActivityLog } from "@/types/api";
 import type { SearchFiltersState } from "./_components/SearchFilters";
+import { searchService } from "@/services/api";
 
 function SearchPageContent() {
   const router = useRouter();
@@ -96,10 +97,7 @@ function SearchPageContent() {
     router.push(`/search?${params.toString()}`, { scroll: false });
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/search?${params.toString()}`,
-      );
-      const data = await response.json();
+      const data = await searchService.globalSearch(params.toString());
 
       setResults(data.data || []);
       setTotalCount(data.total_count || 0);

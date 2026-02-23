@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
-import { dashboardService, regionalService } from "@/services/api";
+import { dashboardService, regionalService, type SatkerRoot } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import type { HourlyData } from "@/types/api";
 import { Filter, ChevronDown, Check } from "lucide-react";
@@ -17,6 +17,7 @@ import {
   UnitOperationalHours,
   GeographicDistributionList,
   GeographicDistributionChart,
+  EngagementEselonChart,
   TopContributors,
 } from "./_components";
 
@@ -97,11 +98,13 @@ export default function RegionalPage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState<string>("");
   const [selectedEselon, setSelectedEselon] = useState<string>("Semua Eselon");
+  const [selectedEselonRootId, setSelectedEselonRootId] = useState<number | null>(null);
   const [tempSelectedEselon, setTempSelectedEselon] =
     useState<string>("Semua Eselon");
+  const [tempSelectedEselonRootId, setTempSelectedEselonRootId] = useState<number | null>(null);
   const [showEselonPicker, setShowEselonPicker] = useState(false);
   const eselonPickerRef = useRef<HTMLDivElement>(null);
-  const [availableEselons, setAvailableEselons] = useState<string[]>([]);
+  const [eselonRoots, setEselonRoots] = useState<SatkerRoot[]>([]);
 
   // Auth check
   useEffect(() => {
@@ -112,6 +115,14 @@ export default function RegionalPage() {
       setAuthLoading(false);
     }
   }, [router]);
+
+  // Fetch Eselon I roots untuk filter dropdown
+  useEffect(() => {
+    regionalService
+      .getSatkerRoots()
+      .then((res) => setEselonRoots(res.roots || []))
+      .catch(() => setEselonRoots([]));
+  }, []);
 
   // State untuk data dari API
   const [performanceData, setPerformanceData] = useState<SatkerPerformance[]>(
@@ -128,20 +139,11 @@ export default function RegionalPage() {
     {},
   );
 
-  // Define available eselons
-  const AVAILABLE_ESELONS = [
-    "Eksternal",
-    "Eselon 1",
-    "Eselon 2",
-    "Eselon 3",
-    "Eselon 4",
-    "Kelompok Jabatan Fungsional",
-  ];
-
   // Sync temp with selected
   useEffect(() => {
     setTempSelectedEselon(selectedEselon);
-  }, [selectedEselon]);
+    setTempSelectedEselonRootId(selectedEselonRootId);
+  }, [selectedEselon, selectedEselonRootId]);
 
   // Handle click outside
   useEffect(() => {
@@ -172,23 +174,23 @@ export default function RegionalPage() {
         const endDate = dateRange.endDate;
         const cluster =
           selectedCluster === "Semua Cluster" ? "" : selectedCluster;
-        const eselon = selectedEselon === "Semua Eselon" ? "" : selectedEselon;
 
         console.log("Regional Page - Fetching data with params:", {
           startDate,
           endDate,
           cluster,
-          eselon,
+          rootSatkerId: selectedEselonRootId,
         });
 
-        // 1. Fetch satker performance data
+        // 1. Fetch satker performance data (filter by Eselon I root + anak bila dipilih)
         const satkerResponse = await regionalService.getUnits(
           1,
           10000,
           startDate,
           endDate,
           cluster,
-          eselon,
+          undefined,
+          selectedEselonRootId ?? undefined,
         );
 
         console.log(
@@ -234,9 +236,10 @@ export default function RegionalPage() {
           startDate,
           endDate,
           cluster,
-          eselon,
+          undefined,
+          selectedEselonRootId ?? undefined,
         );
-        const locations = locationsResponse.data;
+        const locations = locationsResponse?.data ?? [];
 
         console.log(
           "Regional Page - Satker provinces from DB aggregation:",
@@ -245,7 +248,7 @@ export default function RegionalPage() {
 
         // 3. Process Geographic Distribution for map
         // Backend already returns normalized UPPERCASE province names
-        const mapProvinceData = locations.map((item) => ({
+        const mapProvinceData = locations.map((item: { lokasi?: string; count?: number }) => ({
           name: item.lokasi?.trim() || "",
           count: item.count || 0,
         })).filter(item => item.name !== "");
@@ -315,7 +318,8 @@ export default function RegionalPage() {
           startDate,
           endDate,
           cluster,
-          eselon,
+          undefined,
+          selectedEselonRootId ?? undefined,
         );
         setTopContributors(contributorsResponse.data || []);
 
@@ -329,7 +333,8 @@ export default function RegionalPage() {
           startDate,
           endDate,
           cluster,
-          eselon,
+          undefined,
+          selectedEselonRootId ?? undefined,
         );
         setHourlyData(hourlyResponse.data || []);
 
@@ -349,7 +354,7 @@ export default function RegionalPage() {
     };
 
     fetchData();
-  }, [selectedCluster, dateRange, selectedEselon]);
+  }, [selectedCluster, dateRange, selectedEselon, selectedEselonRootId]);
 
   // Fetch peak times for all units
   useEffect(() => {
@@ -360,8 +365,6 @@ export default function RegionalPage() {
       const endDate = dateRange.endDate;
       const cluster =
         selectedCluster === "Semua Cluster" ? "" : selectedCluster;
-      const eselon = selectedEselon === "Semua Eselon" ? "" : selectedEselon;
-
       const peakTimesMap: { [key: string]: string } = {};
 
       // Fetch peak time for top 10 units
@@ -372,7 +375,8 @@ export default function RegionalPage() {
             startDate,
             endDate,
             cluster,
-            eselon,
+            undefined,
+            selectedEselonRootId ?? undefined,
           );
 
           const hourlyData = response.data || [];
@@ -397,7 +401,7 @@ export default function RegionalPage() {
     };
 
     fetchAllUnitPeakTimes();
-  }, [performanceData, selectedCluster, dateRange, selectedEselon]);
+  }, [performanceData, selectedCluster, dateRange, selectedEselonRootId]);
 
   // Fetch hourly data for selected unit
   useEffect(() => {
@@ -413,14 +417,13 @@ export default function RegionalPage() {
         const endDate = dateRange.endDate;
         const cluster =
           selectedCluster === "Semua Cluster" ? "" : selectedCluster;
-        const eselon = selectedEselon === "Semua Eselon" ? "" : selectedEselon;
-
         const response = await regionalService.getUnitHourlyData(
           selectedUnit,
           startDate,
           endDate,
           cluster,
-          eselon,
+          undefined,
+          selectedEselonRootId ?? undefined,
         );
 
         setUnitHourlyData(response.data || []);
@@ -433,11 +436,12 @@ export default function RegionalPage() {
     };
 
     fetchUnitHourlyData();
-  }, [selectedUnit, selectedCluster, dateRange, selectedEselon, hourlyData]);
+  }, [selectedUnit, selectedCluster, dateRange, selectedEselonRootId, hourlyData]);
 
-  // Handle apply eselon filter
+  // Handle apply eselon filter (Eselon I root atau Semua Eselon)
   const handleApplyEselon = () => {
     setSelectedEselon(tempSelectedEselon);
+    setSelectedEselonRootId(tempSelectedEselonRootId);
     setShowEselonPicker(false);
   };
 
@@ -463,7 +467,7 @@ export default function RegionalPage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Memuat...</p>
@@ -474,22 +478,22 @@ export default function RegionalPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-          <p className="text-gray-600">Memuat data regional...</p>
+          <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent"></div>
+          <p className="text-[#8E8E93]">Memuat data regional...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-white">
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-h-screen ml-80">
         <Header />
-        <main className="pt-20 p-8 flex-1">
+        <main className="pt-20 p-8 flex-1 bg-white">
           <div className="max-w-[1800px] mx-auto space-y-8">
             {/* Page Header with Filter */}
             <div className="flex items-center justify-between gap-6">
@@ -527,7 +531,10 @@ export default function RegionalPage() {
                     <div className="space-y-2 mb-4 max-h-[300px] overflow-y-auto">
                       {/* Semua Eselon Option */}
                       <button
-                        onClick={() => setTempSelectedEselon("Semua Eselon")}
+                        onClick={() => {
+                          setTempSelectedEselon("Semua Eselon");
+                          setTempSelectedEselonRootId(null);
+                        }}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
                           tempSelectedEselon === "Semua Eselon"
                             ? "bg-amber-50 border border-amber-500"
@@ -548,28 +555,32 @@ export default function RegionalPage() {
                         )}
                       </button>
 
-                      {/* Individual Eselon Options */}
-                      {AVAILABLE_ESELONS.map((eselon) => (
+                      {/* Daftar unit Eselon I (root) — data aktivitas termasuk semua anak (Eselon II, III, IV) */}
+                      {eselonRoots.map((root) => (
                         <button
-                          key={eselon}
-                          onClick={() => setTempSelectedEselon(eselon)}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
-                            tempSelectedEselon === eselon
+                          key={root.id}
+                          onClick={() => {
+                            setTempSelectedEselon(root.satker_name);
+                            setTempSelectedEselonRootId(root.id);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors text-left ${
+                            tempSelectedEselonRootId === root.id
                               ? "bg-amber-50 border border-amber-500"
                               : "hover:bg-gray-100 border border-transparent"
                           }`}
                         >
                           <span
-                            className={`text-sm ${
-                              tempSelectedEselon === eselon
+                            className={`text-sm truncate ${
+                              tempSelectedEselonRootId === root.id
                                 ? "text-amber-600 font-semibold"
                                 : "text-gray-700"
                             }`}
+                            title={root.satker_name}
                           >
-                            {eselon}
+                            {root.satker_name}
                           </span>
-                          {tempSelectedEselon === eselon && (
-                            <Check className="w-4 h-4 text-amber-500" />
+                          {tempSelectedEselonRootId === root.id && (
+                            <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />
                           )}
                         </button>
                       ))}
@@ -610,7 +621,15 @@ export default function RegionalPage() {
               <GeographicDistributionChart geoData={geoData} />
             </div>
 
-            {/* Row 4: Top Contributors */}
+            {/* Row 4: Engagement per Eselon I/II */}
+            <EngagementEselonChart
+              dateRange={dateRange}
+              selectedCluster={selectedCluster}
+              selectedEselonRootId={selectedEselonRootId}
+              eselonRoots={eselonRoots}
+            />
+
+            {/* Row 5: Top Contributors */}
             <TopContributors topContributors={topContributors} />
           </div>
         </main>

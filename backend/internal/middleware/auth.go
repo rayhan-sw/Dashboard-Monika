@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -36,6 +37,11 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		userID, role, err := auth.ValidateToken(tokenString)
 		if err != nil {
+			if errors.Is(err, auth.ErrJWTSecretNotSet) {
+				c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Server misconfiguration"})
+				c.Abort()
+				return
+			}
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token tidak valid atau kedaluwarsa"})
 			c.Abort()
 			return

@@ -3,6 +3,7 @@ package repository
 import (
 	"time"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/config"
 	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
 	"gorm.io/gorm"
 )
@@ -143,7 +144,7 @@ func (r *SearchRepository) GetSuggestions(query string) ([]Suggestion, error) {
 	err = r.db.Table("ref_satker_units").
 		Select("DISTINCT satker_name").
 		Where("satker_name ILIKE ?", likeQuery).
-		Limit(5).
+		Limit(config.SuggestionLimit).
 		Pluck("satker_name", &satkers).Error
 
 	if err == nil {
@@ -161,7 +162,7 @@ func (r *SearchRepository) GetSuggestions(query string) ([]Suggestion, error) {
 	err = r.db.Table("ref_locations").
 		Select("DISTINCT location_name").
 		Where("location_name ILIKE ?", likeQuery).
-		Limit(5).
+		Limit(config.SuggestionLimit).
 		Pluck("location_name", &locations).Error
 
 	if err == nil {
@@ -188,7 +189,7 @@ func (r *SearchRepository) SearchUsers(query string) ([]map[string]interface{}, 
 		Select("DISTINCT u.nama, u.email, s.eselon_level").
 		Joins("LEFT JOIN ref_satker_units s ON u.satker_id = s.id").
 		Where("u.nama ILIKE ? OR u.email ILIKE ?", likeQuery, likeQuery).
-		Limit(20).
+		Limit(config.SearchResultLimit).
 		Rows()
 
 	if err != nil {
@@ -218,7 +219,7 @@ func (r *SearchRepository) SearchSatker(query string) ([]string, error) {
 	err := r.db.Table("ref_satker_units").
 		Select("DISTINCT satker_name").
 		Where("satker_name ILIKE ?", likeQuery).
-		Limit(20).
+		Limit(config.SearchResultLimit).
 		Pluck("satker_name", &satkers).Error
 
 	if err != nil {

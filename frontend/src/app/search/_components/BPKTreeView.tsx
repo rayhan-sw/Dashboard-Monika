@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
+import { metadataService } from "@/services/api";
 
 interface SatkerUnit {
   id: number;
@@ -44,18 +45,16 @@ export default function BPKTreeView({
   const loadData = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8080/api/metadata/satker");
-      const data = await response.json();
-      
+      const data = await metadataService.getSatkerList();
+
       if (data.satker && Array.isArray(data.satker)) {
         console.log("✅ Loaded", data.satker.length, "satker units");
-        
-        // Debug: Check parent_id distribution
-        const withParent = data.satker.filter((s: any) => s.parent_id && s.parent_id !== 0);
-        const withoutParent = data.satker.filter((s: any) => !s.parent_id || s.parent_id === 0);
+
+        const withParent = data.satker.filter((s) => s.parent_id != null && s.parent_id !== 0);
+        const withoutParent = data.satker.filter((s) => s.parent_id == null || s.parent_id === 0);
         console.log("Root nodes (no parent):", withoutParent.length);
         console.log("Child nodes (has parent):", withParent.length);
-        
+
         setAllData(data.satker);
       } else {
         console.error("❌ Invalid data format:", data);
@@ -107,7 +106,41 @@ export default function BPKTreeView({
       dataToShow = allData;
     }
 
-    // Build tree dari data yang akan ditampilkan
+    /** Urutan organogram untuk root Eselon I (sama dengan filter Eselon): Inspektorat → Sekretariat → Ditjen PKN I..VIII → Ditjen Investigasi → Badan → BPK Perwakilan. */
+    const getEselonIRootOrder = (name: string): number => {
+      const n = (name || "").trim();
+      if (/^Inspektorat/i.test(n)) return 1;
+      if (/^Sekretariat Jenderal/i.test(n)) return 2;
+      if (/^Ditjen PKN VIII/i.test(n)) return 10;
+      if (/^Ditjen PKN VII\b/i.test(n)) return 9;
+      if (/^Ditjen PKN VI\b/i.test(n)) return 8;
+      if (/^Ditjen PKN V\b/i.test(n)) return 7;
+      if (/^Ditjen PKN IV\b/i.test(n)) return 6;
+      if (/^Ditjen PKN III\b/i.test(n)) return 5;
+      if (/^Ditjen PKN II\b/i.test(n)) return 4;
+      if (/^Ditjen PKN I\b/i.test(n)) return 3;
+      if (/^Ditjen Pemeriksaan Investigasi/i.test(n)) return 11;
+      if (/^Badan/i.test(n)) return 20;
+      if (/^BPK Perwakilan/i.test(n)) return 30;
+      return 15;
+    };
+
+    // Urutkan by eselon dulu (I, II, III, IV) lalu by nama, agar level hierarki konsisten
+    const eselonOrder = (a: SatkerUnit, b: SatkerUnit) => {
+      const depthA = a.eselon_level?.toLowerCase().includes("iv") ? 4 : a.eselon_level?.toLowerCase().includes("iii") ? 3 : a.eselon_level?.toLowerCase().includes("ii") ? 2 : 1;
+      const depthB = b.eselon_level?.toLowerCase().includes("iv") ? 4 : b.eselon_level?.toLowerCase().includes("iii") ? 3 : b.eselon_level?.toLowerCase().includes("ii") ? 2 : 1;
+      if (depthA !== depthB) return depthA - depthB;
+      return a.satker_name.localeCompare(b.satker_name);
+    };
+
+    /** Urutan root Eselon I sesuai organogram, lalu nama. */
+    const rootOrder = (a: SatkerUnit, b: SatkerUnit) => {
+      const orderA = getEselonIRootOrder(a.satker_name);
+      const orderB = getEselonIRootOrder(b.satker_name);
+      if (orderA !== orderB) return orderA - orderB;
+      return a.satker_name.localeCompare(b.satker_name);
+    };
+
     const buildChildren = (parentId: number): TreeNode[] => {
       const children = dataToShow
         .filter((item) => item.parent_id === parentId)
@@ -115,7 +148,7 @@ export default function BPKTreeView({
           ...item,
           children: (expandWhenSearch || expandedNodes.has(item.id)) ? buildChildren(item.id) : [],
         }))
-        .sort((a, b) => a.satker_name.localeCompare(b.satker_name));
+        .sort(eselonOrder);
 
       return children;
     };
@@ -126,7 +159,7 @@ export default function BPKTreeView({
         ...item,
         children: (expandWhenSearch || expandedNodes.has(item.id)) ? buildChildren(item.id) : [],
       }))
-      .sort((a, b) => a.satker_name.localeCompare(b.satker_name));
+      .sort(rootOrder);
 
     setRootNodes(roots);
   };
@@ -220,6 +253,16 @@ export default function BPKTreeView({
     return "text-[#6B7280] bg-[#F3F4F6]";
   };
 
+  /** Depth by eselon: I=0, II=1, III=2, IV=3. Used for extra indent so Eselon IV lebih menjorok dari III. */
+  const getEselonDepth = (eselon: string): number => {
+    const level = (eselon || "").toLowerCase();
+    if (level.includes("iv")) return 3;
+    if (level.includes("iii")) return 2;
+    if (level.includes("ii")) return 1;
+    if (level.includes("i")) return 0;
+    return 0;
+  };
+
   const renderNode = (node: TreeNode, level: number = 0) => {
     const nodeHasChildren = hasChildren(node.id);
     const isExpanded = expandedNodes.has(node.id);
@@ -230,14 +273,16 @@ export default function BPKTreeView({
         {/* Node Row */}
         <div
           className={`
-            flex items-start gap-2 px-3 py-2
+            flex items-center gap-2 px-3 py-2 min-w-0
             rounded-lg transition-all duration-150
             ${isSelected 
               ? "bg-gradient-to-r from-[#FFF5E6] to-transparent border-l-3 border-[#E67E22]" 
               : "hover:bg-gray-50"
             }
           `}
-          style={{ paddingLeft: `${level * 28 + 12}px` }}
+          style={{
+            paddingLeft: `${level * 28 + getEselonDepth(node.eselon_level) * 14 + 12}px`,
+          }}
         >
           {/* Expand/Collapse Button */}
           {nodeHasChildren ? (
@@ -277,10 +322,10 @@ export default function BPKTreeView({
             }`}
           />
 
-          {/* Name - tampil lengkap (no truncate) agar klik manual sama jelas dengan hasil search */}
+          {/* Name - min-w agar tidak terpotong vertikal; wrap normal supaya terbaca */}
           <span
             className={`
-              text-sm flex-1 min-w-0 break-words
+              text-sm flex-1 min-w-[120px] break-words whitespace-normal
               ${isSelected ? "text-[#E67E22] font-semibold" : "text-gray-700"}
             `}
             title={node.satker_name}
@@ -377,14 +422,14 @@ export default function BPKTreeView({
           className="text-xs text-gray-600 hover:text-[#E67E22] hover:bg-orange-50 px-3 py-1.5 rounded-md transition-all font-medium flex items-center gap-1"
         >
           <Icon icon="mdi:unfold-more-horizontal" className="w-4 h-4" />
-          Expand All
+          Tampilkan semua
         </button>
         <button
           onClick={collapseAll}
           className="text-xs text-gray-600 hover:text-[#E67E22] hover:bg-orange-50 px-3 py-1.5 rounded-md transition-all font-medium flex items-center gap-1"
         >
           <Icon icon="mdi:unfold-less-horizontal" className="w-4 h-4" />
-          Collapse
+          Tutup semua
         </button>
         <div className="flex-1"></div>
         <button
@@ -411,14 +456,14 @@ export default function BPKTreeView({
         </div>
       )}
 
-      {/* Tree View - Clean & Minimal */}
+      {/* Tree View - min-width agar teks tidak terpotong/vertikal */}
       <div
-        className="border-2 border-[#E67E22] rounded-xl overflow-hidden bg-white"
+        className="border-2 border-[#E67E22] rounded-xl overflow-hidden bg-white min-w-[280px]"
         style={{ maxHeight }}
       >
-        <div className="overflow-auto p-3" style={{ maxHeight }}>
+        <div className="overflow-auto p-3 min-w-0" style={{ maxHeight }}>
           {rootNodes.length > 0 ? (
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 min-w-[260px]">
               {rootNodes.map((node) => renderNode(node, 0))}
             </div>
           ) : (
@@ -443,7 +488,7 @@ export default function BPKTreeView({
               ? `${allData.filter((d) =>
                   d.satker_name.toLowerCase().includes(searchQuery.trim().toLowerCase())
                 ).length} hasil untuk "${searchQuery.trim()}"`
-              : `${allData.length} total unit`}
+              : `${allData.length} unit`}
           </span>
         </div>
         <div className="flex items-center gap-1">

@@ -3,6 +3,7 @@
  * Handles all authentication-related API calls
  */
 
+import { API_BASE_URL } from "@/services/api";
 import {
   LoginRequest,
   RegisterRequest,
@@ -11,7 +12,7 @@ import {
   ApiError,
 } from '../_types';
 
-const API_BASE_URL = 'http://localhost:8080/api/auth';
+const AUTH_BASE_URL = `${API_BASE_URL}/api/auth`;
 
 /**
  * Generic API call handler with error handling
@@ -20,7 +21,7 @@ async function apiCall<T>(
   endpoint: string,
   options: RequestInit
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${AUTH_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

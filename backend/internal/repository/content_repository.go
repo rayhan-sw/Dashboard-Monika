@@ -3,6 +3,7 @@ package repository
 import (
 	"strconv"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/config"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 )
 
@@ -293,7 +294,7 @@ func GetOperationalIntents(startDate, endDate, cluster, limitStr string) ([]Oper
 
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		limit = 10
+		limit = config.DefaultLimit
 	}
 
 	query := `

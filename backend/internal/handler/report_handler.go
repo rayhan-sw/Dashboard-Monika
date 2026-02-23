@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/config"
 	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
 	"github.com/bpk-ri/dashboard-monitoring/internal/repository"
 	"github.com/bpk-ri/dashboard-monitoring/internal/response"
@@ -265,11 +266,10 @@ func formatFileSize(bytes int64) string {
 
 // GetRecentDownloads returns recent download history from database
 func GetRecentDownloads(c *gin.Context) {
-	// Get limit from query parameter, default to 10
-	limitStr := c.DefaultQuery("limit", "10")
+	limitStr := c.DefaultQuery("limit", strconv.Itoa(config.DefaultLimit))
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		limit = 10
+		limit = config.DefaultLimit
 	}
 
 	// Get optional date filters

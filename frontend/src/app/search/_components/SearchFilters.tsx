@@ -492,7 +492,7 @@ export default function SearchFilters({
             onClick={onClear}
             className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md-bpk transition-colors"
           >
-            Reset
+            Atur Ulang
           </button>
           <button
             onClick={onApply}
@@ -585,7 +585,7 @@ export default function SearchFilters({
             className="w-full px-3 py-2.5 text-sm bg-white border-2 border-bpk-orange rounded-lg-bpk focus:ring-2 focus:ring-bpk-orange/20 focus:outline-none flex items-center justify-between font-medium cursor-pointer"
           >
             <span
-              className={filters.cluster ? "text-gray-800" : "text-gray-500"}
+              className={`uppercase ${filters.cluster ? "text-gray-800" : "text-gray-500"}`}
             >
               {filters.cluster || "Semua Cluster"}
             </span>
@@ -604,7 +604,7 @@ export default function SearchFilters({
                     onChange({ ...filters, cluster: "" });
                     setClusterDropdownOpen(false);
                   }}
-                  className={`w-full px-3 py-2.5 text-left text-sm border-b border-gray-100 transition-colors ${
+                  className={`w-full px-3 py-2.5 text-left text-sm uppercase border-b border-gray-100 transition-colors ${
                     !filters.cluster
                       ? "bg-orange-50 text-bpk-orange font-semibold"
                       : "hover:bg-gray-50"
@@ -619,7 +619,7 @@ export default function SearchFilters({
                       onChange({ ...filters, cluster: cluster });
                       setClusterDropdownOpen(false);
                     }}
-                    className={`w-full px-3 py-2.5 text-left text-sm border-b border-gray-100 last:border-0 transition-colors ${
+                    className={`w-full px-3 py-2.5 text-left text-sm uppercase border-b border-gray-100 last:border-0 transition-colors ${
                       filters.cluster === cluster
                         ? "bg-orange-50 text-bpk-orange font-semibold"
                         : "hover:bg-gray-50"
