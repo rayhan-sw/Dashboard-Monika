@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/config"
 	"github.com/bpk-ri/dashboard-monitoring/internal/dto"
 	"github.com/bpk-ri/dashboard-monitoring/internal/repository"
 	"github.com/bpk-ri/dashboard-monitoring/internal/response"
@@ -29,7 +30,7 @@ func GlobalSearch(c *gin.Context) {
 
 	// Pagination
 	pageStr := c.DefaultQuery("page", "1")
-	pageSizeStr := c.DefaultQuery("pageSize", "20")
+	pageSizeStr := c.DefaultQuery("pageSize", strconv.Itoa(config.SearchResultLimit))
 
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
@@ -37,8 +38,8 @@ func GlobalSearch(c *gin.Context) {
 	}
 
 	pageSize, err := strconv.Atoi(pageSizeStr)
-	if err != nil || pageSize < 1 || pageSize > 100 {
-		pageSize = 20
+	if err != nil || pageSize < 1 || pageSize > config.MaxPageSizeUnits {
+		pageSize = config.SearchResultLimit
 	}
 
 	// Calculate date range

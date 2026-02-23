@@ -14,7 +14,7 @@ import type {
   ReportAccessRequest,
 } from "@/types/api";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 class ApiError extends Error {
   constructor(
@@ -92,21 +92,20 @@ export const dashboardService = {
     return fetchApi<ApiResponse<string[]>>("/api/dashboard/clusters");
   },
 
-  getStats: (startDate?: string, endDate?: string, cluster?: string) => {
-    console.log("API Service - getStats INPUT:", {
-      startDate,
-      endDate,
-      cluster,
-      clusterType: typeof cluster,
-    });
+  getStats: (
+    startDate?: string,
+    endDate?: string,
+    cluster?: string,
+    rootSatkerId?: number,
+  ) => {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
-    // Only add cluster if it's not empty string (empty = all clusters)
     if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
+    if (rootSatkerId != null)
+      params.append("root_satker_id", String(rootSatkerId));
     const query = params.toString();
     const url = `/api/dashboard/stats${query ? `?${query}` : ""}`;
-    console.log("API Service - getStats URL:", url);
     return fetchApi<DashboardStats>(url);
   },
 
@@ -133,12 +132,14 @@ export const dashboardService = {
     endDate?: string,
     cluster?: string,
     eselon?: string,
+    rootSatkerId?: number,
   ) => {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
     if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
-    if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
+    if (rootSatkerId != null) params.append("root_satker_id", String(rootSatkerId));
+    else if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
     const query = params.toString();
     return fetchApi<ApiResponse<HourlyData[]>>(
       `/api/dashboard/charts/hourly${query ? `?${query}` : ""}`,
@@ -215,22 +216,71 @@ export const dashboardService = {
   },
 };
 
+// Eselon I root unit for regional filter
+export interface SatkerRoot {
+  id: number;
+  satker_name: string;
+  eselon_level: string;
+}
+
+/** Satker unit (flat list from GET /api/metadata/satker) */
+export interface SatkerUnit {
+  id: number;
+  satker_name: string;
+  eselon_level: string;
+  parent_id: number | null;
+}
+
+// Search API (suggestions + global search)
+export const searchService = {
+  getSuggestions: (q: string) =>
+    fetchApi<{ suggestions?: { type?: string; value?: string; label?: string }[]; data?: unknown[] }>(
+      `/api/search/suggestions?q=${encodeURIComponent(q)}`,
+    ),
+
+  globalSearch: (queryString: string) =>
+    fetchApi<{
+      data?: ActivityLog[];
+      total_count?: number;
+      page?: number;
+      total_pages?: number;
+    }>(`/api/search${queryString ? `?${queryString}` : ""}`),
+};
+
+// Metadata API (flat satker list for tree, etc.)
+export const metadataService = {
+  getSatkerList: () =>
+    fetchApi<{ satker: SatkerUnit[] }>("/api/metadata/satker"),
+};
+
 // Regional API
 export const regionalService = {
   getProvinces: () =>
     fetchApi<ApiResponse<ProvinceData[]>>("/api/regional/provinces"),
+
+  /** Daftar unit Eselon I (root) untuk filter regional */
+  getSatkerRoots: () =>
+    fetchApi<{ roots: SatkerRoot[] }>("/api/metadata/satker/roots"),
+
+  /** Anak langsung satu root (Eselon I) — hanya Eselon II, untuk chart engagement. */
+  getChildrenOfRoot: (rootId: number) =>
+    fetchApi<{ children: SatkerRoot[] }>(
+      `/api/metadata/satker/roots/${rootId}/children`,
+    ),
 
   getLocations: (
     startDate?: string,
     endDate?: string,
     cluster?: string,
     eselon?: string,
+    rootSatkerId?: number,
   ) => {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
     if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
-    if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
+    if (rootSatkerId != null) params.append("root_satker_id", String(rootSatkerId));
+    else if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
     const query = params.toString();
     return fetchApi<ApiResponse<{ lokasi: string; count: number }[]>>(
       `/api/regional/locations${query ? `?${query}` : ""}`,
@@ -244,6 +294,7 @@ export const regionalService = {
     endDate?: string,
     cluster?: string,
     eselon?: string,
+    rootSatkerId?: number,
   ) => {
     const params = new URLSearchParams();
     params.append("page", page.toString());
@@ -251,7 +302,8 @@ export const regionalService = {
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
     if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
-    if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
+    if (rootSatkerId != null) params.append("root_satker_id", String(rootSatkerId));
+    else if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
     return fetchApi<PaginatedResponse<SatkerData>>(
       `/api/regional/units?${params.toString()}`,
     );
@@ -263,13 +315,15 @@ export const regionalService = {
     endDate?: string,
     cluster?: string,
     eselon?: string,
+    rootSatkerId?: number,
   ) => {
     const params = new URLSearchParams();
     params.append("satker", satker);
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
     if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
-    if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
+    if (rootSatkerId != null) params.append("root_satker_id", String(rootSatkerId));
+    else if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
     return fetchApi<ApiResponse<HourlyData[]>>(
       `/api/regional/units/hourly?${params.toString()}`,
     );
@@ -281,13 +335,15 @@ export const regionalService = {
     endDate?: string,
     cluster?: string,
     eselon?: string,
+    rootSatkerId?: number,
   ) => {
     const params = new URLSearchParams();
     params.append("limit", limit.toString());
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
     if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
-    if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
+    if (rootSatkerId != null) params.append("root_satker_id", String(rootSatkerId));
+    else if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
     return fetchApi<
       ApiResponse<
         { rank: number; username: string; unit: string; requests: number }[]

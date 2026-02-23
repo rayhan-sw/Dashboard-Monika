@@ -3,27 +3,29 @@ package repository
 import (
 	"strings"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/config"
 	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
 	"gorm.io/gorm"
 )
 
 type ActivityLogRepository interface {
-	GetTotalCount(startDate, endDate *string, cluster *string, eselon *string) (int64, error)
-	GetCountByStatus(status string, startDate, endDate *string, cluster *string, eselon *string) (int64, error)
-	GetRecentActivities(page, pageSize int, startDate, endDate *string, cluster *string, eselon *string) ([]entity.ActivityLog, error)
-	GetActivityCountByScope(startDate, endDate *string, cluster *string, eselon *string) (map[string]int64, error)
-	GetActivityCountByHour(startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error)
-	GetActivityCountByHourForSatker(satker string, startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error)
-	GetActivityCountByProvince(startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error)
-	GetActivityCountByLokasi(startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error)
-	GetActivityCountBySatkerProvince(startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error)
-	GetActivityCountBySatker(page, pageSize int, startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error)
-	GetBusiestHour(startDate, endDate *string, cluster *string, eselon *string) (int, int64, error)
-	GetAccessSuccessRateByDate(startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error)
-	GetUniqueUsersCount(startDate, endDate *string, cluster *string, eselon *string) (int64, error)
+	GetSatkerIdsUnderRoot(rootId int64) ([]int64, error)
+	GetTotalCount(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int64, error)
+	GetCountByStatus(status string, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int64, error)
+	GetRecentActivities(page, pageSize int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]entity.ActivityLog, error)
+	GetActivityCountByScope(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (map[string]int64, error)
+	GetActivityCountByHour(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error)
+	GetActivityCountByHourForSatker(satker string, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error)
+	GetActivityCountByProvince(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error)
+	GetActivityCountByLokasi(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error)
+	GetActivityCountBySatkerProvince(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error)
+	GetActivityCountBySatker(page, pageSize int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error)
+	GetBusiestHour(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int, int64, error)
+	GetAccessSuccessRateByDate(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error)
+	GetUniqueUsersCount(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int64, error)
 	GetUniqueClusters() ([]string, error)
-	GetTopContributors(limit int, startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error)
-	GetLogoutErrors(limit int, startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error)
+	GetTopContributors(limit int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error)
+	GetLogoutErrors(limit int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error)
 }
 
 type activityLogRepository struct {
@@ -64,24 +66,46 @@ func (r *activityLogRepository) applyEselonFilter(db *gorm.DB, eselon *string) *
 	return db
 }
 
-func (r *activityLogRepository) GetTotalCount(startDate, endDate *string, cluster *string, eselon *string) (int64, error) {
+// applyEselonOrSatkerIdsFilter: when satkerIds has elements, filter by satker_id IN (...); otherwise use eselon.
+func (r *activityLogRepository) applyEselonOrSatkerIdsFilter(db *gorm.DB, eselon *string, satkerIds []int64) *gorm.DB {
+	if len(satkerIds) > 0 {
+		return db.Where("activity_logs_normalized.satker_id IN ?", satkerIds)
+	}
+	return r.applyEselonFilter(db, eselon)
+}
+
+// GetSatkerIdsUnderRoot returns rootId and all descendant satker IDs (for filter by Eselon I unit).
+func (r *activityLogRepository) GetSatkerIdsUnderRoot(rootId int64) ([]int64, error) {
+	var ids []int64
+	err := r.db.Raw(`
+		WITH RECURSIVE tree AS (
+			SELECT id FROM ref_satker_units WHERE id = ?
+			UNION ALL
+			SELECT s.id FROM ref_satker_units s INNER JOIN tree t ON s.parent_id = t.id
+		)
+		SELECT id FROM tree
+	`, rootId).Scan(&ids).Error
+	return ids, err
+}
+
+func (r *activityLogRepository) GetTotalCount(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int64, error) {
 	var count int64
 	query := r.db.Model(&entity.ActivityLog{})
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 	err := query.Count(&count).Error
 	return count, err
 }
 
-func (r *activityLogRepository) GetCountByStatus(status string, startDate, endDate *string, cluster *string, eselon *string) (int64, error) {
+func (r *activityLogRepository) GetCountByStatus(status string, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int64, error) {
 	var count int64
 	query := r.db.Model(&entity.ActivityLog{}).
 		Joins("LEFT JOIN ref_activity_types at ON at.id = activity_logs_normalized.activity_type_id")
 
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
 	// Login Berhasil: LOGIN dengan scope = 'success' atau NULL
 	if status == "SUCCESS" {
@@ -96,7 +120,7 @@ func (r *activityLogRepository) GetCountByStatus(status string, startDate, endDa
 	return count, err
 }
 
-func (r *activityLogRepository) GetRecentActivities(page, pageSize int, startDate, endDate *string, cluster *string, eselon *string) ([]entity.ActivityLog, error) {
+func (r *activityLogRepository) GetRecentActivities(page, pageSize int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]entity.ActivityLog, error) {
 	var activities []entity.ActivityLog
 
 	// Create base query with Joins
@@ -119,7 +143,9 @@ func (r *activityLogRepository) GetRecentActivities(page, pageSize int, startDat
 		query = query.Where("c.name = ?", *cluster)
 	}
 
-	if eselon != nil && *eselon != "" {
+	if len(satkerIds) > 0 {
+		query = query.Where("activity_logs_normalized.satker_id IN ?", satkerIds)
+	} else if eselon != nil && *eselon != "" {
 		query = query.Where("s.eselon_level = ?", *eselon)
 	}
 
@@ -128,9 +154,11 @@ func (r *activityLogRepository) GetRecentActivities(page, pageSize int, startDat
 	// or accept that we show all recent activities (not distinct by user/activity) which is often better for a log.
 	// If DISTINCT ON is a hard requirement, we'd need a raw SQL query that returns IDs, then fetch with Preload.
 
-	// Simplified Approach: Just get recent logs
+	// Simplified Approach: Just get recent logs (pageSize from handler, e.g. 5 for card, 15 for expanded modal)
+	offset := (page - 1) * pageSize
 	err := query.Order("activity_logs_normalized.tanggal DESC").
-		Limit(5).
+		Offset(offset).
+		Limit(pageSize).
 		Find(&activities).Error
 
 	return activities, err
@@ -148,7 +176,7 @@ func (r *activityLogRepository) buildDateFilter(startDate, endDate *string) stri
 	return "1=1" // No filter
 }
 
-func (r *activityLogRepository) GetActivityCountByScope(startDate, endDate *string, cluster *string, eselon *string) (map[string]int64, error) {
+func (r *activityLogRepository) GetActivityCountByScope(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (map[string]int64, error) {
 	type Result struct {
 		Category string
 		Count    int64
@@ -160,7 +188,7 @@ func (r *activityLogRepository) GetActivityCountByScope(startDate, endDate *stri
 
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
 	// Use the category explicitly defined in the reference table if possible,
 	// or fallback to logic based on activity name
@@ -190,7 +218,7 @@ func (r *activityLogRepository) GetActivityCountByScope(startDate, endDate *stri
 	return counts, nil
 }
 
-func (r *activityLogRepository) GetActivityCountByHour(startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error) {
+func (r *activityLogRepository) GetActivityCountByHour(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Hour  int
 		Count int64
@@ -200,7 +228,7 @@ func (r *activityLogRepository) GetActivityCountByHour(startDate, endDate *strin
 	query := r.db.Model(&entity.ActivityLog{})
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 	err := query.
 		Select("EXTRACT(HOUR FROM tanggal)::int as hour, COUNT(*) as count").
 		Group("hour").
@@ -221,7 +249,7 @@ func (r *activityLogRepository) GetActivityCountByHour(startDate, endDate *strin
 	return data, nil
 }
 
-func (r *activityLogRepository) GetActivityCountByHourForSatker(satker string, startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error) {
+func (r *activityLogRepository) GetActivityCountByHourForSatker(satker string, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Hour  int
 		Count int64
@@ -231,7 +259,7 @@ func (r *activityLogRepository) GetActivityCountByHourForSatker(satker string, s
 	query := r.db.Model(&entity.ActivityLog{})
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
 	// Join with satker table to filter by name
 	query = query.Joins("LEFT JOIN ref_satker_units s ON s.id = activity_logs_normalized.satker_id").
@@ -268,7 +296,7 @@ func (r *activityLogRepository) GetActivityCountByHourForSatker(satker string, s
 	return data, nil
 }
 
-func (r *activityLogRepository) GetActivityCountByProvince(startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error) {
+func (r *activityLogRepository) GetActivityCountByProvince(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Province string
 		Count    int64
@@ -278,7 +306,7 @@ func (r *activityLogRepository) GetActivityCountByProvince(startDate, endDate *s
 	query := r.db.Model(&entity.ActivityLog{})
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
 	err := query.
 		Joins("LEFT JOIN ref_locations l ON l.id = activity_logs_normalized.location_id").
@@ -302,7 +330,7 @@ func (r *activityLogRepository) GetActivityCountByProvince(startDate, endDate *s
 	return data, nil
 }
 
-func (r *activityLogRepository) GetActivityCountByLokasi(startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error) {
+func (r *activityLogRepository) GetActivityCountByLokasi(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Lokasi string
 		Count  int64
@@ -312,7 +340,7 @@ func (r *activityLogRepository) GetActivityCountByLokasi(startDate, endDate *str
 	query := r.db.Model(&entity.ActivityLog{})
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
 	err := query.
 		Joins("LEFT JOIN ref_locations l ON l.id = activity_logs_normalized.location_id").
@@ -320,7 +348,7 @@ func (r *activityLogRepository) GetActivityCountByLokasi(startDate, endDate *str
 		Where("l.location_name != '' AND l.location_name IS NOT NULL").
 		Group("l.location_name").
 		Order("count DESC").
-		Limit(10).
+		Limit(config.TopLokasiLimit).
 		Scan(&results).Error
 
 	if err != nil {
@@ -338,7 +366,7 @@ func (r *activityLogRepository) GetActivityCountByLokasi(startDate, endDate *str
 }
 
 // GetActivityCountBySatkerProvince aggregates activity count by province from ref_locations
-func (r *activityLogRepository) GetActivityCountBySatkerProvince(startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error) {
+func (r *activityLogRepository) GetActivityCountBySatkerProvince(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Province string
 		Count    int64
@@ -364,7 +392,10 @@ func (r *activityLogRepository) GetActivityCountBySatkerProvince(startDate, endD
 		args = append(args, *cluster)
 	}
 
-	if eselon != nil && *eselon != "" {
+	if len(satkerIds) > 0 {
+		conditions = append(conditions, "al.satker_id IN ?")
+		args = append(args, satkerIds)
+	} else if eselon != nil && *eselon != "" {
 		conditions = append(conditions, "s.eselon_level = ?")
 		args = append(args, *eselon)
 	}
@@ -415,7 +446,7 @@ func (r *activityLogRepository) GetActivityCountBySatkerProvince(startDate, endD
 	return data, nil
 }
 
-func (r *activityLogRepository) GetActivityCountBySatker(page, pageSize int, startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error) {
+func (r *activityLogRepository) GetActivityCountBySatker(page, pageSize int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Satker string
 		Count  int64
@@ -426,7 +457,7 @@ func (r *activityLogRepository) GetActivityCountBySatker(page, pageSize int, sta
 	query := r.db.Model(&entity.ActivityLog{})
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 	err := query.
 		Joins("LEFT JOIN ref_satker_units s ON s.id = activity_logs_normalized.satker_id").
 		Select("s.satker_name as satker, COUNT(*) as count").
@@ -452,7 +483,7 @@ func (r *activityLogRepository) GetActivityCountBySatker(page, pageSize int, sta
 	return data, nil
 }
 
-func (r *activityLogRepository) GetBusiestHour(startDate, endDate *string, cluster *string, eselon *string) (int, int64, error) {
+func (r *activityLogRepository) GetBusiestHour(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int, int64, error) {
 	type Result struct {
 		Hour  int
 		Count int64
@@ -462,7 +493,7 @@ func (r *activityLogRepository) GetBusiestHour(startDate, endDate *string, clust
 	query := r.db.Model(&entity.ActivityLog{})
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 	err := query.
 		Select("EXTRACT(HOUR FROM tanggal)::int as hour, COUNT(*) as count").
 		Group("hour").
@@ -477,7 +508,7 @@ func (r *activityLogRepository) GetBusiestHour(startDate, endDate *string, clust
 	return result.Hour, result.Count, nil
 }
 
-func (r *activityLogRepository) GetAccessSuccessRateByDate(startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error) {
+func (r *activityLogRepository) GetAccessSuccessRateByDate(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Date    string
 		Success int64
@@ -490,7 +521,7 @@ func (r *activityLogRepository) GetAccessSuccessRateByDate(startDate, endDate *s
 
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 	err := query.
 		Select(`
 			DATE(tanggal) as date,
@@ -522,12 +553,12 @@ func (r *activityLogRepository) GetAccessSuccessRateByDate(startDate, endDate *s
 	return data, nil
 }
 
-func (r *activityLogRepository) GetUniqueUsersCount(startDate, endDate *string, cluster *string, eselon *string) (int64, error) {
+func (r *activityLogRepository) GetUniqueUsersCount(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int64, error) {
 	var count int64
 	query := r.db.Model(&entity.ActivityLog{})
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 	// Count distinct by user_id
 	err := query.
 		Distinct("user_id").
@@ -548,7 +579,7 @@ func (r *activityLogRepository) GetUniqueClusters() ([]string, error) {
 }
 
 // GetTopContributors returns top N users by activity count with their satker
-func (r *activityLogRepository) GetTopContributors(limit int, startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error) {
+func (r *activityLogRepository) GetTopContributors(limit int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Rank     int
 		Nama     string
@@ -560,7 +591,7 @@ func (r *activityLogRepository) GetTopContributors(limit int, startDate, endDate
 	query := r.db.Model(&entity.ActivityLog{})
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
 	err := query.
 		Joins("LEFT JOIN user_profiles u ON u.id = activity_logs_normalized.user_id").
@@ -589,7 +620,7 @@ func (r *activityLogRepository) GetTopContributors(limit int, startDate, endDate
 }
 
 // GetLogoutErrors returns top N users with logout errors, sorted by latest error time
-func (r *activityLogRepository) GetLogoutErrors(limit int, startDate, endDate *string, cluster *string, eselon *string) ([]map[string]interface{}, error) {
+func (r *activityLogRepository) GetLogoutErrors(limit int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Nama        string
 		ErrorCount  int64
@@ -603,7 +634,7 @@ func (r *activityLogRepository) GetLogoutErrors(limit int, startDate, endDate *s
 
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
-	query = r.applyEselonFilter(query, eselon)
+	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
 	// Filter: aktifitas = LOGOUT AND scope = error
 	err := query.

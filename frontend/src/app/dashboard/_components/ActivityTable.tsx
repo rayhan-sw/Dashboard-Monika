@@ -5,14 +5,17 @@ import { dashboardService } from "@/services/api";
 import { formatDateTime } from "@/lib/utils";
 import { useAppStore } from "@/stores/appStore";
 import type { ActivityLog } from "@/types/api";
-import { Radio, Maximize2, X } from "lucide-react";
+import { Radio, Maximize2, X, ZoomIn, ZoomOut } from "lucide-react";
 
 export default function ActivityTable() {
   const dateRange = useAppStore((state) => state.dateRange);
   const selectedCluster = useAppStore((state) => state.selectedCluster);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
+  const [expandedActivities, setExpandedActivities] = useState<ActivityLog[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingExpanded, setLoadingExpanded] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [tableZoom, setTableZoom] = useState(100);
 
   useEffect(() => {
     loadActivities();
@@ -21,7 +24,6 @@ export default function ActivityTable() {
   const loadActivities = async () => {
     setLoading(true);
     try {
-      // Hanya ambil 5 log terakhir yang terbaru
       const response = await dashboardService.getActivities(
         1,
         5,
@@ -34,6 +36,24 @@ export default function ActivityTable() {
       console.error("Failed to load activities:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadExpandedActivities = async () => {
+    setLoadingExpanded(true);
+    try {
+      const response = await dashboardService.getActivities(
+        1,
+        15,
+        dateRange.startDate,
+        dateRange.endDate,
+        selectedCluster,
+      );
+      setExpandedActivities(response.data);
+    } catch (error) {
+      console.error("Failed to load expanded activities:", error);
+    } finally {
+      setLoadingExpanded(false);
     }
   };
 
@@ -70,7 +90,11 @@ export default function ActivityTable() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsExpanded(true)}
+            onClick={() => {
+              setIsExpanded(true);
+              setExpandedActivities(null);
+              loadExpandedActivities();
+            }}
             className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
             title="Lihat detail"
           >
@@ -137,16 +161,45 @@ export default function ActivityTable() {
                   </span>
                 </div>
               </div>
-              <button
-                onClick={() => setIsExpanded(false)}
-                className="p-2 hover:bg-gray-100 rounded-md transition-colors"
-              >
-                <X className="h-5 w-5 text-gray-600" />
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 mr-1">Zoom:</span>
+                <button
+                  type="button"
+                  onClick={() => setTableZoom((z) => Math.max(80, z - 10))}
+                  className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                  title="Perkecil"
+                >
+                  <ZoomOut className="h-4 w-4 text-gray-600" />
+                </button>
+                <span className="text-xs font-medium text-gray-700 min-w-[2.5rem]">{tableZoom}%</span>
+                <button
+                  type="button"
+                  onClick={() => setTableZoom((z) => Math.min(140, z + 10))}
+                  className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                  title="Perbesar"
+                >
+                  <ZoomIn className="h-4 w-4 text-gray-600" />
+                </button>
+                <button
+                  onClick={() => setIsExpanded(false)}
+                  className="p-2 hover:bg-gray-100 rounded-md transition-colors ml-2"
+                  title="Tutup"
+                >
+                  <X className="h-5 w-5 text-gray-600" />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 overflow-auto p-6">
-              <table className="w-full">
-                <thead className="sticky top-0 bg-white">
+            <div className="flex-1 min-h-0 flex flex-col p-6">
+              {loadingExpanded ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-red-500" />
+                  <span className="ml-3 text-sm text-gray-500">Memuat riwayat aktivitas...</span>
+                </div>
+              ) : (
+              <div className="overflow-auto flex-1 min-h-0 -m-6 px-6">
+              <div style={{ fontSize: `${tableZoom}%` }}>
+              <table className="w-full min-w-[600px]">
+                <thead className="sticky top-0 z-10 bg-white shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">
                       Pengguna
@@ -166,7 +219,7 @@ export default function ActivityTable() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {activities?.map((activity) => (
+                  {(expandedActivities ?? activities)?.map((activity) => (
                     <tr
                       key={activity.id}
                       className="hover:bg-gray-50 transition-colors"
@@ -194,6 +247,9 @@ export default function ActivityTable() {
                   ))}
                 </tbody>
               </table>
+              </div>
+              </div>
+              )}
             </div>
           </div>
         </div>

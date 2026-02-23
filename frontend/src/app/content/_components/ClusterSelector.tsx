@@ -115,7 +115,7 @@ export default function ClusterSelector({
               : "bg-white text-slate-700 hover:bg-blue-50 hover:border-blue-300 border border-slate-200"
           }`}
         >
-          <span>Semua Cluster</span>
+          <span className="uppercase">Semua Cluster</span>
           <span
             className={`text-xs px-2 py-0.5 rounded-full ${
               selectedCluster === ""
@@ -138,7 +138,7 @@ export default function ClusterSelector({
                 : "bg-white text-slate-700 hover:bg-blue-50 hover:border-blue-300 border border-slate-200"
             }`}
           >
-            <span className="text-left">{cluster.name}</span>
+            <span className="text-left uppercase">{cluster.name}</span>
             <span
               className={`text-xs px-2 py-0.5 rounded-full ${
                 selectedCluster === cluster.name
@@ -155,7 +155,7 @@ export default function ClusterSelector({
       {/* Info Message */}
       {selectedCluster && (
         <div className="mt-4 p-3 bg-blue-100 border border-blue-300 rounded-lg text-sm text-blue-800">
-          <strong>Cluster terpilih:</strong> {selectedCluster}
+          <strong>Cluster terpilih:</strong> <span className="uppercase">{selectedCluster}</span>
         </div>
       )}
 

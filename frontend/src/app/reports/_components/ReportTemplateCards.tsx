@@ -10,7 +10,7 @@ import {
   File,
   AlertCircle,
 } from "lucide-react";
-import { reportService } from "@/services/api";
+import { reportService, API_BASE_URL } from "@/services/api";
 
 // Types
 interface ReportTemplate {
@@ -81,9 +81,8 @@ export default function ReportTemplateCards({
       const result = await reportService.generateReport(templateId, format);
       
       if (result.success && result.download_url) {
-        // Trigger file download
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-        const fullUrl = `${apiBaseUrl}${result.download_url}`;
+        // Trigger file download (pakai base URL terpusat dari api)
+        const fullUrl = `${API_BASE_URL}${result.download_url}`;
         
         // Create a temporary link and click it to trigger download
         const link = document.createElement("a");

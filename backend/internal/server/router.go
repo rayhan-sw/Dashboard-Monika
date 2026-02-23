@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/bpk-ri/dashboard-monitoring/internal/config"
 	"github.com/bpk-ri/dashboard-monitoring/internal/handler"
 	"github.com/gin-gonic/gin"
 )
@@ -12,9 +13,11 @@ func SetupRouter() *gin.Engine {
 	r.RedirectTrailingSlash = false
 	r.RedirectFixedPath = false
 
-	// CORS
+	// CORS: use ALLOWED_ORIGINS env (comma-separated); if unset, allow "*"
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		if origin := config.CORSOrigin(c.Request.Header.Get("Origin")); origin != "" {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		}
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-ID")
 		if c.Request.Method == "OPTIONS" {
@@ -101,6 +104,8 @@ func SetupRouter() *gin.Engine {
 		api.GET("/search/users", handler.SearchUsers)
 		api.GET("/search/satker", handler.SearchSatker)
 		api.GET("/metadata/satker", handler.GetSatkerList)
+		api.GET("/metadata/satker/roots/:id/children", handler.GetSatkerRootChildren)
+		api.GET("/metadata/satker/roots", handler.GetSatkerRoots)
 		api.GET("/org-tree", handler.GetOrganizationalTree)
 		api.GET("/org-tree/levels", handler.GetEselonLevels)
 		api.GET("/org-tree/search", handler.SearchOrganizationalUnits)

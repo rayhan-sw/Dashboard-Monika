@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/bpk-ri/dashboard-monitoring/internal/config"
 	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
 	"github.com/bpk-ri/dashboard-monitoring/internal/response"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
@@ -140,7 +141,7 @@ func SearchOrganizationalUnits(c *gin.Context) {
 		dbQuery = dbQuery.Where("eselon_level = ?", eselonLevel)
 	}
 
-	if err := dbQuery.Limit(20).Find(&units).Error; err != nil {
+	if err := dbQuery.Limit(config.OrgTreeSearchLimit).Find(&units).Error; err != nil {
 		response.Internal(c, err)
 		return
 	}

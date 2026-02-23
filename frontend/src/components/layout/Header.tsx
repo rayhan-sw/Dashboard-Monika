@@ -245,8 +245,8 @@ export default function Header() {
   };
 
   const getClusterDisplayText = () => {
-    if (!selectedCluster) return "Semua Cluster";
-    return selectedCluster;
+    if (!selectedCluster) return "SEMUA CLUSTER";
+    return selectedCluster.toUpperCase();
   };
 
   const handleLogout = () => {
@@ -429,7 +429,7 @@ export default function Header() {
               className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-bpk-orange rounded-lg-bpk hover:bg-orange-50 transition-colors"
             >
               <Filter className="w-4 h-4 text-bpk-orange" />
-              <span className="text-caption text-gray-1 font-medium">
+              <span className="text-caption text-gray-1 font-medium uppercase">
                 {getClusterDisplayText()}
               </span>
               <ChevronDown
@@ -451,7 +451,7 @@ export default function Header() {
                     }`}
                   >
                     <span
-                      className={`text-caption ${tempSelectedCluster === "" ? "text-bpk-orange font-semibold" : "text-gray-1"}`}
+                      className={`text-caption uppercase ${tempSelectedCluster === "" ? "text-bpk-orange font-semibold" : "text-gray-1"}`}
                     >
                       Semua Cluster
                     </span>
@@ -472,7 +472,7 @@ export default function Header() {
                       }`}
                     >
                       <span
-                        className={`text-caption ${tempSelectedCluster === cluster ? "text-bpk-orange font-semibold" : "text-gray-1"}`}
+                        className={`text-caption uppercase ${tempSelectedCluster === cluster ? "text-bpk-orange font-semibold" : "text-gray-1"}`}
                       >
                         {cluster}
                       </span>

@@ -2,6 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { useState, useRef, useEffect } from "react";
+import { searchService } from "@/services/api";
 
 interface Suggestion {
   type: "user" | "satker" | "lokasi";
@@ -56,17 +57,14 @@ export default function SearchBar({
     const debounce = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await fetch(
-          `http://localhost:8080/api/search/suggestions?q=${encodeURIComponent(value)}`,
-        );
-        const data = await response.json();
+        const data = await searchService.getSuggestions(value);
 
         // Map backend response to frontend format
         const mappedSuggestions: Suggestion[] = (data.suggestions || []).map(
-          (s: any) => ({
-            type: s.type || "user",
-            value: s.value || s.label,
-            label: s.label || s.value,
+          (s: { type?: string; value?: string; label?: string }) => ({
+            type: (s.type as "user" | "satker" | "lokasi") || "user",
+            value: s.value || s.label || "",
+            label: s.label || s.value || "",
           }),
         );
 
@@ -187,7 +185,7 @@ export default function SearchBar({
                          w-8 h-8 flex items-center justify-center rounded-full
                          text-gray-400 hover:text-gray-600 hover:bg-gray-100 
                          transition-all duration-200"
-                aria-label="Clear search"
+                aria-label="Hapus pencarian"
               >
                 <Icon icon="mdi:close" className="w-5 h-5" />
               </button>

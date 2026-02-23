@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -54,6 +55,10 @@ func Login(c *gin.Context) {
 
 	token, err := auth.GenerateToken(user.ID, user.Role)
 	if err != nil {
+		if errors.Is(err, auth.ErrJWTSecretNotSet) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Server misconfiguration"})
+			return
+		}
 		response.Internal(c, err)
 		return
 	}
