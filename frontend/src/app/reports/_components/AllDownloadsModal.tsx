@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   FileText,
@@ -14,7 +15,6 @@ import {
   Filter,
 } from "lucide-react";
 import { reportService } from "@/services/api";
-import { useAppStore } from "@/stores/appStore";
 
 interface DownloadHistory {
   id: number;
@@ -37,12 +37,23 @@ export default function AllDownloadsModal({ isOpen, onClose }: AllDownloadsModal
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showFilter, setShowFilter] = useState(false);
-  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
 
   useEffect(() => {
     if (isOpen) {
       loadDownloads();
     }
+  }, [isOpen]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
   }, [isOpen]);
 
   const loadDownloads = async (start?: string, end?: string) => {
@@ -91,12 +102,12 @@ export default function AllDownloadsModal({ isOpen, onClose }: AllDownloadsModal
   const getFormatIcon = (format: string) => {
     switch (format.toLowerCase()) {
       case "pdf":
-        return <File className="w-4 h-4 text-red-600" />;
+        return <File className="w-5 h-5 text-red-600" />;
       case "excel":
       case "xlsx":
-        return <FileSpreadsheet className="w-4 h-4 text-emerald-600" />;
+        return <FileSpreadsheet className="w-5 h-5 text-emerald-600" />;
       default:
-        return <FileText className="w-4 h-4 text-slate-600" />;
+        return <FileText className="w-5 h-5 text-gray-600" />;
     }
   };
 
@@ -108,52 +119,55 @@ export default function AllDownloadsModal({ isOpen, onClose }: AllDownloadsModal
       case "xlsx":
         return "bg-emerald-100";
       default:
-        return "bg-slate-100";
+        return "bg-gray-100";
     }
   };
 
   if (!isOpen) return null;
 
-  return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 transition-all duration-300"
-      style={{
-        marginLeft: sidebarCollapsed ? '5rem' : '20rem',
-      }}
-    >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden my-4" style={{ maxHeight: '75vh' }}>
+  // Ensure we're in browser environment
+  if (typeof window === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black/50 backdrop-blur z-[250] flex items-center justify-center p-6">
+      <div className="bg-white rounded-[13px] w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
-          <div>
-            <h2 className="text-xl font-bold text-slate-800">
-              Semua Riwayat Unduhan
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">
-              {downloads.length} unduhan ditemukan
-            </p>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg-bpk bg-bpk-orange flex items-center justify-center">
+              <Download className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-h4 font-bold text-gray-1">
+                Semua Riwayat Unduhan
+              </h3>
+              <span className="text-caption text-gray-3">
+                {downloads.length} unduhan ditemukan
+              </span>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-md transition-colors"
           >
-            <X className="w-5 h-5 text-slate-500" />
+            <X className="h-5 w-5 text-gray-600" />
           </button>
         </div>
 
         {/* Filter Section */}
-        <div className="p-4 border-b border-slate-200 bg-slate-50">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setShowFilter(!showFilter)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              <Filter className="w-4 h-4 text-slate-600" />
-              <span className="text-sm font-medium text-slate-700">Filter Tanggal</span>
+              <Filter className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">Filter Tanggal</span>
             </button>
             {(startDate || endDate) && (
               <button
                 onClick={handleResetFilter}
-                className="text-sm text-orange-500 hover:text-orange-600 font-medium"
+                className="text-sm text-bpk-orange hover:text-orange-600 font-medium"
               >
                 Reset Filter
               </button>
@@ -162,10 +176,10 @@ export default function AllDownloadsModal({ isOpen, onClose }: AllDownloadsModal
 
           {/* Filter Form */}
           {showFilter && (
-            <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200">
+            <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Calendar className="w-4 h-4 inline mr-1" />
                     Tanggal Mulai
                   </label>
@@ -173,11 +187,11 @@ export default function AllDownloadsModal({ isOpen, onClose }: AllDownloadsModal
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-bpk-orange"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Calendar className="w-4 h-4 inline mr-1" />
                     Tanggal Akhir
                   </label>
@@ -185,20 +199,20 @@ export default function AllDownloadsModal({ isOpen, onClose }: AllDownloadsModal
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-bpk-orange"
                   />
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
                 <button
                   onClick={handleApplyFilter}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium text-sm"
+                  className="px-4 py-2 bg-bpk-orange text-white rounded-lg hover:bg-orange-600 transition-colors font-medium text-sm"
                 >
                   Terapkan Filter
                 </button>
                 <button
                   onClick={() => setShowFilter(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors text-sm"
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
                 >
                   Batal
                 </button>
@@ -208,52 +222,48 @@ export default function AllDownloadsModal({ isOpen, onClose }: AllDownloadsModal
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6" style={{ minHeight: 0 }}>
+        <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="animate-pulse flex items-center justify-between py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-200 rounded-lg" />
-                    <div>
-                      <div className="h-4 bg-slate-200 rounded w-48 mb-2" />
-                      <div className="h-3 bg-slate-200 rounded w-32" />
-                    </div>
+                <div key={i} className="animate-pulse flex items-center gap-4 py-3">
+                  <div className="w-12 h-12 bg-gray-200 rounded-lg flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-gray-200 rounded w-1/2" />
                   </div>
-                  <div className="w-8 h-8 bg-slate-200 rounded-lg" />
+                  <div className="w-16 h-6 bg-gray-200 rounded" />
                 </div>
               ))}
             </div>
           ) : error ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
-              <span>{error}</span>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span className="text-sm">{error}</span>
             </div>
           ) : downloads.length > 0 ? (
             <div className="space-y-2">
               {downloads.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-slate-50 transition-colors border border-slate-100"
+                  className="flex items-center gap-4 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
                 >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${getFormatBgColor(item.format)}`}>
-                      {getFormatIcon(item.format)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-800 text-sm truncate">
-                        {item.report_name}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {formatDate(item.generated_at)} •{" "}
-                        {item.downloaded_by || "Unknown User"}
-                        {item.file_size && ` • ${item.file_size}`}
-                      </p>
-                    </div>
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${getFormatBgColor(item.format)}`}>
+                    {getFormatIcon(item.format)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm truncate">
+                      {item.report_name}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {formatDate(item.generated_at)} •{" "}
+                      {item.downloaded_by || "Unknown User"}
+                      {item.file_size && ` • ${item.file_size}`}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <CheckCircle className="w-5 h-5 text-emerald-500" />
-                    <span className="px-2 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded">
+                    <span className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded">
                       {item.format.toUpperCase()}
                     </span>
                   </div>
@@ -261,10 +271,10 @@ export default function AllDownloadsModal({ isOpen, onClose }: AllDownloadsModal
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 text-slate-500">
-              <Clock className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p className="font-medium">Tidak ada riwayat unduhan</p>
-              <p className="text-sm mt-1">
+            <div className="text-center py-16 text-gray-500">
+              <Clock className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="font-semibold text-gray-700 text-lg">Tidak ada riwayat unduhan</p>
+              <p className="text-sm mt-2">
                 {startDate || endDate
                   ? "Tidak ada data pada periode yang dipilih"
                   : "Belum ada laporan yang diunduh"}
@@ -273,6 +283,7 @@ export default function AllDownloadsModal({ isOpen, onClose }: AllDownloadsModal
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

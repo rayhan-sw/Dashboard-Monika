@@ -121,7 +121,7 @@ export default function ActivityTable() {
 
       {/* Expanded Modal */}
       {isExpanded && (
-        <div className="fixed inset-0 bg-black/50 z-[150] flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur z-[250] flex items-center justify-center p-6">
           <div className="bg-white rounded-[13px] w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div className="flex items-center gap-4">

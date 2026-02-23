@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/bpk-ri/dashboard-monitoring/internal/handler"
+	"github.com/bpk-ri/dashboard-monitoring/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,7 +17,7 @@ func SetupRouter() *gin.Engine {
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-ID")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
@@ -78,6 +79,7 @@ func SetupRouter() *gin.Engine {
 		{
 			reports.GET("/templates", handler.GetReportTemplates)
 			reports.POST("/generate", handler.GenerateReport)
+			reports.GET("/download/:filename", handler.DownloadFile)
 			reports.GET("/downloads", handler.GetRecentDownloads)
 			reports.GET("/access-requests", handler.GetAccessRequests)
 			reports.POST("/request-access", handler.RequestAccess)
@@ -85,6 +87,7 @@ func SetupRouter() *gin.Engine {
 		}
 
 		notifications := api.Group("/notifications")
+		notifications.Use(middleware.AuthMiddleware())
 		{
 			notifications.GET("", handler.GetNotifications)
 			notifications.PUT("/:id/read", handler.MarkNotificationRead)
@@ -94,6 +97,14 @@ func SetupRouter() *gin.Engine {
 		users := api.Group("/users")
 		{
 			users.GET("/profile", handler.GetUserProfile)
+		}
+
+		profile := api.Group("/profile")
+		profile.Use(middleware.AuthMiddleware())
+		{
+			profile.GET("", handler.GetProfile)
+			profile.PUT("/photo", handler.UpdateProfilePhoto)
+			profile.POST("/request-access", handler.RequestReportAccess)
 		}
 
 		api.GET("/search", handler.GlobalSearch)

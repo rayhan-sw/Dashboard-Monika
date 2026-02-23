@@ -88,9 +88,10 @@ backup_*.sql
 *_backup.sql
 database_backup.sql
 
-# Keep seed files but ignore large data files (optional)
-# Uncomment if actlog_data.sql is too large (>10MB):
-# backend/seeds/actlog_data.sql
+# Seed/dump data (bagikan via drive/link; jangan commit)
+backend/seeds/*.dump
+backend/seeds/*_data.sql
+backend/seeds/daring_bpk_data.dump
 
 # Temporary files
 *.tmp
