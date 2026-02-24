@@ -71,6 +71,8 @@ export default function Header() {
   const setPresetRange = useAppStore((state) => state.setPresetRange);
   const globalUser = useAppStore((state) => state.user);
 
+
+
   // Load user and notifications
   useEffect(() => {
     loadClusters();
@@ -92,85 +94,46 @@ export default function Header() {
     }
   }, [selectedCluster]);
 
-  // Sync with global user state for profile photo updates
+  // Sync profile photo from global state
   useEffect(() => {
     if (globalUser?.profile_photo && currentUser) {
       setCurrentUser({ ...currentUser, profile_photo: globalUser.profile_photo });
     }
   }, [globalUser?.profile_photo]);
 
-  const loadNotifications = async (userId: number) => {
-    try {
-      const response = await notificationService.getNotifications(userId);
-      setNotifications(response.data || []);
-      setUnreadCount(response.unread_count || 0);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        setCurrentUser(null);
-        setNotifications([]);
-        setUnreadCount(0);
-        return;
-      }
-      console.error("Failed to load notifications:", error);
-    }
-  };
-
-  const handleMarkNotificationRead = async (notifId: number) => {
-    try {
-      await notificationService.markAsRead(notifId);
-      // Update local state
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n)),
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        datePickerRef.current &&
-        !datePickerRef.current.contains(event.target as Node)
-      ) {
-        setShowDatePicker(false);
-      }
-      if (
-        clusterPickerRef.current &&
-        !clusterPickerRef.current.contains(event.target as Node)
-      ) {
-        setShowClusterPicker(false);
-      }
-      if (
-        userMenuRef.current &&
-        !userMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowUserMenu(false);
-      }
-      if (
-        notifRef.current &&
-        !notifRef.current.contains(event.target as Node)
-      ) {
-        setShowNotifications(false);
-      }
-    };
-
-    if (showDatePicker || showClusterPicker || showNotifications) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showDatePicker, showClusterPicker]);
-
+  // Load clusters from API
   const loadClusters = async () => {
     try {
       const response = await dashboardService.getClusters();
       setClusters(response.data);
     } catch (error) {
       console.error("Failed to load clusters:", error);
+    }
+  };
+
+  // Load notifications for user
+  const loadNotifications = async (userId: number) => {
+    try {
+      const response = await notificationService.getNotifications(userId);
+      setNotifications(response.data);
+      setUnreadCount(response.unread_count);
+    } catch (error) {
+      console.error("Failed to load notifications:", error);
+    }
+  };
+
+  // Mark notification as read
+  const handleMarkNotificationRead = async (notificationId: number) => {
+    try {
+      await notificationService.markAsRead(notificationId);
+      setNotifications(
+        notifications.map((n) =>
+          n.id === notificationId ? { ...n, is_read: true } : n
+        )
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
     }
   };
 
