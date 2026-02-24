@@ -181,30 +181,31 @@ func Logout(c *gin.Context) {
 		"message": "Logout berhasil",
 	})
 }
+
 // ChangePassword handles password change for authenticated users
 func ChangePassword(c *gin.Context) {
 	var req entity.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{\"error\": \"Invalid request format\"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
 	}
 
 	// Get user ID from context (set by auth middleware)
-	userID, exists := c.Get(\"user_id\")
+	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{\"error\": \"User not authenticated\"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
 	}
 
 	// Validate password confirmation
 	if req.NewPassword != req.ConfirmPassword {
-		c.JSON(http.StatusBadRequest, gin.H{\"error\": \"Password baru dan konfirmasi password tidak cocok\"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password baru dan konfirmasi password tidak cocok"})
 		return
 	}
 
 	// Validate new password is different from old password
 	if req.OldPassword == req.NewPassword {
-		c.JSON(http.StatusBadRequest, gin.H{\"error\": \"Password baru tidak boleh sama dengan password lama\"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password baru tidak boleh sama dengan password lama"})
 		return
 	}
 
@@ -213,13 +214,13 @@ func ChangePassword(c *gin.Context) {
 	// Find user
 	var user entity.User
 	if err := db.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{\"error\": \"User tidak ditemukan\"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan"})
 		return
 	}
 
 	// Verify old password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{\"error\": \"Password lama tidak sesuai\"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password lama tidak sesuai"})
 		return
 	}
 
@@ -238,6 +239,6 @@ func ChangePassword(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		\"message\": \"Kata sandi berhasil diubah. Silakan login kembali.\",
+		"message": "Kata sandi berhasil diubah. Silakan login kembali.",
 	})
 }

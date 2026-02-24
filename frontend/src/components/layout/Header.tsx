@@ -63,7 +63,7 @@ export default function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  // Use individual selectors for better performance
+  // Use individual selectors 
   const selectedCluster = useAppStore((state) => state.selectedCluster);
   const setSelectedCluster = useAppStore((state) => state.setSelectedCluster);
   const dateRange = useAppStore((state) => state.dateRange);
