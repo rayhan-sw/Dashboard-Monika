@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { User, Lock } from 'lucide-react';
+import { User, Lock, Eye, EyeOff } from 'lucide-react';
 import { useLogin } from '../../_hooks';
 import {
   AuthLogo,
@@ -19,6 +19,7 @@ import {
 export function LoginForm() {
   const searchParams = useSearchParams();
   const [successMessage, setSuccessMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const {
     formData,
     handleChange,
@@ -64,11 +65,21 @@ export function LoginForm() {
         <AuthInput
           id="password"
           name="password"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           value={formData.password}
           onChange={handleChange}
           placeholder="Kata Sandi"
           icon={Lock}
+          rightElement={
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="p-1 rounded hover:bg-gray-100 text-[#8E8E93] hover:text-gray-700 transition"
+              aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          }
         />
 
         {/* Submit Button */}

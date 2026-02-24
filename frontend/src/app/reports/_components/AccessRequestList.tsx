@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { Users, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { reportService } from "@/services/api";
 
@@ -43,7 +44,12 @@ export default function AccessRequestList() {
       loadRequests(); // Refresh the list
     } catch (err) {
       console.error("Error updating access request:", err);
-      alert("Gagal memperbarui permintaan akses.");
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: "Gagal memperbarui permintaan akses.",
+        confirmButtonColor: "#E27200",
+      });
     }
   };
 

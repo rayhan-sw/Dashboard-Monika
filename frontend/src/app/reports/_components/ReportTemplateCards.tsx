@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import {
   Building2,
   Users,
@@ -95,7 +96,12 @@ export default function ReportTemplateCards({
       }
     } catch (err) {
       console.error("Error generating report:", err);
-      alert("Gagal membuat laporan. Silakan coba lagi.");
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: "Gagal membuat laporan. Silakan coba lagi.",
+        confirmButtonColor: "#E27200",
+      });
     } finally {
       setGeneratingKey(null);
     }
