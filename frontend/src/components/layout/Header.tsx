@@ -52,6 +52,7 @@ export default function Header() {
     id: number;
     username: string;
     role: string;
+    profile_photo?: string;
   } | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [tempStartDate, setTempStartDate] = useState<Date | null>(null);
@@ -68,6 +69,7 @@ export default function Header() {
   const dateRange = useAppStore((state) => state.dateRange);
   const setDateRange = useAppStore((state) => state.setDateRange);
   const setPresetRange = useAppStore((state) => state.setPresetRange);
+  const globalUser = useAppStore((state) => state.user);
 
   // Load user and notifications
   useEffect(() => {
@@ -89,6 +91,13 @@ export default function Header() {
       }
     }
   }, [selectedCluster]);
+
+  // Sync with global user state for profile photo updates
+  useEffect(() => {
+    if (globalUser?.profile_photo && currentUser) {
+      setCurrentUser({ ...currentUser, profile_photo: globalUser.profile_photo });
+    }
+  }, [globalUser?.profile_photo]);
 
   const loadNotifications = async (userId: number) => {
     try {
@@ -569,15 +578,6 @@ export default function Header() {
             )}
           </div>
 
-          {/* Settings */}
-          <Link
-            href="/settings"
-            className="w-10 h-10 rounded-md-bpk hover:bg-gray-6 
-                           flex items-center justify-center transition-colors"
-          >
-            <Settings className="w-5 h-5 text-gray-2" />
-          </Link>
-
           {/* User Profile */}
           <div className="relative" ref={userMenuRef}>
             <button
@@ -587,9 +587,17 @@ export default function Header() {
             >
               <div
                 className="w-9 h-9 rounded-full bg-gradient-bpk 
-                          flex items-center justify-center"
+                          flex items-center justify-center overflow-hidden"
               >
-                <User className="w-5 h-5 text-white" />
+                {currentUser?.profile_photo ? (
+                  <img 
+                    src={currentUser.profile_photo} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <User className="w-5 h-5 text-white" />
+                )}
               </div>
               <div className="hidden md:block text-left">
                 <div className="text-caption font-semibold text-gray-1">
@@ -607,14 +615,18 @@ export default function Header() {
             {/* User Menu Dropdown */}
             {showUserMenu && (
               <div className="absolute top-full right-0 mt-2 bg-white rounded-lg-bpk shadow-lg border border-gray-5 py-2 z-[200] min-w-[200px]">
-                <div className="px-4 py-2 border-b border-gray-5">
-                  <div className="text-caption font-semibold text-gray-1">
-                    {currentUser?.username || "User"}
-                  </div>
-                  <div className="text-overline text-gray-3">
-                    {currentUser?.role === "admin" ? "Administrator" : "User"}
-                  </div>
-                </div>
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    router.push('/settings');
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-6 transition-colors text-left group"
+                >
+                  <User className="w-4 h-4 text-gray-2" />
+                  <span className="text-caption text-gray-1 font-medium">
+                    Edit Profil
+                  </span>
+                </button>
 
                 <button
                   onClick={handleLogout}

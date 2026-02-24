@@ -38,9 +38,16 @@ type RegisterRequest struct {
 	Email           string `json:"email" binding:"required,email"`
 }
 
-// ForgotPasswordRequest represents forgot password data
+// ForgotPasswordRequest represents forgot password data (for users who forgot their password)
 type ForgotPasswordRequest struct {
 	Username        string `json:"username" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required"`
+}
+
+// ChangePasswordRequest represents change password data (for logged-in users)
+type ChangePasswordRequest struct {
+	OldPassword     string `json:"old_password" binding:"required"`
 	NewPassword     string `json:"new_password" binding:"required,min=6"`
 	ConfirmPassword string `json:"confirm_password" binding:"required"`
 }

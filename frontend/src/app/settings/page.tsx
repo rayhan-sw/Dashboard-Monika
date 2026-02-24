@@ -25,6 +25,7 @@ interface UserProfile {
 export default function SettingsPage() {
   const router = useRouter();
   const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
+  const setProfilePhoto = useAppStore((state) => state.setProfilePhoto);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -46,6 +47,11 @@ export default function SettingsPage() {
       setLoading(true);
       const response = await profileService.getProfile();
       setProfile(response);
+      
+      // Update global store with profile photo if available
+      if (response.profile_photo) {
+        setProfilePhoto(response.profile_photo);
+      }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     } finally {
@@ -88,6 +94,9 @@ export default function SettingsPage() {
         user.profile_photo = base64String;
         localStorage.setItem('user', JSON.stringify(user));
 
+        // Update global store for real-time sync
+        setProfilePhoto(base64String);
+
         alert('Foto profil berhasil diperbarui');
       };
       
@@ -101,10 +110,8 @@ export default function SettingsPage() {
   };
 
   const handleChangePassword = () => {
-    // Logout and redirect to forgot password
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/auth/forgot-password');
+    // Navigate to change password page (for authenticated users)
+    router.push('/account/change-password');
   };
 
   const handleLogout = () => {
@@ -156,7 +163,7 @@ export default function SettingsPage() {
           sidebarCollapsed ? 'ml-20' : 'ml-80'
         }`}
       >
-        <Header sidebarCollapsed={sidebarCollapsed} />
+        <Header />
 
         <main className="flex-1 pt-20 px-6 pb-6">
           <div className="max-w-7xl mx-auto">
@@ -198,9 +205,11 @@ export default function SettingsPage() {
 
                         {/* Name & Username */}
                         <div className="pt-12">
-                          <h2 className="text-body-1 font-semibold text-black leading-tight">{profile.full_name || 'User'}</h2>
+                          <h2 className="text-body-1 font-semibold text-black leading-tight">
+                            @{profile.username}
+                          </h2>
                           <p className="text-caption font-medium text-gray-1 mt-2">
-                            @<span className="font-bold">{profile.username}</span>
+                            {profile.role === 'admin' ? 'Administrator' : 'User'}
                           </p>
                         </div>
                       </div>
@@ -222,19 +231,6 @@ export default function SettingsPage() {
                   {/* Info Grid - White Background Section */}
                   <div className="bg-white px-10 py-6">
                     <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                      {/* Nama Lengkap */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <svg className="w-[18px] h-[18px] text-gray-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                          <span className="text-caption font-semibold text-gray-1 uppercase">Nama Lengkap</span>
-                        </div>
-                        <div className="bg-gray-6 border border-gray-6 rounded-md px-4 py-2">
-                          <p className="text-body-1 font-semibold text-black leading-tight">{profile.full_name || '-'}</p>
-                        </div>
-                      </div>
-
                       {/* Username */}
                       <div>
                         <div className="flex items-center gap-2 mb-2">
@@ -262,7 +258,7 @@ export default function SettingsPage() {
                       </div>
 
                       {/* Status Akses Laporan */}
-                      <div>
+                      <div className="col-span-2">
                         <div className="flex items-center gap-2 mb-2">
                           <svg className="w-[17px] h-[17px] text-gray-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />

@@ -48,7 +48,12 @@ func SetupRouter() *gin.Engine {
 
 	// API
 	api := r.Group("/api")
-	{
+	{		// Account management (protected routes)
+		account := api.Group(\"/account\")
+		account.Use(middleware.AuthMiddleware())
+		{
+			account.POST(\"/change-password\", handler.ChangePassword)
+		}
 		dashboard := api.Group("/dashboard")
 		{
 			dashboard.GET("/stats", handler.GetDashboardStats)

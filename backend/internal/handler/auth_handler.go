@@ -171,7 +171,7 @@ func ForgotPassword(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Password berhasil diubah",
+		"message": "Password berhasil diperbarui. Silakan login.",
 	})
 }
 
@@ -179,5 +179,65 @@ func ForgotPassword(c *gin.Context) {
 func Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logout berhasil",
+	})
+}
+// ChangePassword handles password change for authenticated users
+func ChangePassword(c *gin.Context) {
+	var req entity.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{\"error\": \"Invalid request format\"})
+		return
+	}
+
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get(\"user_id\")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{\"error\": \"User not authenticated\"})
+		return
+	}
+
+	// Validate password confirmation
+	if req.NewPassword != req.ConfirmPassword {
+		c.JSON(http.StatusBadRequest, gin.H{\"error\": \"Password baru dan konfirmasi password tidak cocok\"})
+		return
+	}
+
+	// Validate new password is different from old password
+	if req.OldPassword == req.NewPassword {
+		c.JSON(http.StatusBadRequest, gin.H{\"error\": \"Password baru tidak boleh sama dengan password lama\"})
+		return
+	}
+
+	db := database.GetDB()
+
+	// Find user
+	var user entity.User
+	if err := db.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{\"error\": \"User tidak ditemukan\"})
+		return
+	}
+
+	// Verify old password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{\"error\": \"Password lama tidak sesuai\"})
+		return
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		response.Internal(c, err)
+		return
+	}
+
+	// Update password
+	user.PasswordHash = string(hashedPassword)
+	if err := db.Save(&user).Error; err != nil {
+		response.Internal(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		\"message\": \"Kata sandi berhasil diubah. Silakan login kembali.\",
 	})
 }

@@ -4,6 +4,8 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { User, Lock } from 'lucide-react';
 import { useLogin } from '../../_hooks';
 import {
@@ -15,6 +17,8 @@ import {
 } from '../../_components';
 
 export function LoginForm() {
+  const searchParams = useSearchParams();
+  const [successMessage, setSuccessMessage] = useState('');
   const {
     formData,
     handleChange,
@@ -23,6 +27,15 @@ export function LoginForm() {
     error,
   } = useLogin();
 
+  useEffect(() => {
+    const message = searchParams.get('message');
+    if (message) {
+      setSuccessMessage(message);
+      // Clear message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
+    }
+  }, [searchParams]);
+
   return (
     <>
       {/* Logo */}
@@ -30,6 +43,9 @@ export function LoginForm() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6 max-w-[472px] mx-auto">
+        {/* Success Message from URL */}
+        {successMessage && <AuthAlert type="success" message={successMessage} />}
+
         {/* Error Alert */}
         {error && <AuthAlert type="error" message={error} />}
 

@@ -581,6 +581,22 @@ export const profileService = {
   },
 };
 
+// Account API (for authenticated user account management)
+export const accountService = {
+  changePassword: (oldPassword: string, newPassword: string, confirmPassword: string) => {
+    return fetchApi<{
+      message: string;
+    }>("/api/account/change-password", {
+      method: "POST",
+      body: JSON.stringify({
+        old_password: oldPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      }),
+    });
+  },
+};
+
 // User API
 export const userService = {
   getProfile: (userId: number) => {

@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Home,
   BarChart3,
   FileText,
   Brain,
-  Settings,
 } from "lucide-react";
 
 const menuItems = [
@@ -38,36 +36,8 @@ const menuItems = [
   },
 ];
 
-interface CurrentUser {
-  id: number;
-  username: string;
-  role: string;
-  full_name?: string;
-}
-
 export default function Sidebar() {
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const pathname = usePathname();
-  const router = useRouter();
-
-  useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        setCurrentUser(JSON.parse(userStr));
-      } catch (e) {
-        console.error('Failed to parse user data:', e);
-      }
-    }
-  }, []);
-
-  const displayName = currentUser?.full_name || currentUser?.username || 'User';
-  const roleDisplay = currentUser?.role === 'admin' ? 'Administrator' : 'Monitoring - Biro TI';
-  const initials = displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-
-  const handleProfileClick = () => {
-    router.push('/settings');
-  };
 
   return (
     <aside
@@ -140,39 +110,6 @@ export default function Sidebar() {
           })}
         </ul>
       </nav>
-
-      {/* User Profile Area */}
-      <div 
-        className="h-20 border-t border-gray-5 flex items-center gap-3 px-4 cursor-pointer hover:bg-gray-6 transition-colors"
-        onClick={handleProfileClick}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleProfileClick();
-          }
-        }}
-      >
-        <div
-          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-            currentUser?.role === 'admin' ? 'bg-gradient-bpk' : 'bg-red-500'
-          }`}
-        >
-          <span className="text-white font-bold text-sm">{initials}</span>
-        </div>
-        <div className="flex-1 overflow-hidden">
-          <div className="text-body font-semibold text-gray-1 whitespace-nowrap">
-            {displayName}
-          </div>
-          <div className="text-overline text-gray-3 whitespace-nowrap">
-            {roleDisplay}
-          </div>
-        </div>
-        <div className="w-8 h-8 rounded-md-bpk hover:bg-gray-5 flex items-center justify-center transition-colors">
-          <Settings className="w-4 h-4 text-gray-3" />
-        </div>
-      </div>
     </aside>
   );
 }

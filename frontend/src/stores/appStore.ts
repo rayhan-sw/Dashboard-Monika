@@ -11,6 +11,7 @@ interface AppState {
     id: string;
     username: string;
     role: string;
+    profile_photo?: string;
   } | null;
   isLoading: boolean;
   error: string | null;
@@ -19,6 +20,7 @@ interface AppState {
   selectedCluster: string;
   sidebarCollapsed: boolean;
   setUser: (user: AppState["user"]) => void;
+  setProfilePhoto: (photo: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setDateRange: (dateRange: DateRange) => void;
@@ -48,6 +50,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedCluster: "",
   sidebarCollapsed: false,
   setUser: (user) => set({ user }),
+  setProfilePhoto: (photo) => set((state) => ({
+    user: state.user ? { ...state.user, profile_photo: photo } : null
+  })),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
   setDateRange: (dateRange) => set({ dateRange }),

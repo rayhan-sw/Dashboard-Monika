@@ -31,6 +31,12 @@ export function ForgotPasswordForm() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6 max-w-[472px] mx-auto">
+        {/* Info Message */}
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm">
+          <p className="font-semibold mb-1">Reset Password</p>
+          <p>Masukkan username Anda dan password baru untuk mereset password yang terlupa.</p>
+        </div>
+
         {/* Error Alert */}
         {error && <AuthAlert type="error" message={error} />}
 
@@ -38,7 +44,7 @@ export function ForgotPasswordForm() {
         {success && (
           <AuthAlert 
             type="success" 
-            message="Password berhasil diubah! Mengalihkan ke halaman login..." 
+            message="Password berhasil diperbarui! Silakan login dengan password baru Anda..." 
           />
         )}
 
@@ -80,7 +86,7 @@ export function ForgotPasswordForm() {
 
         {/* Submit Button */}
         <AuthButton isLoading={isLoading} disabled={success}>
-          Ubah Kata Sandi
+          Reset Kata Sandi
         </AuthButton>
 
         {/* Back to Login Link */}
