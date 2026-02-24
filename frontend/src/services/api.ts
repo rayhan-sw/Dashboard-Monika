@@ -16,7 +16,7 @@ import type {
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
@@ -24,6 +24,13 @@ class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
+}
+
+function clearAuthAndRedirectToLogin() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  window.location.href = "/auth/login";
 }
 
 async function fetchApi<T>(
@@ -70,7 +77,12 @@ async function fetchApi<T>(
       const error = await response
         .json()
         .catch(() => ({ error: "Unknown error" }));
-      throw new ApiError(response.status, error.error || response.statusText);
+      const status = response.status;
+      const message = error.error || response.statusText;
+      if (status === 401) {
+        clearAuthAndRedirectToLogin();
+      }
+      throw new ApiError(status, message);
     }
 
     return await response.json();
