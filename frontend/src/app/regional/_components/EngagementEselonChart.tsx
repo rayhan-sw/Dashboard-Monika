@@ -14,10 +14,10 @@ import {
 } from "recharts";
 import { dashboardService, regionalService, type SatkerRoot } from "@/services/api";
 
-// Desain Rainfall vs Evaporation: batang berkelompok biru + hijau lime
+// Desain: batang berkelompok biru (Pengguna Unik) + oranye (Total Aktivitas)
 const COLORS = {
-  uniqueUser: "#3B82F6",
-  totalAktivitas: "#84CC16",
+  uniqueUser: "#3B83F1",
+  totalAktivitas: "#FE9A00",
   cardBg: "#FFFFFF",
   gridBorder: "#E5E5EA",
   textPrimary: "#000000",

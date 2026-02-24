@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { dashboardService, notificationService } from "@/services/api";
+import { dashboardService, notificationService, ApiError } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import { format, parse } from "date-fns";
 import { id } from "date-fns/locale";
@@ -105,6 +105,12 @@ export default function Header() {
       setNotifications(response.data || []);
       setUnreadCount(response.unread_count || 0);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setCurrentUser(null);
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
       console.error("Failed to load notifications:", error);
     }
   };

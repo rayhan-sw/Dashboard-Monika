@@ -1,7 +1,10 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { useState, useEffect } from "react";
+import { Calendar, ChevronDown } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { format, parse } from "date-fns";
+import { id } from "date-fns/locale";
 import { dashboardService } from "@/services/api";
 import BPKTreeView from "./BPKTreeView";
 
@@ -447,6 +450,19 @@ const ACTIVITY_TYPES = [
   { value: "Download", label: "Download" },
 ];
 
+function getDaysInMonth(date: Date): (Date | null)[] {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startingDayOfWeek = firstDay.getDay();
+  const days: (Date | null)[] = [];
+  for (let i = 0; i < startingDayOfWeek; i++) days.push(null);
+  for (let day = 1; day <= daysInMonth; day++) days.push(new Date(year, month, day));
+  return days;
+}
+
 export default function SearchFilters({
   filters,
   onChange,
@@ -454,13 +470,117 @@ export default function SearchFilters({
   onClear,
 }: SearchFiltersProps) {
   const [showCustomDate, setShowCustomDate] = useState(false);
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [tempStartDate, setTempStartDate] = useState<Date | null>(null);
+  const [tempEndDate, setTempEndDate] = useState<Date | null>(null);
   const [clusters, setClusters] = useState<string[]>([]);
   const [clusterDropdownOpen, setClusterDropdownOpen] = useState(false);
   const [showTreeView, setShowTreeView] = useState(true);
+  const customDatePickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadClusters();
   }, []);
+
+  // Sync temp dates and month when opening custom picker from filters
+  useEffect(() => {
+    if (showCustomDatePicker && showCustomDate) {
+      if (filters.customStart && filters.customEnd) {
+        try {
+          const start = parse(filters.customStart, "yyyy-MM-dd", new Date());
+          const end = parse(filters.customEnd, "yyyy-MM-dd", new Date());
+          setTempStartDate(start);
+          setTempEndDate(end);
+          setSelectedMonth(start);
+        } catch {
+          setTempStartDate(null);
+          setTempEndDate(null);
+        }
+      } else {
+        setTempStartDate(null);
+        setTempEndDate(null);
+      }
+    }
+  }, [showCustomDatePicker, showCustomDate]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        customDatePickerRef.current &&
+        !customDatePickerRef.current.contains(event.target as Node)
+      ) {
+        setShowCustomDatePicker(false);
+      }
+    };
+    if (showCustomDatePicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showCustomDatePicker]);
+
+  const formatCustomDateDisplay = () => {
+    if (!filters.customStart || !filters.customEnd) return "Pilih Tanggal";
+    try {
+      const start = parse(filters.customStart, "yyyy-MM-dd", new Date());
+      const end = parse(filters.customEnd, "yyyy-MM-dd", new Date());
+      return `${format(start, "d MMM", { locale: id })} - ${format(end, "d MMM yyyy", { locale: id })}`;
+    } catch {
+      return "Pilih Tanggal";
+    }
+  };
+
+  const handleCustomDateClick = (date: Date) => {
+    if (!tempStartDate || (tempStartDate && tempEndDate)) {
+      setTempStartDate(date);
+      setTempEndDate(null);
+    } else {
+      if (date < tempStartDate) {
+        setTempStartDate(date);
+        setTempEndDate(tempStartDate);
+      } else {
+        setTempEndDate(date);
+      }
+    }
+  };
+
+  const isDateInRange = (date: Date) => {
+    if (!tempStartDate) return false;
+    if (!tempEndDate) return date.getTime() === tempStartDate.getTime();
+    return date >= tempStartDate && date <= tempEndDate;
+  };
+
+  const isDateRangeEdge = (date: Date) => {
+    if (!tempStartDate) return false;
+    return (
+      date.getTime() === tempStartDate.getTime() ||
+      (tempEndDate && date.getTime() === tempEndDate.getTime())
+    );
+  };
+
+  const handleApplyCustomRange = () => {
+    if (tempStartDate && tempEndDate) {
+      onChange({
+        ...filters,
+        customStart: format(tempStartDate, "yyyy-MM-dd"),
+        customEnd: format(tempEndDate, "yyyy-MM-dd"),
+      });
+      setShowCustomDatePicker(false);
+      setTempStartDate(null);
+      setTempEndDate(null);
+    }
+  };
+
+  const handleQuickSelectInCustom = (value: string) => {
+    onChange({
+      ...filters,
+      dateRange: value,
+      customStart: "",
+      customEnd: "",
+    });
+    setShowCustomDate(false);
+    setShowCustomDatePicker(false);
+  };
 
   const loadClusters = async () => {
     try {
@@ -552,23 +672,144 @@ export default function SearchFilters({
             </button>
           </div>
           {showCustomDate && (
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={filters.customStart || ""}
-                onChange={(e) =>
-                  onChange({ ...filters, customStart: e.target.value })
-                }
-                className="flex-1 px-3 py-2 text-sm border-2 border-bpk-orange rounded-md-bpk focus:ring-2 focus:ring-bpk-orange/20 focus:outline-none"
-              />
-              <input
-                type="date"
-                value={filters.customEnd || ""}
-                onChange={(e) =>
-                  onChange({ ...filters, customEnd: e.target.value })
-                }
-                className="flex-1 px-3 py-2 text-sm border-2 border-bpk-orange rounded-md-bpk focus:ring-2 focus:ring-bpk-orange/20 focus:outline-none"
-              />
+            <div className="relative mt-2" ref={customDatePickerRef}>
+              <button
+                type="button"
+                onClick={() => setShowCustomDatePicker(!showCustomDatePicker)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-white border-2 border-bpk-orange rounded-lg-bpk hover:bg-orange-50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Calendar className="w-4 h-4 text-bpk-orange flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-800 truncate">
+                    {formatCustomDateDisplay()}
+                  </span>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-bpk-orange flex-shrink-0 transition-transform ${showCustomDatePicker ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {showCustomDatePicker && (
+                <div className="absolute left-0 top-full mt-2 bg-white rounded-lg-bpk shadow-lg border border-gray-200 p-4 z-[200] min-w-[320px]">
+                  <div className="flex gap-2 mb-4 pb-4 border-b border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickSelectInCustom("7")}
+                      className="px-3 py-1.5 text-xs rounded-md-bpk border border-gray-200 hover:border-bpk-orange hover:bg-orange-50 transition-colors"
+                    >
+                      7 Hari
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickSelectInCustom("30")}
+                      className="px-3 py-1.5 text-xs rounded-md-bpk border border-gray-200 hover:border-bpk-orange hover:bg-orange-50 transition-colors"
+                    >
+                      30 Hari
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickSelectInCustom("90")}
+                      className="px-3 py-1.5 text-xs rounded-md-bpk border border-gray-200 hover:border-bpk-orange hover:bg-orange-50 transition-colors"
+                    >
+                      90 Hari
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickSelectInCustom("all")}
+                      className="px-3 py-1.5 text-xs rounded-md-bpk border border-gray-200 hover:border-bpk-orange hover:bg-orange-50 transition-colors"
+                    >
+                      Semua
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedMonth(
+                          new Date(
+                            selectedMonth.getFullYear(),
+                            selectedMonth.getMonth() - 1,
+                          ),
+                        )
+                      }
+                      className="p-1 hover:bg-gray-100 rounded text-gray-600"
+                    >
+                      ←
+                    </button>
+                    <span className="text-sm font-semibold text-gray-800">
+                      {format(selectedMonth, "MMMM yyyy", { locale: id })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedMonth(
+                          new Date(
+                            selectedMonth.getFullYear(),
+                            selectedMonth.getMonth() + 1,
+                          ),
+                        )
+                      }
+                      className="p-1 hover:bg-gray-100 rounded text-gray-600"
+                    >
+                      →
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1 mb-4">
+                    {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map(
+                      (day) => (
+                        <div
+                          key={day}
+                          className="text-center text-xs text-gray-500 font-semibold py-1"
+                        >
+                          {day}
+                        </div>
+                      ),
+                    )}
+                    {getDaysInMonth(selectedMonth).map((date, index) => {
+                      if (!date) {
+                        return (
+                          <div
+                            key={`empty-${index}`}
+                            className="aspect-square"
+                          />
+                        );
+                      }
+                      const isInRange = isDateInRange(date);
+                      const isEdge = isDateRangeEdge(date);
+                      const isToday =
+                        format(date, "yyyy-MM-dd") ===
+                        format(new Date(), "yyyy-MM-dd");
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => handleCustomDateClick(date)}
+                          className={`aspect-square text-xs rounded-md flex items-center justify-center transition-colors
+                            ${isEdge ? "bg-bpk-orange text-white font-semibold" : ""}
+                            ${isInRange && !isEdge ? "bg-orange-100 text-bpk-orange" : ""}
+                            ${!isInRange && !isEdge ? "hover:bg-gray-100 text-gray-700" : ""}
+                            ${isToday && !isInRange ? "border border-bpk-orange" : ""}
+                          `}
+                        >
+                          {date.getDate()}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {tempStartDate && tempEndDate && (
+                    <button
+                      type="button"
+                      onClick={handleApplyCustomRange}
+                      className="w-full py-2 bg-bpk-orange text-white rounded-md-bpk hover:bg-orange-600 transition-colors text-sm font-semibold"
+                    >
+                      Terapkan
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Pakai folder frontend sebagai root Turbopack (hindari deteksi lockfile di folder lain yang bikin compile lambat)
+  turbopack: {
+    root: __dirname,
+  },
   images: {
     remotePatterns: [
       {

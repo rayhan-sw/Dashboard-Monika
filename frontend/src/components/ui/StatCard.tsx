@@ -44,7 +44,7 @@ export default function StatCard({
               >
                 {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}%
               </span>
-              <span className="text-xs text-gray-500">vs last week</span>
+              <span className="text-xs text-gray-500">vs minggu lalu</span>
             </div>
           )}
         </div>
