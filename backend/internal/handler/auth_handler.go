@@ -29,11 +29,10 @@ func Login(c *gin.Context) {
 	var err error
 
 	// Check if input contains '@' to determine if it's email or username
+	// Username dan email harus persis sama dengan yang didaftarkan (case-sensitive)
 	if strings.Contains(req.Username, "@") {
-		// Login with email
 		err = db.Where("email = ? AND is_active = ?", req.Username, true).First(&user).Error
 	} else {
-		// Login with username
 		err = db.Where("username = ? AND is_active = ?", req.Username, true).First(&user).Error
 	}
 

@@ -19,10 +19,10 @@ export function AuthLayout({ children, title = 'Selamat Datang!' }: AuthLayoutPr
       <AuthBackground />
 
       {/* Main Container - Centered with flex-1 */}
-      <div className="relative z-10 w-full max-w-[885px] mx-auto flex-1 flex flex-col justify-center">
-        {/* Title */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-semibold bg-gradient-to-r from-[#FEB800] to-[#E27200] bg-clip-text text-transparent">
+      <div className="relative z-10 w-full max-w-[885px] mx-auto flex-1 flex flex-col justify-center px-4">
+        {/* Title - padding agar teks gradient & descender "g" tidak terpotong */}
+        <div className="text-center mb-8 px-3 sm:px-4 pt-1 pb-2">
+          <h1 className="text-4xl md:text-5xl font-semibold bg-gradient-to-r from-[#FEB800] to-[#E27200] bg-clip-text text-transparent break-words" style={{ lineHeight: 1.25, paddingBottom: '0.2em' }}>
             {title}
           </h1>
         </div>

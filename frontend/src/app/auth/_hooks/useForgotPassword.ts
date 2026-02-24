@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { resetPassword } from '../_services/authService';
 import { ForgotPasswordFormData, AuthFormState } from '../_types';
+import { validatePassword } from '../_utils/validation';
 
 interface UseForgotPasswordReturn extends AuthFormState {
   formData: ForgotPasswordFormData;
@@ -11,20 +12,15 @@ interface UseForgotPasswordReturn extends AuthFormState {
   handleSubmit: (e: React.FormEvent) => Promise<void>;
 }
 
-// Validation rules
-const VALIDATION = {
-  MIN_PASSWORD_LENGTH: 6,
-} as const;
-
 export function useForgotPassword(): UseForgotPasswordReturn {
   const router = useRouter();
-  
+
   const [formData, setFormData] = useState<ForgotPasswordFormData>({
     username: '',
     new_password: '',
     confirm_password: '',
   });
-  
+
   const [state, setState] = useState<AuthFormState>({
     isLoading: false,
     error: '',
@@ -37,14 +33,19 @@ export function useForgotPassword(): UseForgotPasswordReturn {
   }, []);
 
   const validate = useCallback((): string | null => {
-    if (formData.new_password.length < VALIDATION.MIN_PASSWORD_LENGTH) {
-      return `Password minimal ${VALIDATION.MIN_PASSWORD_LENGTH} karakter`;
-    }
-    
+    if (!formData.username.trim()) return 'Username wajib diisi';
+
+    const passResult = validatePassword(
+      formData.new_password,
+      formData.username,
+      ''
+    );
+    if (!passResult.valid) return passResult.message ?? null;
+
     if (formData.new_password !== formData.confirm_password) {
       return 'Password dan konfirmasi password tidak cocok';
     }
-    
+
     return null;
   }, [formData]);
 

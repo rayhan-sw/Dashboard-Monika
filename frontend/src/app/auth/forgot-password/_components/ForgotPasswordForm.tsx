@@ -34,7 +34,7 @@ export function ForgotPasswordForm() {
         {/* Info Message */}
         <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm">
           <p className="font-semibold mb-1">Reset Password</p>
-          <p>Masukkan username Anda dan password baru untuk mereset password yang terlupa.</p>
+          <p>Masukkan username dan kata sandi baru (min. 8 karakter: huruf besar, kecil, angka; simbol disarankan).</p>
         </div>
 
         {/* Error Alert */}
@@ -67,7 +67,7 @@ export function ForgotPasswordForm() {
           type="password"
           value={formData.new_password}
           onChange={handleChange}
-          placeholder="Kata Sandi Baru"
+          placeholder="Kata Sandi Baru (min. 8: besar, kecil, angka; simbol disarankan)"
           icon={Lock}
           disabled={isLoading || success}
         />

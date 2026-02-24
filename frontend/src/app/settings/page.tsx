@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -65,13 +66,23 @@ export default function SettingsPage() {
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      alert('Ukuran file maksimal 2MB');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Ukuran file terlalu besar',
+        text: 'Ukuran file maksimal 2MB',
+        confirmButtonColor: '#E27200',
+      });
       return;
     }
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('File harus berupa gambar');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Format tidak valid',
+        text: 'File harus berupa gambar',
+        confirmButtonColor: '#E27200',
+      });
       return;
     }
 
@@ -97,13 +108,23 @@ export default function SettingsPage() {
         // Update global store for real-time sync
         setProfilePhoto(base64String);
 
-        alert('Foto profil berhasil diperbarui');
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil',
+          text: 'Foto profil berhasil diperbarui',
+          confirmButtonColor: '#E27200',
+        });
       };
       
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('Failed to upload photo:', error);
-      alert('Gagal mengunggah foto profil');
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal',
+        text: 'Gagal mengunggah foto profil',
+        confirmButtonColor: '#E27200',
+      });
     } finally {
       setUploading(false);
     }
@@ -123,10 +144,20 @@ export default function SettingsPage() {
   const handleRequestAccess = async () => {
     try {
       await profileService.requestReportAccess();
-      alert('Permintaan akses berhasil dikirim. Tunggu persetujuan admin.');
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil',
+        text: 'Permintaan akses berhasil dikirim. Tunggu persetujuan admin.',
+        confirmButtonColor: '#E27200',
+      });
       fetchProfile();
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Gagal mengirim permintaan akses');
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal',
+        text: error.response?.data?.error || 'Gagal mengirim permintaan akses',
+        confirmButtonColor: '#E27200',
+      });
     }
   };
 
