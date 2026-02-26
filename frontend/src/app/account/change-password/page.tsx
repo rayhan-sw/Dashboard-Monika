@@ -56,8 +56,8 @@ export default function ChangePasswordPage() {
   );
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) router.push('/auth/login');
+    const user = localStorage.getItem('user');
+    if (!user) router.push('/auth/login');
   }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

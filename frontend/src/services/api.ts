@@ -13,8 +13,133 @@ import type {
   ReportDownload,
   ReportAccessRequest,
 } from "@/types/api";
+import axios, { AxiosError } from 'axios';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+// Create axios instance
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true, // Important: enables cookies (for httpOnly refresh token)
+});
+
+// Access token storage (in memory, NOT localStorage for XSS protection)
+let accessToken: string | null = null;
+
+// Set access token
+export function setAccessToken(token: string) {
+  accessToken = token;
+}
+
+// Get access token
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
+// Clear access token
+export function clearAccessToken() {
+  accessToken = null;
+}
+
+// Flag to prevent multiple refresh attempts
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+function subscribeTokenRefresh(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach(cb => cb(token));
+  refreshSubscribers = [];
+}
+
+// Request interceptor - add access token to requests
+apiClient.interceptors.request.use(
+  (config) => {
+    // Get user info from localStorage for X-User-ID header
+    const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        config.headers['X-User-ID'] = String(user.id);
+      } catch (e) {
+        console.error('Failed to parse user from localStorage', e);
+      }
+    }
+
+    // Add access token if available
+    if (accessToken) {
+      config.headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor - handle token refresh
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as any;
+
+    // If error is 401 and we haven't tried to refresh yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // Another request is already refreshing, wait for it
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token: string) => {
+            originalRequest.headers['Authorization'] = `Bearer ${token}`;
+            resolve(apiClient(originalRequest));
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Try to refresh token
+        const response = await axios.post(
+          `${API_BASE_URL}/api/auth/refresh`,
+          {},
+          { withCredentials: true } // Send refresh token cookie
+        );
+
+        const { access_token } = response.data;
+        
+        if (access_token) {
+          // Update access token
+          setAccessToken(access_token);
+          
+          // Notify waiting requests
+          onTokenRefreshed(access_token);
+          
+          // Retry original request
+          originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
+          return apiClient(originalRequest);
+        }
+      } catch (refreshError) {
+        // Refresh failed, logout user
+        clearAuthAndRedirectToLogin();
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    // If error is 401 and refresh already failed, logout
+    if (error.response?.status === 401) {
+      clearAuthAndRedirectToLogin();
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export class ApiError extends Error {
   constructor(
@@ -28,8 +153,15 @@ export class ApiError extends Error {
 
 function clearAuthAndRedirectToLogin() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem("token");
+  
+  // Clear access token from memory
+  clearAccessToken();
+  
+  // Clear user from localStorage (keep for now for user info)
   localStorage.removeItem("user");
+  
+  // Note: refresh token is httpOnly cookie, cleared by backend on logout
+  
   window.location.href = "/auth/login";
 }
 
@@ -37,58 +169,20 @@ async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit,
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-
-  // Get token from localStorage
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  
-  // Get user info from localStorage
-  const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-  let userId = null;
-  if (userStr) {
-    try {
-      const user = JSON.parse(userStr);
-      userId = user.id;
-    } catch (e) {
-      console.error('Failed to parse user from localStorage', e);
-    }
-  }
-
   try {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...(options?.headers as Record<string, string> || {}),
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    if (userId) {
-      headers['X-User-ID'] = String(userId);
-    }
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
+    const response = await apiClient.request({
+      url: endpoint,
+      method: options?.method || 'GET',
+      data: options?.body ? JSON.parse(options.body as string) : undefined,
+      headers: options?.headers as Record<string, string>,
     });
 
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: "Unknown error" }));
-      const status = response.status;
-      const message = error.error || response.statusText;
-      if (status === 401) {
-        clearAuthAndRedirectToLogin();
-      }
-      throw new ApiError(status, message);
-    }
-
-    return await response.json();
+    return response.data;
   } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 500;
+      const message = error.response?.data?.error || error.message;
+      throw new ApiError(status, message);
     }
     throw new Error(
       `Network error: ${error instanceof Error ? error.message : "Unknown error"}`,

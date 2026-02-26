@@ -41,8 +41,8 @@ export default function ContentAnalysisPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    const user = localStorage.getItem("user");
+    if (!user) {
       router.push("/auth/login");
     } else {
       setLoading(false);

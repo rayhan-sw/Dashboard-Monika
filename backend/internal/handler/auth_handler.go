@@ -14,7 +14,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Login handles user authentication
+const (
+	// Max concurrent sessions per user (prevents session flooding)
+	MaxSessionsPerUser = 5
+
+	// Cookie settings
+	RefreshTokenCookie = "refresh_token"
+	CookieMaxAge       = 7 * 24 * 60 * 60 // 7 days in seconds
+)
+
+// Login handles user authentication with refresh token strategy
 func Login(c *gin.Context) {
 	var req entity.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -47,12 +56,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Update last login
-	now := time.Now()
-	user.LastLogin = &now
-	db.Save(&user)
-
-	token, err := auth.GenerateToken(user.ID, user.Role)
+	// Generate token pair (access + refresh)
+	tokenPair, err := auth.GenerateTokenPair(user.ID, user.Role)
 	if err != nil {
 		if errors.Is(err, auth.ErrJWTSecretNotSet) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Server misconfiguration"})
@@ -62,10 +67,213 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, entity.LoginResponse{
-		Token:   token,
-		User:    user,
-		Message: "Login berhasil",
+	// Store refresh token in database
+	refreshTokenRepo := getRefreshTokenRepo()
+	deviceInfo := c.GetHeader("User-Agent")
+	if deviceInfo == "" {
+		deviceInfo = "Unknown Device"
+	}
+
+	refreshTokenEntity := &entity.RefreshToken{
+		JTI:        tokenPair.RefreshJTI,
+		UserID:     user.ID,
+		DeviceInfo: deviceInfo,
+		IPAddress:  c.ClientIP(),
+		ExpiresAt:  tokenPair.ExpiresAt,
+		CreatedAt:  time.Now(),
+		LastUsedAt: time.Now(),
+	}
+
+	if err := refreshTokenRepo.Create(refreshTokenEntity); err != nil {
+		response.Internal(c, err)
+		return
+	}
+
+	// Limit concurrent sessions per user
+	refreshTokenRepo.DeleteOldestIfExceedsLimit(user.ID, MaxSessionsPerUser)
+
+	// Update last login
+	now := time.Now()
+	user.LastLogin = &now
+	db.Save(&user)
+
+	// Set refresh token as httpOnly cookie
+	c.SetCookie(
+		RefreshTokenCookie,     // name
+		tokenPair.RefreshToken, // value
+		CookieMaxAge,           // max age in seconds
+		"/",                    // path
+		"",                     // domain (empty = current domain)
+		false,                  // secure (set true in production with HTTPS)
+		true,                   // httpOnly (not accessible via JavaScript)
+	)
+
+	// Return access token and user info (NOT refresh token)
+	c.JSON(http.StatusOK, gin.H{
+		"access_token": tokenPair.AccessToken,
+		"expires_in":   tokenPair.ExpiresIn,
+		"user":         user,
+		"message":      "Login berhasil",
+	})
+}
+
+// RefreshToken handles token refresh - exchanges refresh token for new access token
+func RefreshToken(c *gin.Context) {
+	// Get refresh token from httpOnly cookie
+	refreshToken, err := c.Cookie(RefreshTokenCookie)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token tidak ditemukan"})
+		return
+	}
+
+	// Validate refresh token
+	userID, role, jti, err := auth.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		if errors.Is(err, auth.ErrExpiredToken) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token telah expired, silakan login kembali"})
+			return
+		}
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token tidak valid"})
+		return
+	}
+
+	// Check if refresh token is blacklisted
+	blacklistRepo := getTokenBlacklistRepo()
+	isBlacklisted, err := blacklistRepo.IsBlacklisted(jti)
+	if err != nil {
+		response.Internal(c, err)
+		return
+	}
+	if isBlacklisted {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token telah di-revoke, silakan login kembali"})
+		return
+	}
+
+	// Check if refresh token exists in database
+	refreshTokenRepo := getRefreshTokenRepo()
+	storedToken, err := refreshTokenRepo.FindByJTI(jti)
+	if err != nil {
+		response.Internal(c, err)
+		return
+	}
+	if storedToken == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token tidak valid"})
+		return
+	}
+
+	// Check if token is expired (double check)
+	if storedToken.IsExpired() {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token telah expired"})
+		return
+	}
+
+	// Generate new access token (NOT new refresh token for security)
+	accessToken, _, err := auth.GenerateAccessToken(userID, role)
+	if err != nil {
+		response.Internal(c, err)
+		return
+	}
+
+	// Update last used timestamp
+	refreshTokenRepo.UpdateLastUsed(jti)
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token": accessToken,
+		"expires_in":   int(auth.AccessTokenExpiry.Seconds()),
+		"message":      "Token berhasil di-refresh",
+	})
+}
+
+// Logout handles user logout - blacklists current refresh token
+func Logout(c *gin.Context) {
+	// Get refresh token from cookie
+	refreshToken, err := c.Cookie(RefreshTokenCookie)
+	if err != nil {
+		// No refresh token, but logout is still successful (client-side cleanup)
+		c.SetCookie(RefreshTokenCookie, "", -1, "/", "", false, true)
+		c.JSON(http.StatusOK, gin.H{"message": "Logout berhasil"})
+		return
+	}
+
+	// Extract JTI from refresh token
+	jti, err := auth.ExtractJTI(refreshToken)
+	if err == nil && jti != "" {
+		// Get token details for blacklist
+		claims, err := auth.ValidateToken(refreshToken)
+		if err == nil {
+			// Add to blacklist
+			blacklistRepo := getTokenBlacklistRepo()
+			blacklist := &entity.TokenBlacklist{
+				JTI:           jti,
+				UserID:        claims.UserID,
+				TokenType:     entity.BlacklistReasonLogout,
+				Reason:        entity.BlacklistReasonLogout,
+				BlacklistedAt: time.Now(),
+				ExpiresAt:     claims.ExpiresAt.Time,
+			}
+			blacklistRepo.Add(blacklist)
+
+			// Delete from refresh_tokens table
+			refreshTokenRepo := getRefreshTokenRepo()
+			refreshTokenRepo.Delete(jti)
+		}
+	}
+
+	// Clear cookie
+	c.SetCookie(RefreshTokenCookie, "", -1, "/", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Logout berhasil"})
+}
+
+// LogoutAll handles logout from all devices - blacklists all user's refresh tokens
+func LogoutAll(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Blacklist all user's refresh tokens
+	blacklistRepo := getTokenBlacklistRepo()
+	count, err := blacklistRepo.BlacklistAllUserTokens(userID.(int), entity.BlacklistReasonLogoutAll)
+	if err != nil {
+		response.Internal(c, err)
+		return
+	}
+
+	// Delete all refresh tokens from database
+	refreshTokenRepo := getRefreshTokenRepo()
+	refreshTokenRepo.DeleteAllByUserID(userID.(int))
+
+	// Clear current device's cookie
+	c.SetCookie(RefreshTokenCookie, "", -1, "/", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":            "Logout dari semua perangkat berhasil",
+		"devices_logged_out": count,
+	})
+}
+
+// GetActiveSessions returns all active sessions for current user
+func GetActiveSessions(c *gin.Context) {
+	// Get user ID from context
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	refreshTokenRepo := getRefreshTokenRepo()
+	sessions, err := refreshTokenRepo.GetActiveSessions(userID.(int))
+	if err != nil {
+		response.Internal(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"sessions": sessions,
+		"total":    len(sessions),
 	})
 }
 
@@ -132,7 +340,7 @@ func Register(c *gin.Context) {
 	})
 }
 
-// ForgotPassword handles password reset
+// ForgotPassword handles password reset (should blacklist all tokens)
 func ForgotPassword(c *gin.Context) {
 	var req entity.ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -169,15 +377,16 @@ func ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Password berhasil diperbarui. Silakan login.",
-	})
-}
+	// Blacklist all user's tokens (security: password reset should invalidate all sessions)
+	blacklistRepo := getTokenBlacklistRepo()
+	blacklistRepo.BlacklistAllUserTokens(user.ID, entity.BlacklistReasonPasswordChange)
 
-// Logout handles user logout (client should discard the token)
-func Logout(c *gin.Context) {
+	// Delete all refresh tokens
+	refreshTokenRepo := getRefreshTokenRepo()
+	refreshTokenRepo.DeleteAllByUserID(user.ID)
+
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Logout berhasil",
+		"message": "Password berhasil diperbarui. Silakan login kembali dari semua perangkat.",
 	})
 }
 
@@ -237,7 +446,18 @@ func ChangePassword(c *gin.Context) {
 		return
 	}
 
+	// Blacklist all user's tokens (security: password change should invalidate all sessions)
+	blacklistRepo := getTokenBlacklistRepo()
+	blacklistRepo.BlacklistAllUserTokens(user.ID, entity.BlacklistReasonPasswordChange)
+
+	// Delete all refresh tokens
+	refreshTokenRepo := getRefreshTokenRepo()
+	refreshTokenRepo.DeleteAllByUserID(user.ID)
+
+	// Clear current cookie
+	c.SetCookie(RefreshTokenCookie, "", -1, "/", "", false, true)
+
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Kata sandi berhasil diubah. Silakan login kembali.",
+		"message": "Kata sandi berhasil diubah. Silakan login kembali dari semua perangkat.",
 	})
 }

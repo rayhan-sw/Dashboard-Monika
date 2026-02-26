@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { Search, AlertCircle } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { contentService } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 
@@ -102,45 +111,50 @@ export default function SearchModuleUsage() {
       {/* Module Vertical Bar Chart */}
       <div className="h-80">
         {modules.length > 0 ? (
-          <div className="h-full flex items-end justify-around gap-4 px-4">
-            {modules.map((item, index) => {
-              const maxCount = Math.max(...modules.map((m) => m.count));
-              const heightPercentage =
-                maxCount > 0 ? (item.count / maxCount) * 100 : 0;
-
-              return (
-                <div
-                  key={`${item.name}-${index}`}
-                  className="flex-1 flex flex-col items-center gap-2"
-                >
-                  {/* Bar */}
-                  <div
-                    className="relative w-full flex flex-col items-center justify-end"
-                    style={{ height: "85%" }}
-                  >
-                    <div className="absolute -top-8 text-sm font-bold text-slate-700">
-                      {item.count.toLocaleString()}
-                    </div>
-                    <div
-                      className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all duration-500 flex items-start justify-center pt-2 shadow-lg"
-                      style={{
-                        height: `${heightPercentage}%`,
-                        minHeight: "30px",
-                      }}
-                    >
-                      <span className="text-xs font-medium text-white">
-                        {heightPercentage.toFixed(0)}%
-                      </span>
-                    </div>
-                  </div>
-                  {/* Label */}
-                  <div className="text-xs font-medium text-slate-600 text-center line-clamp-2 h-10">
-                    {item.name}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={modules}
+              margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis
+                dataKey="name"
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                interval={0}
+                tick={{ fill: "#64748B", fontSize: 11 }}
+              />
+              <YAxis
+                tick={{ fill: "#64748B", fontSize: 11 }}
+                label={{
+                  value: "Jumlah Pencarian",
+                  angle: -90,
+                  position: "insideLeft",
+                  style: { fill: "#64748B", fontSize: 12 },
+                }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: "8px",
+                  padding: "8px 12px",
+                }}
+                labelStyle={{ color: "#1E293B", fontWeight: 600 }}
+                formatter={(value: number) => [
+                  value.toLocaleString(),
+                  "Jumlah",
+                ]}
+              />
+              <Bar
+                dataKey="count"
+                fill="#3B82F6"
+                radius={[8, 8, 0, 0]}
+                maxBarSize={80}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         ) : (
           <div className="h-full flex items-center justify-center text-slate-500">
             Tidak ada data pencarian untuk cluster ini

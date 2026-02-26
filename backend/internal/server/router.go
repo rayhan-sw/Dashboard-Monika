@@ -15,12 +15,19 @@ func SetupRouter() *gin.Engine {
 	r.RedirectFixedPath = false
 
 	// CORS: use ALLOWED_ORIGINS env (comma-separated); if unset, allow "*"
+	// Updated to support credentials (cookies) for refresh token
 	r.Use(func(c *gin.Context) {
-		if origin := config.CORSOrigin(c.Request.Header.Get("Origin")); origin != "" {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		origin := c.Request.Header.Get("Origin")
+		allowedOrigin := config.CORSOrigin(origin)
+
+		if allowedOrigin != "" {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
+
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-ID")
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
@@ -44,6 +51,15 @@ func SetupRouter() *gin.Engine {
 		auth.POST("/register", handler.Register)
 		auth.POST("/forgot-password", handler.ForgotPassword)
 		auth.POST("/logout", handler.Logout)
+		auth.POST("/refresh", handler.RefreshToken) // New: refresh access token
+
+		// Protected auth endpoints
+		authProtected := auth.Group("")
+		authProtected.Use(middleware.AuthMiddleware())
+		{
+			authProtected.POST("/logout-all", handler.LogoutAll)      // New: logout all devices
+			authProtected.GET("/sessions", handler.GetActiveSessions) // New: get active sessions
+		}
 	}
 
 	// API

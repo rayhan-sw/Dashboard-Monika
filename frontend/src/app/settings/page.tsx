@@ -32,9 +32,9 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    // Check if user is logged in
-    const token = localStorage.getItem('token');
-    if (!token) {
+    // Check if user is logged in (token now in memory, check user instead)
+    const user = localStorage.getItem('user');
+    if (!user) {
       // Redirect to login if not authenticated
       router.push('/auth/login');
       return;

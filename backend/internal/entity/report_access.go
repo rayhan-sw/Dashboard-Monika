@@ -4,15 +4,16 @@ import "time"
 
 // ReportAccessRequest represents a user's request for report access
 type ReportAccessRequest struct {
-	ID          int        `gorm:"primaryKey" json:"id"`
-	UserID      int        `gorm:"not null" json:"user_id"`
-	User        *User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Reason      string     `json:"reason,omitempty"`
-	Status      string     `gorm:"default:pending" json:"status"` // pending, approved, rejected
-	RequestedAt time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"requested_at"`
-	ProcessedAt *time.Time `json:"processed_at,omitempty"`
-	ProcessedBy *int       `json:"processed_by,omitempty"`
-	AdminNotes  string     `json:"admin_notes,omitempty"`
+	ID             int        `gorm:"primaryKey" json:"id"`
+	UserID         int        `gorm:"not null" json:"user_id"`
+	User           *User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Reason         string     `json:"reason,omitempty"`
+	Status         string     `gorm:"default:pending" json:"status"` // pending, approved, rejected
+	RejectionCount int        `gorm:"default:0" json:"rejection_count"`
+	RequestedAt    time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"requested_at"`
+	ProcessedAt    *time.Time `json:"processed_at,omitempty"`
+	ProcessedBy    *int       `json:"processed_by,omitempty"`
+	AdminNotes     string     `json:"admin_notes,omitempty"`
 }
 
 // TableName specifies the table name for GORM

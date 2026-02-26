@@ -22,6 +22,7 @@ interface UserData {
   role: string;
   full_name: string;
   report_access_status: string;
+  rejection_count?: number;
 }
 
 /**
@@ -47,8 +48,8 @@ export default function ReportsPage() {
   // Auth check and load user data
   useEffect(() => {
     const loadUserData = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
+      const user = localStorage.getItem("user");
+      if (!user) {
         router.push("/auth/login");
         return;
       }
@@ -154,6 +155,7 @@ export default function ReportsPage() {
               <AccessLockedView
                 userId={userData?.id || 0}
                 accessStatus={accessStatus}
+                rejectionCount={userData?.rejection_count || 0}
                 onRequestSent={handleRequestSent}
               />
             )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginUser, tokenService } from '../_services/authService';
 import { LoginFormData, AuthFormState } from '../_types';
@@ -25,12 +25,8 @@ export function useLogin(): UseLoginReturn {
     success: false,
   });
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (tokenService.isAuthenticated()) {
-      router.push('/dashboard');
-    }
-  }, [router]);
+  // Removed auto-redirect useEffect to prevent infinite loop
+  // Only redirect after successful login
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -48,9 +44,9 @@ export function useLogin(): UseLoginReturn {
         password: formData.password,
       });
 
-      // Store token and user data
-      tokenService.setToken(response.token);
-      tokenService.setUser(response.user);
+      // loginUser now handles setting access token in memory and user in localStorage
+      // No need to manually store token (it's in memory now)
+      // User is already stored by loginUser function
 
       setState(prev => ({ ...prev, success: true }));
       router.push('/dashboard');

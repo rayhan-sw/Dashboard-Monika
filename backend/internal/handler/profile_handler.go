@@ -29,12 +29,27 @@ func GetProfile(c *gin.Context) {
 		return
 	}
 
+	// Get rejection count from latest report access request
+	var lastRequest entity.ReportAccessRequest
+	rejectionCount := 0
+	err := db.Where("user_id = ?", userID).
+		Order("requested_at DESC").
+		First(&lastRequest).Error
+	if err == nil {
+		rejectionCount = lastRequest.RejectionCount
+		// If last request was rejected, this will be the count that carries over
+		if lastRequest.Status == "rejected" {
+			rejectionCount++
+		}
+	}
+
 	// Compute report access label
 	accessLabel := getReportAccessLabel(user.Role, user.ReportAccessStatus)
 
 	response := entity.UserProfileResponse{
 		User:              user,
 		ReportAccessLabel: accessLabel,
+		RejectionCount:    rejectionCount,
 	}
 
 	c.JSON(http.StatusOK, response)

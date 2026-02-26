@@ -7,11 +7,24 @@ import (
 
 	"github.com/bpk-ri/dashboard-monitoring/internal/auth"
 	"github.com/bpk-ri/dashboard-monitoring/internal/entity"
+	"github.com/bpk-ri/dashboard-monitoring/internal/repository"
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 )
 
-// AuthMiddleware validates JWT from Authorization header and sets user_id and user_role in context.
+// getTokenBlacklistRepo returns blacklist repository
+func getTokenBlacklistRepo() *repository.TokenBlacklistRepository {
+	db := database.GetDB()
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic(err) // Should never happen in production if DB is connected
+	}
+	sqlxDB := sqlx.NewDb(sqlDB, "postgres")
+	return repository.NewTokenBlacklistRepository(sqlxDB)
+}
+
+// AuthMiddleware validates JWT from Authorization header, checks blacklist, and sets user context.
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -35,20 +48,50 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		userID, role, err := auth.ValidateToken(tokenString)
+		// Validate access token and get JTI
+		userID, role, jti, err := auth.ValidateAccessToken(tokenString)
 		if err != nil {
 			if errors.Is(err, auth.ErrJWTSecretNotSet) {
 				c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Server misconfiguration"})
 				c.Abort()
 				return
 			}
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token tidak valid atau kedaluwarsa"})
+			if errors.Is(err, auth.ErrExpiredToken) {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Token telah kedaluwarsa, silakan refresh token"})
+				c.Abort()
+				return
+			}
+			if errors.Is(err, auth.ErrInvalidTokenType) {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Tipe token tidak valid, gunakan access token"})
+				c.Abort()
+				return
+			}
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token tidak valid"})
 			c.Abort()
 			return
 		}
 
+		// Check if token is blacklisted
+		blacklistRepo := getTokenBlacklistRepo()
+		isBlacklisted, err := blacklistRepo.IsBlacklisted(jti)
+		if err != nil {
+			// Log error but don't fail request (fail open for availability)
+			// In production, you might want to fail closed for security
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memverifikasi token"})
+			c.Abort()
+			return
+		}
+
+		if isBlacklisted {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token telah di-revoke, silakan login kembali"})
+			c.Abort()
+			return
+		}
+
+		// Set user context
 		c.Set("user_id", userID)
 		c.Set("user_role", role)
+		c.Set("token_jti", jti)
 
 		c.Next()
 	}
@@ -83,4 +126,3 @@ func AdminMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
-

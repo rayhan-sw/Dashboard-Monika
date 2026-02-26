@@ -68,4 +68,5 @@ type UpdateProfilePhotoRequest struct {
 type UserProfileResponse struct {
 	User
 	ReportAccessLabel string `json:"report_access_label"`
+	RejectionCount    int    `json:"rejection_count"`
 }

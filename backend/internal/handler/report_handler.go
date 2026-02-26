@@ -413,12 +413,39 @@ func RequestAccess(c *gin.Context) {
 		return
 	}
 
-	// Create new access request
+	// Check rejection count from previous requests
+	var lastRequest entity.ReportAccessRequest
+	err := db.Where("user_id = ?", req.UserID).
+		Order("requested_at DESC").
+		First(&lastRequest).Error
+
+	rejectionCount := 0
+	if err == nil {
+		// User has previous requests
+		rejectionCount = lastRequest.RejectionCount
+		
+		// If last request was rejected, increment the count
+		if lastRequest.Status == "rejected" {
+			rejectionCount++
+		}
+	}
+
+	// Check if user has reached maximum rejection limit (3 times)
+	if rejectionCount >= 3 {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Anda telah mencapai batas maksimal penolakan (3 kali). Silakan hubungi administrator untuk informasi lebih lanjut.",
+			"rejection_count": rejectionCount,
+		})
+		return
+	}
+
+	// Create new access request with carried over rejection count
 	accessRequest := entity.ReportAccessRequest{
-		UserID:      req.UserID,
-		Reason:      req.Reason,
-		Status:      "pending",
-		RequestedAt: time.Now(),
+		UserID:         req.UserID,
+		Reason:         req.Reason,
+		Status:         "pending",
+		RejectionCount: rejectionCount,
+		RequestedAt:    time.Now(),
 	}
 
 	if err := db.Create(&accessRequest).Error; err != nil {
@@ -477,6 +504,15 @@ func UpdateAccessRequest(c *gin.Context) {
 	accessRequest.Status = req.Status
 	accessRequest.ProcessedAt = &now
 	accessRequest.AdminNotes = req.AdminNotes
+
+	// Update rejection count based on status
+	if req.Status == "rejected" {
+		// Increment rejection count when rejected
+		accessRequest.RejectionCount++
+	} else if req.Status == "approved" {
+		// Reset rejection count when approved
+		accessRequest.RejectionCount = 0
+	}
 
 	if err := db.Save(&accessRequest).Error; err != nil {
 		response.Internal(c, err)

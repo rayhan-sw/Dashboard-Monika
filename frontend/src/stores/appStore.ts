@@ -76,7 +76,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   logout: () => {
-    localStorage.removeItem("token");
+    // Clear user from localStorage (token is in memory, cleared by authService)
+    localStorage.removeItem("user");
     set({ user: null });
   },
 }));

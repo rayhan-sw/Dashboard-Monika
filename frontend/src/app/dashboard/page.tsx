@@ -19,10 +19,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check authentication
-    const token = localStorage.getItem("token");
+    // Check authentication - now checks user in localStorage (token is in memory)
+    const user = localStorage.getItem("user");
 
-    if (!token) {
+    if (!user) {
       // Not logged in, redirect to login
       router.push("/auth/login");
     } else {
