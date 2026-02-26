@@ -1,3 +1,6 @@
+// File search_handler.go: handler untuk pencarian aktivitas dan autocomplete.
+//
+// Endpoint: pencarian global (dengan filter tanggal, satker, cluster, status, jenis aktivitas, paginasi), saran autocomplete, cari user by nama/email, cari satker by nama.
 package handler
 
 import (
@@ -13,11 +16,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GlobalSearch handles the main search endpoint
+// GlobalSearch menangani pencarian utama aktivitas. Query: q, dateRange (today|7days|30days|90days|custom), startDate/endDate (untuk custom), satker, satkerIds (comma), cluster, status, activityTypes (comma), page, pageSize.
 func GlobalSearch(c *gin.Context) {
 	repo := getSearchRepo()
 
-	// Parse query parameters
 	query := c.Query("q")
 	dateRange := c.Query("dateRange")
 	startDate := c.Query("startDate")
@@ -28,7 +30,7 @@ func GlobalSearch(c *gin.Context) {
 	status := c.Query("status")
 	activityTypes := c.Query("activityTypes")
 
-	// Pagination
+	// Paginasi: default page 1, pageSize dari config; clamp ke batas maksimal.
 	pageStr := c.DefaultQuery("page", "1")
 	pageSizeStr := c.DefaultQuery("pageSize", strconv.Itoa(config.SearchResultLimit))
 
@@ -42,7 +44,7 @@ func GlobalSearch(c *gin.Context) {
 		pageSize = config.SearchResultLimit
 	}
 
-	// Calculate date range
+	// Hitung rentang tanggal: today = hari ini 00:00–23:59, 7days/30days/90days = N hari terakhir, custom = parse startDate/endDate (format 2006-01-02).
 	var startDateTime, endDateTime time.Time
 	now := time.Now()
 
@@ -71,13 +73,13 @@ func GlobalSearch(c *gin.Context) {
 		}
 	}
 
-	// Parse activity types
+	// activityTypes: string dipisah koma (misalnya "Login,Logout") → slice.
 	var activityTypesList []string
 	if activityTypes != "" {
 		activityTypesList = strings.Split(activityTypes, ",")
 	}
 
-	// Parse satker IDs
+	// satkerIds: string dipisah koma (misalnya "1,2,3") → slice int64; nilai invalid di-skip.
 	var satkerIds []int64
 	if satkerIdsStr != "" {
 		idStrs := strings.Split(satkerIdsStr, ",")
@@ -89,7 +91,6 @@ func GlobalSearch(c *gin.Context) {
 		}
 	}
 
-	// Build search params
 	params := repository.SearchParams{
 		Query:         query,
 		Satker:        satker,
@@ -103,14 +104,13 @@ func GlobalSearch(c *gin.Context) {
 		PageSize:      pageSize,
 	}
 
-	// Execute search
 	results, total, err := repo.Search(params)
 	if err != nil {
 		response.Internal(c, err)
 		return
 	}
 
-	// Map to flat DTOs
+	// Konversi entity ke DTO datar agar response siap dipakai frontend.
 	dtos := make([]dto.ActivityLogDTO, len(results))
 	for i, a := range results {
 		dtos[i] = dto.ToDTO(a)
@@ -127,7 +127,7 @@ func GlobalSearch(c *gin.Context) {
 	})
 }
 
-// GetSearchSuggestions provides autocomplete suggestions
+// GetSearchSuggestions mengembalikan saran autocomplete untuk input pencarian (query q). Dipakai untuk dropdown/typeahead.
 func GetSearchSuggestions(c *gin.Context) {
 	repo := getSearchRepo()
 	query := c.Query("q")
@@ -150,7 +150,7 @@ func GetSearchSuggestions(c *gin.Context) {
 	})
 }
 
-// SearchUsers finds users by name or email
+// SearchUsers mencari user berdasarkan nama atau email. Query: q. Untuk filter/autocomplete user.
 func SearchUsers(c *gin.Context) {
 	repo := getSearchRepo()
 	query := c.Query("q")
@@ -173,7 +173,7 @@ func SearchUsers(c *gin.Context) {
 	})
 }
 
-// SearchSatker finds satker by name
+// SearchSatker mencari satker berdasarkan nama. Query: q. Untuk filter/autocomplete satker.
 func SearchSatker(c *gin.Context) {
 	repo := getSearchRepo()
 	query := c.Query("q")

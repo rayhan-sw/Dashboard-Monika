@@ -9,6 +9,17 @@ ENV_FILE="$REPO_ROOT/backend/.env"
 DUMP_FILE="$REPO_ROOT/backend/seeds/daring_bpk_data.dump"
 BACKEND_DIR="$REPO_ROOT/backend"
 
+if ! command -v pg_restore >/dev/null 2>&1; then
+  echo "Error: pg_restore tidak ditemukan. Install PostgreSQL client tools atau tambahkan ke PATH."
+  echo "Lihat SETUP_DATA.md untuk opsi import manual."
+  exit 1
+fi
+
+if ! command -v go >/dev/null 2>&1; then
+  echo "Error: go tidak ditemukan. Install Go agar migrasi bisa dijalankan (go run cmd/migrate/main.go)."
+  exit 1
+fi
+
 if [ ! -f "$ENV_FILE" ]; then
   echo "Error: File tidak ditemukan: $ENV_FILE (salin dari backend/.env.example dan isi DB_*)"
   exit 1

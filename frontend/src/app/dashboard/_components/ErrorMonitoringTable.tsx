@@ -1,3 +1,12 @@
+/**
+ * ErrorMonitoringTable.tsx
+ *
+ * Tabel pemantauan kesalahan logout: menampilkan top 10 user dengan error logout terbanyak dalam periode
+ * yang dipilih. Data dari dashboardService.getLogoutErrors(limit, startDate, endDate, cluster).
+ *
+ * Setiap baris: rank, username, jumlah kesalahan, waktu kesalahan terakhir (format Indonesia).
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,6 +14,7 @@ import { AlertTriangle } from "lucide-react";
 import { useAppStore } from "@/stores/appStore";
 import { dashboardService } from "@/services/api";
 
+/** Bentuk satu baris data error logout dari API (rank, username, error_count, latest_error). */
 interface LogoutError {
   rank: number;
   username: string;
@@ -12,6 +22,9 @@ interface LogoutError {
   latest_error: string;
 }
 
+/**
+ * Tabel error logout: fetch top 10, tampilkan rank/username/count/latest_error; tanggal dipotong "T" untuk format YYYY-MM-DD ke API.
+ */
 export default function ErrorMonitoringTable() {
   const [errors, setErrors] = useState<LogoutError[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +61,7 @@ export default function ErrorMonitoringTable() {
     fetchLogoutErrors();
   }, [dateRange, selectedCluster]);
 
+  /** Format string tanggal/waktu ke tampilan Indonesia (dd MMM yyyy, HH:mm). */
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString("id-ID", {
@@ -112,14 +126,14 @@ export default function ErrorMonitoringTable() {
                 className="flex items-center justify-between p-4 rounded-xl bg-red-50 border-l-4 border-red-500 hover:bg-red-100 transition-colors"
               >
                 <div className="flex items-center gap-4 flex-1">
-                  {/* Ranking Badge */}
+                  {/* Badge peringkat (1, 2, 3, ...) */}
                   <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-bold text-red-700">
                       {error.rank}
                     </span>
                   </div>
 
-                  {/* User Info */}
+                  {/* Username dan waktu kesalahan terakhir */}
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-gray-900">
                       {error.username}
@@ -131,7 +145,7 @@ export default function ErrorMonitoringTable() {
                   </div>
                 </div>
 
-                {/* Error Count Badge */}
+                {/* Jumlah kesalahan */}
                 <div className="flex-shrink-0 ml-4">
                   <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-red-500 text-white">
                     {error.error_count} kesalahan

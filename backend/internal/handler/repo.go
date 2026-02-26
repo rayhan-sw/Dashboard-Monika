@@ -1,3 +1,7 @@
+// File repo.go: helper untuk mendapatkan instance repository yang dipakai handler.
+//
+// Handler dashboard, chart, dll. memakai getActivityLogRepo(); handler search memakai getSearchRepo().
+// Keduanya memakai koneksi DB dari database.GetDB().
 package handler
 
 import (
@@ -6,12 +10,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// getActivityLogRepo returns the activity log repository instance
+// getActivityLogRepo mengembalikan repository aktivitas (query activity_logs_normalized, satker, filter regional).
 func getActivityLogRepo() repository.ActivityLogRepository {
 	return repository.NewActivityLogRepository(database.GetDB())
 }
 
-// getSearchRepo returns the search repository instance
+// getSearchRepo mengembalikan repository pencarian (autocomplete, hasil search).
 func getSearchRepo() *repository.SearchRepository {
 	return repository.NewSearchRepository(database.GetDB())
 }

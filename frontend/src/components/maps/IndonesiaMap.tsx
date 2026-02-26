@@ -1,3 +1,13 @@
+/**
+ * IndonesiaMap.tsx
+ *
+ * Peta Indonesia choropleth (Leaflet): GeoJSON provinsi diwarnai menurut data
+ * aktivitas (name, count). Warna: tidak ada = abu; rendah = hijau muda; sedang =
+ * hijau; terbanyak = hijau tua. Popup per provinsi: nama, count, kategori. Zoom
+ * dikunci di batas Indonesia; tile CartoDB Positron. Legend bisa di-minimize.
+ * Inisialisasi sekali; saat data berubah hanya style dan popup di-update.
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -7,6 +17,7 @@ interface ProvinceData {
   name: string;
   count: number;
 }
+/** Satu provinsi: nama (harus match dengan GeoJSON) dan jumlah aktivitas. */
 
 interface IndonesiaMapProps {
   data: ProvinceData[];
@@ -14,21 +25,19 @@ interface IndonesiaMapProps {
 
 export default function IndonesiaMap({ data }: IndonesiaMapProps) {
   const mapRef = useRef<any>(null);
-  const mapInstanceRef = useRef<any>(null); // Store map instance for reliable cleanup
+  const mapInstanceRef = useRef<any>(null);
   const [map, setMap] = useState<any>(null);
   const geoJsonLayerRef = useRef<any>(null);
   const [legendMinimized, setLegendMinimized] = useState(false);
+  /** Ref instance Leaflet untuk cleanup; geoJsonLayerRef untuk update style saat data berubah. */
 
-  // Initialize map once
   useEffect(() => {
-    // Only run on client side
     if (typeof window === "undefined") return;
-    if (mapInstanceRef.current) return; // Don't reinitialize if map instance exists
+    if (mapInstanceRef.current) return;
 
     const initMap = async () => {
       const L = (await import("leaflet")).default;
 
-      // Fix default marker icon issue with webpack
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl:
@@ -37,19 +46,20 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
         shadowUrl:
           "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
+      /** Atur ulang URL ikon marker default Leaflet agar tidak error di webpack. */
 
       if (!mapRef.current) return;
 
-      // Check if the container already has a map (defensive check)
       if (mapRef.current._leaflet_id) {
         return;
       }
+      /** Hindari inisialisasi ganda jika container sudah punya peta. */
 
-      // Initialize map with bounds locked to Indonesia
       const indonesiaBounds: [[number, number], [number, number]] = [
-        [-11, 94], // Southwest coordinates
-        [6, 141], // Northeast coordinates
+        [-11, 94],
+        [6, 141],
       ];
+      /** Batas peta: barat-daya dan timur-laut Indonesia. */
 
       const mapInstance = L.map(mapRef.current, {
         center: [-2.5, 118],
@@ -61,11 +71,8 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
         zoomControl: true,
         scrollWheelZoom: true,
       });
-
-      // Store in ref for reliable cleanup
       mapInstanceRef.current = mapInstance;
 
-      // Add CartoDB Positron tile layer for clean look
       L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
         {
@@ -75,23 +82,21 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
           maxZoom: 20,
         },
       ).addTo(mapInstance);
+      /** Tile layer CartoDB Positron (tampilan bersih). */
 
       setMap(mapInstance);
 
-      // Load GeoJSON Indonesia
       try {
         const response = await fetch("/geojson/indonesia-provinces-38.json");
         const geoData = await response.json();
 
-        // Get max count for color scaling
         const maxCount = Math.max(...data.map((d) => d.count), 1);
 
-        // Create a map for quick lookup
         const dataMap = new Map(
           data.map((d) => [d.name.toLowerCase(), d.count]),
         );
+        /** Lookup count per provinsi (nama lowercase) untuk style dan popup. */
 
-        // Function to get color and category based on count
         const getColorAndCategory = (count: number) => {
           if (count === 0)
             return { color: "#e5e7eb", category: "Tidak ada aktivitas" }; // Abu-abu
@@ -100,10 +105,10 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
             return { color: "#047857", category: "Aktivitas Terbanyak" }; // Hijau tua
           if (ratio > 0.3)
             return { color: "#86efac", category: "Aktivitas Sedang" }; // Hijau muda
-          return { color: "#d1fae5", category: "Aktivitas Rendah" }; // Hijau sangat muda
+          return { color: "#d1fae5", category: "Aktivitas Rendah" };
         };
+        /** Warna & kategori: 0=abu; ratio>0.6=hijau tua; >0.3=hijau; else hijau muda. */
 
-        // Style function
         const style = (feature: any) => {
           const provinceName = feature.properties.name || "";
           const count = dataMap.get(provinceName.toLowerCase()) || 0;
@@ -117,8 +122,8 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
             fillOpacity: 0.7,
           };
         };
+        /** Style tiap feature: fillColor dari getColorAndCategory, border hijau. */
 
-        // Add GeoJSON layer
         geoJsonLayerRef.current = L.geoJSON(geoData, {
           style: style,
           onEachFeature: (feature: any, layer: any) => {
@@ -126,7 +131,6 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
             const count = dataMap.get(provinceName.toLowerCase()) || 0;
             const { color, category } = getColorAndCategory(count);
 
-            // Create popup content with proper escaping
             const popupContent = `
               <div style="font-family: system-ui; padding: 8px; min-width: 200px;">
                 <strong style="font-size: 14px; color: #1f2937; display: block; margin-bottom: 4px;">${provinceName}</strong>
@@ -138,14 +142,12 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
               </div>
             `.trim();
 
-            // Bind popup
             layer.bindPopup(popupContent, {
               className: "custom-popup",
               closeButton: true,
               autoPan: true,
             });
 
-            // Hover effect
             layer.on({
               mouseover: (e: any) => {
                 const layer = e.target;
@@ -162,6 +164,7 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
                 mapInstance.fitBounds(e.target.getBounds());
               },
             });
+            /** Hover: tebal border + fillOpacity 0.9; mouseout: resetStyle; click: zoom ke bounds provinsi. */
           },
         }).addTo(mapInstance);
       } catch (error) {
@@ -171,16 +174,15 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
 
     initMap();
 
-    // Cleanup only when component unmounts
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, []); // Empty dependency - only run once
+  }, []);
+  /** Inisialisasi peta sekali saat mount; cleanup remove map saat unmount. */
 
-  // Update map colors when data changes
   useEffect(() => {
     if (!map || !geoJsonLayerRef.current || data.length === 0) return;
 
@@ -198,7 +200,6 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
       return { color: "#d1fae5", category: "Aktivitas Rendah" };
     };
 
-    // Update each layer's style
     geoJsonLayerRef.current.eachLayer((layer: any) => {
       const feature = layer.feature;
       const provinceName = feature.properties.name || "";
@@ -213,7 +214,6 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
         fillOpacity: 0.7,
       });
 
-      // Update popup with proper content
       const popupContent = `
         <div style="font-family: system-ui; padding: 8px; min-width: 200px;">
           <strong style="font-size: 14px; color: #1f2937; display: block; margin-bottom: 4px;">${provinceName}</strong>
@@ -232,14 +232,13 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
       });
     });
   }, [data, map]);
+  /** Saat data atau map berubah: update style dan popup tiap layer GeoJSON (tanpa load ulang peta). */
 
   return (
     <div className="relative w-full h-full" style={{ zIndex: 1 }}>
       <div ref={mapRef} className="w-full h-full rounded-xl overflow-hidden" />
 
-      {/* Legend */}
       <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg border border-gray-200 z-[1000] overflow-hidden">
-        {/* Legend Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 bg-gray-50">
           <p className="text-xs font-semibold text-gray-700">
             Kategori Aktivitas
@@ -281,7 +280,6 @@ export default function IndonesiaMap({ data }: IndonesiaMapProps) {
           </button>
         </div>
 
-        {/* Legend Content */}
         {!legendMinimized && (
           <div className="p-3">
             <div className="space-y-1.5">

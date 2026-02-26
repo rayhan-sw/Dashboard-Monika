@@ -39,6 +39,23 @@ $env:PGPORT = $env:DB_PORT
 $env:PGUSER = $env:DB_USER
 $env:PGDATABASE = $env:DB_NAME
 
+# Cari pg_restore: dari PATH atau lokasi instalasi PostgreSQL di Windows
+$pgRestore = $null
+if (Get-Command pg_restore -ErrorAction SilentlyContinue) {
+    $pgRestore = "pg_restore"
+}
+if (-not $pgRestore) {
+    $found = Get-ChildItem "C:\Program Files\PostgreSQL" -ErrorAction SilentlyContinue | ForEach-Object {
+        $exe = Join-Path $_.FullName "bin\pg_restore.exe"
+        if (Test-Path $exe) { $exe }
+    } | Select-Object -First 1
+    if ($found) { $pgRestore = $found }
+}
+if (-not $pgRestore) {
+    Write-Error "pg_restore tidak ditemukan. Tambahkan folder bin PostgreSQL ke PATH (mis. C:\Program Files\PostgreSQL\16\bin) atau import manual via DBeaver (lihat SETUP_DATA.md)."
+    exit 1
+}
+
 Write-Host "1/2 Menjalankan migrasi..."
 Push-Location $backendDir
 try {
@@ -50,12 +67,12 @@ try {
 
 Write-Host "2/2 Memuat data dari dump: $dumpFile"
 # --disable-triggers agar FK tidak error saat insert (trigger di-enable lagi setelah selesai)
-& pg_restore --data-only --no-owner --no-privileges --disable-triggers -d $env:DB_NAME $dumpFile 2>$null
+& $pgRestore --data-only --no-owner --no-privileges --disable-triggers -d $env:DB_NAME $dumpFile 2>$null
 # pg_restore bisa exit 1 walau sukses (mis. warnings); cek apakah data masuk
 if ($LASTEXITCODE -ne 0) {
     # Coba tanpa disable-triggers kalau DB strict
     Write-Host "Retry tanpa --disable-triggers..."
-    & pg_restore --data-only --no-owner --no-privileges -d $env:DB_NAME $dumpFile
+    & $pgRestore --data-only --no-owner --no-privileges -d $env:DB_NAME $dumpFile
 }
 
 Write-Host "Selesai. Data di DB $env:DB_NAME sekarang sama dengan sumber dump."

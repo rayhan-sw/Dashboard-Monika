@@ -1,5 +1,6 @@
 # Manual Import Data Script
-# Jalankan ini di PowerShell baru jika script import-db.ps1 ada masalah
+# Jalankan ini di PowerShell baru jika script scripts/import-db.ps1 ada masalah.
+# PENTING: Jangan commit password asli. Lebih aman baca dari backend/.env (lihat backend/.env.example).
 
 $ErrorActionPreference = "Stop"
 
@@ -7,14 +8,14 @@ Write-Host "`n╔═════════════════════
 Write-Host "║   MANUAL DATA IMPORT - DARING_BPK          ║" -ForegroundColor Cyan
 Write-Host "╚════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
-# Set environment variables from .env
+# Set environment variables (sesuaikan dengan backend/.env Anda; jangan commit nilai asli)
 $env:PGPASSWORD = "350327"
 $env:PGHOST = "localhost"
 $env:PGPORT = "5432"
 $env:PGUSER = "postgres"
 $env:PGDATABASE = "daring_bpk"
 
-$dumpFile = "$PSScriptRoot\backend\seeds\daring_bpk_data.dump"
+$dumpFile = Join-Path $PSScriptRoot "backend\seeds\daring_bpk_data.dump"
 
 if (-not (Test-Path $dumpFile)) {
     Write-Error "File dump tidak ditemukan: $dumpFile"

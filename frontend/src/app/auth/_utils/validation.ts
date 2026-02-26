@@ -17,7 +17,8 @@ export const validationRules = {
     min: USERNAME_MIN,
     max: USERNAME_MAX,
     pattern: USERNAME_REGEX,
-    patternDesc: 'Huruf, angka, underscore (_), atau titik (.) saja. Tanpa spasi atau simbol (@, #, $).',
+    patternDesc:
+      "Huruf, angka, underscore (_), atau titik (.) saja. Tanpa spasi atau simbol (@, #, $).",
   },
   password: {
     min: PASSWORD_MIN,
@@ -28,28 +29,54 @@ export const validationRules = {
   },
 } as const;
 
-export function validateUsername(username: string): { valid: boolean; message?: string } {
+export function validateUsername(username: string): {
+  valid: boolean;
+  message?: string;
+} {
   const t = username.trim();
-  if (t.length === 0) return { valid: false, message: 'Username wajib diisi' };
-  if (t.length < USERNAME_MIN) return { valid: false, message: `Username minimal ${USERNAME_MIN} karakter` };
-  if (t.length > USERNAME_MAX) return { valid: false, message: `Username maksimal ${USERNAME_MAX} karakter` };
-  if (!USERNAME_REGEX.test(t)) return { valid: false, message: validationRules.username.patternDesc };
+  if (t.length === 0) return { valid: false, message: "Username wajib diisi" };
+  if (t.length < USERNAME_MIN)
+    return {
+      valid: false,
+      message: `Username minimal ${USERNAME_MIN} karakter`,
+    };
+  if (t.length > USERNAME_MAX)
+    return {
+      valid: false,
+      message: `Username maksimal ${USERNAME_MAX} karakter`,
+    };
+  if (!USERNAME_REGEX.test(t))
+    return { valid: false, message: validationRules.username.patternDesc };
   return { valid: true };
 }
 
 export function validatePassword(
   password: string,
   username: string,
-  email: string
+  email: string,
 ): { valid: boolean; message?: string } {
-  if (password.length === 0) return { valid: false, message: 'Kata sandi wajib diisi' };
-  if (password.length < PASSWORD_MIN) return { valid: false, message: `Kata sandi minimal ${PASSWORD_MIN} karakter` };
+  if (password.length === 0)
+    return { valid: false, message: "Kata sandi wajib diisi" };
+  if (password.length < PASSWORD_MIN)
+    return {
+      valid: false,
+      message: `Kata sandi minimal ${PASSWORD_MIN} karakter`,
+    };
   if (!validationRules.password.requireUppercase.test(password))
-    return { valid: false, message: 'Kata sandi harus mengandung minimal satu huruf besar (A-Z)' };
+    return {
+      valid: false,
+      message: "Kata sandi harus mengandung minimal satu huruf besar (A-Z)",
+    };
   if (!validationRules.password.requireLowercase.test(password))
-    return { valid: false, message: 'Kata sandi harus mengandung minimal satu huruf kecil (a-z)' };
+    return {
+      valid: false,
+      message: "Kata sandi harus mengandung minimal satu huruf kecil (a-z)",
+    };
   if (!validationRules.password.requireDigit.test(password))
-    return { valid: false, message: 'Kata sandi harus mengandung minimal satu angka (0-9)' };
+    return {
+      valid: false,
+      message: "Kata sandi harus mengandung minimal satu angka (0-9)",
+    };
   // Simbol/karakter khusus tidak wajib, hanya disarankan (tetap mempengaruhi strength meter)
 
   return { valid: true };

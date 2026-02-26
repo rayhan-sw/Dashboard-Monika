@@ -1,3 +1,9 @@
+// File dashboard_handler.go: HTTP handler untuk dashboard monitoring aktivitas (activity log).
+//
+// Endpoint: GetDashboardStats (ringkas), GetActivities (daftar paginated + DTO), GetChartData (hourly/cluster/province),
+// GetAccessSuccessRate, GetProvinces, GetLokasi, GetUnits, GetClusters, GetHourlyDataForSatker, GetTopContributors, GetLogoutErrors.
+// Query params umum: start_date, end_date, cluster, eselon, root_satker_id (filter pohon satker), page, page_size, limit.
+// parseRegionalQueryParams mengurai filter tanggal/cluster/eselon/root_satker_id dan mengembalikan pointer + slice satkerIds untuk repo.
 package handler
 
 import (
@@ -11,8 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// parseRegionalQueryParams parses start_date, end_date, cluster, eselon, root_satker_id.
-// When root_satker_id is set, returns satkerIds (root + descendants) and eselonPtr=nil for filter-by-Eselon-I.
+// parseRegionalQueryParams mengurai start_date, end_date, cluster, eselon, root_satker_id dari query. Jika root_satker_id valid: ambil ID root + anak via GetSatkerIdsUnderRoot, kembalikan satkerIds dan eselonPtr=nil. Jika tidak: kembalikan eselonPtr jika eselon diisi, satkerIds=nil.
 func parseRegionalQueryParams(c *gin.Context, repo repository.ActivityLogRepository) (startPtr, endPtr, clusterPtr, eselonPtr *string, satkerIds []int64) {
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
@@ -29,6 +34,7 @@ func parseRegionalQueryParams(c *gin.Context, repo repository.ActivityLogReposit
 	if cluster != "" {
 		clusterPtr = &cluster
 	}
+	// Prioritas: root_satker_id → filter by pohon satker (root + semua anak); return satkerIds, eselonPtr=nil
 	if rootIDStr != "" {
 		rootID, err := strconv.ParseInt(rootIDStr, 10, 64)
 		if err == nil {
@@ -44,43 +50,38 @@ func parseRegionalQueryParams(c *gin.Context, repo repository.ActivityLogReposit
 	return startPtr, endPtr, clusterPtr, eselonPtr, nil
 }
 
-// GetDashboardStats returns dashboard statistics
+// GetDashboardStats mengembalikan statistik ringkas: total user unik, login sukses (SUCCESS), total aktivitas, error logout (FAILED), jam tersibuk (0–23).
 func GetDashboardStats(c *gin.Context) {
 	repo := getActivityLogRepo()
 	startPtr, endPtr, clusterPtr, eselonPtr, satkerIds := parseRegionalQueryParams(c, repo)
 
-	// Get total users (unique tokens)
 	totalUsers, err := repo.GetUniqueUsersCount(startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
-	// Get successful logins
 	successLogins, err := repo.GetCountByStatus("SUCCESS", startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
-	// Get total activities
 	totalActivities, err := repo.GetTotalCount(startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
-	// Get logout errors
 	logoutErrors, err := repo.GetCountByStatus("FAILED", startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
-	// Get busiest hour
 	busiestHour, count, err := repo.GetBusiestHour(startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
@@ -96,14 +97,12 @@ func GetDashboardStats(c *gin.Context) {
 	})
 }
 
-// GetActivities returns paginated activity logs
+// GetActivities mengembalikan daftar aktivitas terbaru dengan paginasi; response berupa DTO datar (nama, satker, lokasi, dll.).
 func GetActivities(c *gin.Context) {
 	repo := getActivityLogRepo()
 
-	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", strconv.Itoa(config.DefaultPageSizeActivities)))
-
 	if page < 1 {
 		page = 1
 	}
@@ -116,21 +115,18 @@ func GetActivities(c *gin.Context) {
 
 	startPtr, endPtr, clusterPtr, eselonPtr, satkerIds := parseRegionalQueryParams(c, repo)
 
-	// Get recent activities
 	activities, err := repo.GetRecentActivities(page, pageSize, startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
-	// Get total count
 	total, err := repo.GetTotalCount(startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
-	// Map to flat DTOs
 	dtos := make([]dto.ActivityLogDTO, len(activities))
 	for i, a := range activities {
 		dtos[i] = dto.ToDTO(a)
@@ -141,11 +137,11 @@ func GetActivities(c *gin.Context) {
 		"page":        page,
 		"page_size":   pageSize,
 		"total":       total,
-		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
+		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize), // ceil(total/pageSize)
 	})
 }
 
-// GetChartData returns chart data based on type
+// GetChartData mengembalikan data chart; type path: hourly (per jam 0–23), cluster (per scope), province (per provinsi).
 func GetChartData(c *gin.Context) {
 	chartType := c.Param("type")
 	repo := getActivityLogRepo()
@@ -181,58 +177,54 @@ func GetChartData(c *gin.Context) {
 	}
 }
 
-// GetAccessSuccessRate returns access success rate over time
+// GetAccessSuccessRate mengembalikan tingkat sukses akses per tanggal (success vs failed per hari dalam rentang filter).
 func GetAccessSuccessRate(c *gin.Context) {
 	repo := getActivityLogRepo()
 	startPtr, endPtr, clusterPtr, eselonPtr, satkerIds := parseRegionalQueryParams(c, repo)
 
-	// Get success/failed counts by date
 	data, err := repo.GetAccessSuccessRateByDate(startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-// GetProvinces returns provincial statistics
+// GetProvinces mengembalikan statistik aktivitas per provinsi (sama seperti chart type province, dengan filter regional).
 func GetProvinces(c *gin.Context) {
 	repo := getActivityLogRepo()
 	startPtr, endPtr, clusterPtr, eselonPtr, satkerIds := parseRegionalQueryParams(c, repo)
 
 	data, err := repo.GetActivityCountByProvince(startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-// GetLokasi returns location statistics based on lokasi field
+// GetLokasi mengembalikan statistik lokasi untuk peta (per satker + provinsi).
 func GetLokasi(c *gin.Context) {
 	repo := getActivityLogRepo()
 	startPtr, endPtr, clusterPtr, eselonPtr, satkerIds := parseRegionalQueryParams(c, repo)
 
-	// Use satker province-based data for map visualization
 	data, err := repo.GetActivityCountBySatkerProvince(startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-// GetUnits returns unit/satker statistics
+// GetUnits mengembalikan statistik aktivitas per unit/satker dengan paginasi (page, page_size).
 func GetUnits(c *gin.Context) {
 	repo := getActivityLogRepo()
 
-	// Parse pagination
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", strconv.Itoa(config.DefaultPageSizeUnits)))
-
 	if page < 1 {
 		page = 1
 	}
@@ -244,14 +236,13 @@ func GetUnits(c *gin.Context) {
 
 	data, err := repo.GetActivityCountBySatker(page, pageSize, startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
-	// Get total count
 	total, err := repo.GetTotalCount(startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
@@ -263,24 +254,23 @@ func GetUnits(c *gin.Context) {
 	})
 }
 
-// GetClusters returns list of unique clusters
+// GetClusters mengembalikan daftar cluster unik (untuk dropdown/filter di frontend).
 func GetClusters(c *gin.Context) {
 	repo := getActivityLogRepo()
 
 	clusters, err := repo.GetUniqueClusters()
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": clusters})
 }
 
-// GetHourlyDataForSatker returns hourly activity distribution for a specific satker
+// GetHourlyDataForSatker mengembalikan distribusi aktivitas per jam (0–23) untuk satu satker; query param satker wajib.
 func GetHourlyDataForSatker(c *gin.Context) {
 	repo := getActivityLogRepo()
 
-	// Get satker from query parameter
 	satker := c.Query("satker")
 	if satker == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "satker parameter is required"})
@@ -291,14 +281,14 @@ func GetHourlyDataForSatker(c *gin.Context) {
 
 	data, err := repo.GetActivityCountByHourForSatker(satker, startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-// GetTopContributors returns top contributors (users with most activities)
+// GetTopContributors mengembalikan top N kontributor (user dengan aktivitas terbanyak); query limit (default dari config, max MaxLimit).
 func GetTopContributors(c *gin.Context) {
 	repo := getActivityLogRepo()
 
@@ -315,14 +305,14 @@ func GetTopContributors(c *gin.Context) {
 
 	data, err := repo.GetTopContributors(limit, startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-// GetLogoutErrors returns users with most logout errors (sorted by latest error)
+// GetLogoutErrors mengembalikan user dengan error logout terbanyak (top N); query limit (default/max dari config).
 func GetLogoutErrors(c *gin.Context) {
 	repo := getActivityLogRepo()
 
@@ -339,7 +329,7 @@ func GetLogoutErrors(c *gin.Context) {
 
 	data, err := repo.GetLogoutErrors(limit, startPtr, endPtr, clusterPtr, eselonPtr, satkerIds)
 	if err != nil {
-			response.Internal(c, err)
+		response.Internal(c, err)
 		return
 	}
 

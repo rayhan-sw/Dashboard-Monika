@@ -1,3 +1,6 @@
+// File cleanup_service.go: layanan pembersihan file laporan yang sudah lama (berjalan di background, periodik).
+//
+// CleanupService: folder yang di-scan (Dir), umur maksimal file (MaxAge), interval jalannya (Interval). Start menjalankan goroutine yang langsung runCleanup sekali lalu setiap Interval; Stop mengirim sinyal ke stopChan agar goroutine berhenti. runCleanup menghapus file yang ModTime lebih lama dari MaxAge.
 package service
 
 import (
@@ -8,7 +11,7 @@ import (
 	"time"
 )
 
-// CleanupService handles automatic cleanup of generated report files
+// CleanupService mengelola pembersihan file di satu direktori: Dir = path folder, MaxAge = file lebih tua dari ini dihapus, Interval = jarak antar run, stopChan untuk sinyal stop, isRunning status.
 type CleanupService struct {
 	Dir       string
 	MaxAge    time.Duration
@@ -17,7 +20,7 @@ type CleanupService struct {
 	isRunning bool
 }
 
-// NewCleanupService creates a new cleanup service
+// NewCleanupService membuat instance CleanupService dengan channel stop.
 func NewCleanupService(dir string, maxAge, interval time.Duration) *CleanupService {
 	return &CleanupService{
 		Dir:      dir,
@@ -27,8 +30,9 @@ func NewCleanupService(dir string, maxAge, interval time.Duration) *CleanupServi
 	}
 }
 
-// Start begins the cleanup service in background
+// Start menjalankan cleanup di goroutine: jalankan runCleanup sekali, lalu setiap Interval; berhenti saat menerima sinyal di stopChan.
 func (cs *CleanupService) Start() {
+	// Cegah double start
 	if cs.isRunning {
 		log.Println("Cleanup service is already running")
 		return
@@ -38,17 +42,15 @@ func (cs *CleanupService) Start() {
 	log.Printf("Starting cleanup service: dir=%s, maxAge=%v, interval=%v", cs.Dir, cs.MaxAge, cs.Interval)
 
 	go func() {
-		// Run cleanup immediately on start
-		cs.runCleanup()
+		cs.runCleanup() // Jalankan sekali di awal
 
-		// Then run periodically
 		ticker := time.NewTicker(cs.Interval)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ticker.C:
-				cs.runCleanup()
+				cs.runCleanup() // Setiap interval jalankan lagi
 			case <-cs.stopChan:
 				log.Println("Cleanup service stopped")
 				return
@@ -57,7 +59,7 @@ func (cs *CleanupService) Start() {
 	}()
 }
 
-// Stop stops the cleanup service
+// Stop mengirim true ke stopChan dan set isRunning = false agar goroutine cleanup berhenti.
 func (cs *CleanupService) Stop() {
 	if !cs.isRunning {
 		return
@@ -68,37 +70,33 @@ func (cs *CleanupService) Stop() {
 	cs.isRunning = false
 }
 
-// runCleanup performs the actual cleanup operation
+// runCleanup meng-walk direktori Dir; untuk setiap file (bukan folder) yang umurnya (now - ModTime) > MaxAge, hapus file dan hitung deletedCount serta totalSize. Log hasil atau "no old files".
 func (cs *CleanupService) runCleanup() {
 	log.Printf("Running cleanup for directory: %s", cs.Dir)
 
-	// Check if directory exists
+	// Abaikan jika folder tidak ada
 	if _, err := os.Stat(cs.Dir); os.IsNotExist(err) {
 		log.Printf("Directory does not exist: %s", cs.Dir)
 		return
 	}
 
-	// Get current time
 	now := time.Now()
 	deletedCount := 0
 	totalSize := int64(0)
 
-	// Walk through directory
 	err := filepath.Walk(cs.Dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Printf("Error accessing path %s: %v", path, err)
-			return nil // Continue walking
+			return nil // Lanjut walk
 		}
 
-		// Skip directories
 		if info.IsDir() {
-			return nil
+			return nil // Hanya proses file, skip folder
 		}
 
-		// Check file age
+		// Umur file = selang sejak terakhir diubah
 		age := now.Sub(info.ModTime())
 		if age > cs.MaxAge {
-			// Delete the file
 			log.Printf("Deleting old file: %s (age: %v, size: %d bytes)", path, age, info.Size())
 
 			if err := os.Remove(path); err != nil {
@@ -123,12 +121,13 @@ func (cs *CleanupService) runCleanup() {
 	}
 }
 
-// formatBytes formats bytes to human-readable format
+// formatBytes mengonversi byte ke string terbaca (B, KB, MB, GB, TB) berdasarkan pembagian 1024.
 func formatBytes(bytes int64) string {
 	const unit = 1024
 	if bytes < unit {
 		return fmt.Sprintf("%d B", bytes)
 	}
+	// Hitung pangkat 1024 (exp) dan divisor agar result = bytes/1024^exp
 	div, exp := int64(unit), 0
 	for n := bytes / unit; n >= unit; n /= unit {
 		div *= unit

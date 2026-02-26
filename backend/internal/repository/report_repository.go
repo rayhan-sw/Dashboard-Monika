@@ -1,3 +1,6 @@
+// File report_repository.go: query dan pembuatan data untuk laporan (generate data per template, catat unduhan, riwayat unduhan).
+//
+// GenerateReportData mengisi data sesuai template (org-performance, user-activity, feature-usage). CreateReportDownload mencatat satu unduhan. GetRecentDownloads / GetRecentDownloadsWithFilter / GetDownloadsByUser mengambil riwayat unduhan.
 package repository
 
 import (
@@ -8,7 +11,7 @@ import (
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 )
 
-// ReportData represents generated report data
+// ReportData struktur data laporan yang di-generate: judul, waktu generate, periode (start - end), ringkasan (map), dan detail (slice map).
 type ReportData struct {
 	Title       string                   `json:"title"`
 	GeneratedAt time.Time                `json:"generated_at"`
@@ -17,7 +20,7 @@ type ReportData struct {
 	Details     []map[string]interface{} `json:"details"`
 }
 
-// GenerateReportData generates report data based on template
+// GenerateReportData membangun data laporan berdasarkan templateID dan rentang startDate–endDate. Template: org-performance (total aktivitas/user, top 10 satker), user-activity (login total/sukses/gagal, top 10 user), feature-usage (view/download/search, top 10 fitur).
 func GenerateReportData(templateID, startDate, endDate string) (*ReportData, error) {
 	db := database.GetDB()
 
@@ -29,9 +32,9 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 	case "org-performance":
 		report.Title = "Laporan Kinerja Organisasi"
 
-		// Get summary stats
 		var totalActivities, totalUsers int
 
+		// Hitung total aktivitas: query dengan parameter posisi $1, $2 untuk filter tanggal.
 		query := "SELECT COUNT(*) FROM activity_logs_normalized a"
 		args := []interface{}{}
 		argCount := 0
@@ -54,7 +57,7 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 
 		db.Raw(query, args...).Scan(&totalActivities)
 
-		// Count unique users
+		// Hitung user unik (COUNT DISTINCT u.nama) dalam rentang tanggal; string tanggal digabung ke query.
 		userQuery := "SELECT COUNT(DISTINCT u.nama) FROM activity_logs_normalized a JOIN user_profiles u ON a.user_id = u.id"
 		if startDate != "" || endDate != "" {
 			userQuery += " WHERE 1=1"
@@ -72,7 +75,7 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 			"total_users":      totalUsers,
 		}
 
-		// Get top satker
+		// Top 10 satker by jumlah aktivitas; filter tanggal digabung ke SQL.
 		satkerQuery := `
 			SELECT s.satker_name, COUNT(*) as count 
 			FROM activity_logs_normalized a
@@ -106,9 +109,9 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 	case "user-activity":
 		report.Title = "Laporan Aktivitas Pengguna"
 
-		// Get login stats
 		var totalLogins, successLogins, failedLogins int
 
+		// Basis query: jumlah aktivitas LOGIN; lalu tambah kondisi tanggal.
 		loginQuery := `
 			SELECT COUNT(*) 
 			FROM activity_logs_normalized a
@@ -135,7 +138,7 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 			"failed_logins":  failedLogins,
 		}
 
-		// Get top active users
+		// Top 10 user aktif (nama + count aktivitas).
 		userQuery := `
 			SELECT u.nama, COUNT(*) as count 
 			FROM activity_logs_normalized a
@@ -169,9 +172,9 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 	case "feature-usage":
 		report.Title = "Laporan Pemanfaatan Fitur"
 
-		// Get feature usage stats
 		var totalViews, totalDownloads, totalSearches int
 
+		// Basis query COUNT + join activity_types; dateCondition dipakai di tiga query (view, download, search).
 		baseQuery := `
 			SELECT COUNT(*) 
 			FROM activity_logs_normalized a
@@ -200,7 +203,7 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 			"total_searches":  totalSearches,
 		}
 
-		// Get feature breakdown
+		// Rincian per jenis fitur (at.name), top 10.
 		featureQuery := `
 			SELECT at.name, COUNT(*) as count 
 			FROM activity_logs_normalized a
@@ -235,13 +238,13 @@ func GenerateReportData(templateID, startDate, endDate string) (*ReportData, err
 	return &report, nil
 }
 
-// CreateReportDownload records a new report download
+// CreateReportDownload menyimpan satu record unduhan laporan ke tabel report_downloads (entity.ReportDownload).
 func CreateReportDownload(download *entity.ReportDownload) error {
 	db := database.GetDB()
 	return db.Create(download).Error
 }
 
-// GetRecentDownloads retrieves recent report downloads with user info
+// GetRecentDownloads mengembalikan N unduhan terbaru (urut generated_at DESC) dengan relasi User di-preload.
 func GetRecentDownloads(limit int) ([]entity.ReportDownload, error) {
 	db := database.GetDB()
 	var downloads []entity.ReportDownload
@@ -254,14 +257,13 @@ func GetRecentDownloads(limit int) ([]entity.ReportDownload, error) {
 	return downloads, err
 }
 
-// GetRecentDownloadsWithFilter retrieves recent report downloads with optional date filters
+// GetRecentDownloadsWithFilter sama seperti GetRecentDownloads dengan filter tanggal opsional: BETWEEN, >= startDate, atau <= endDate.
 func GetRecentDownloadsWithFilter(limit int, startDate, endDate string) ([]entity.ReportDownload, error) {
 	db := database.GetDB()
 	var downloads []entity.ReportDownload
 
 	query := db.Preload("User")
 
-	// Apply date filters if provided
 	if startDate != "" && endDate != "" {
 		query = query.Where("DATE(generated_at) BETWEEN ? AND ?", startDate, endDate)
 	} else if startDate != "" {
@@ -278,7 +280,7 @@ func GetRecentDownloadsWithFilter(limit int, startDate, endDate string) ([]entit
 	return downloads, err
 }
 
-// GetDownloadsByUser retrieves downloads for a specific user
+// GetDownloadsByUser mengembalikan unduhan untuk satu user (user_id); urut generated_at DESC, batas limit.
 func GetDownloadsByUser(userID int, limit int) ([]entity.ReportDownload, error) {
 	db := database.GetDB()
 	var downloads []entity.ReportDownload

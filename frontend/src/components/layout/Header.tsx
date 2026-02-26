@@ -1,3 +1,12 @@
+/**
+ * Header.tsx
+ *
+ * Header utama (fixed, left-80 agar tidak menutupi sidebar): bar pencarian (klik → /search),
+ * pemilih rentang tanggal (quick 7/30/90/Semua + kalender custom), pemilih cluster,
+ * notifikasi (dropdown + tandai sudah dibaca), dan menu user (profil, Edit Profil, Logout).
+ * State tanggal/cluster disimpan di store; user dari localStorage; notifikasi dari API.
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -17,7 +26,11 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { dashboardService, notificationService, ApiError } from "@/services/api";
+import {
+  dashboardService,
+  notificationService,
+  ApiError,
+} from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import { format, parse } from "date-fns";
 import { id } from "date-fns/locale";
@@ -34,9 +47,7 @@ interface Notification {
   created_at: string;
 }
 
-interface HeaderProps {
-  // No props needed
-}
+interface HeaderProps {}
 
 export default function Header() {
   const router = useRouter();
@@ -58,12 +69,12 @@ export default function Header() {
   const [tempStartDate, setTempStartDate] = useState<Date | null>(null);
   const [tempEndDate, setTempEndDate] = useState<Date | null>(null);
   const [tempSelectedCluster, setTempSelectedCluster] = useState<string>("");
+  const [showYearPicker, setShowYearPicker] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const clusterPickerRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  // Use individual selectors 
   const selectedCluster = useAppStore((state) => state.selectedCluster);
   const setSelectedCluster = useAppStore((state) => state.setSelectedCluster);
   const dateRange = useAppStore((state) => state.dateRange);
@@ -71,9 +82,6 @@ export default function Header() {
   const setPresetRange = useAppStore((state) => state.setPresetRange);
   const globalUser = useAppStore((state) => state.user);
 
-
-
-  // Load user and notifications
   useEffect(() => {
     loadClusters();
     setTempSelectedCluster(selectedCluster);
@@ -93,15 +101,18 @@ export default function Header() {
       }
     }
   }, [selectedCluster]);
+  /** Saat mount / selectedCluster berubah: load clusters, sync temp cluster, load user dari localStorage, load notifikasi. */
 
-  // Sync profile photo from global state
   useEffect(() => {
     if (globalUser?.profile_photo && currentUser) {
-      setCurrentUser({ ...currentUser, profile_photo: globalUser.profile_photo });
+      setCurrentUser({
+        ...currentUser,
+        profile_photo: globalUser.profile_photo,
+      });
     }
   }, [globalUser?.profile_photo]);
+  /** Sinkronkan foto profil dari global state ke currentUser. */
 
-  // Load clusters from API
   const loadClusters = async () => {
     try {
       const response = await dashboardService.getClusters();
@@ -110,8 +121,8 @@ export default function Header() {
       console.error("Failed to load clusters:", error);
     }
   };
+  /** Ambil daftar cluster dari API untuk dropdown filter. */
 
-  // Load notifications for user
   const loadNotifications = async (userId: number) => {
     try {
       const response = await notificationService.getNotifications(userId);
@@ -121,21 +132,22 @@ export default function Header() {
       console.error("Failed to load notifications:", error);
     }
   };
+  /** Ambil notifikasi user dari API; set unread_count. */
 
-  // Mark notification as read
   const handleMarkNotificationRead = async (notificationId: number) => {
     try {
       await notificationService.markAsRead(notificationId);
       setNotifications(
         notifications.map((n) =>
-          n.id === notificationId ? { ...n, is_read: true } : n
-        )
+          n.id === notificationId ? { ...n, is_read: true } : n,
+        ),
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
   };
+  /** Tandai notifikasi sudah dibaca via API; update state lokal dan kurangi unreadCount. */
 
   const formatDateDisplay = () => {
     try {
@@ -146,11 +158,13 @@ export default function Header() {
       return "Pilih Tanggal";
     }
   };
+  /** Teks tombol tanggal: "d MMM - d MMM yyyy" atau "Pilih Tanggal". */
 
   const handleQuickSelect = (days: number) => {
     setPresetRange(days);
     setShowDatePicker(false);
   };
+  /** Pilih preset (7/30/90/9999 hari): set di store, tutup date picker. */
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -174,6 +188,7 @@ export default function Header() {
 
     return days;
   };
+  /** Array hari dalam bulan untuk kalender: null untuk sel kosong di awal minggu, lalu Date per hari. */
 
   const handleDateClick = (date: Date) => {
     if (!tempStartDate || (tempStartDate && tempEndDate)) {
@@ -190,6 +205,7 @@ export default function Header() {
       }
     }
   };
+  /** Klik tanggal: pilih start lalu end; jika sudah ada range, reset jadi start baru. */
 
   const handleApplyDateRange = () => {
     if (tempStartDate && tempEndDate) {
@@ -203,12 +219,14 @@ export default function Header() {
       setTempEndDate(null);
     }
   };
+  /** Terapkan range custom: tulis ke store, tutup picker, reset temp. */
 
   const isDateInRange = (date: Date) => {
     if (!tempStartDate) return false;
     if (!tempEndDate) return date.getTime() === tempStartDate.getTime();
     return date >= tempStartDate && date <= tempEndDate;
   };
+  /** Apakah tanggal di antara tempStartDate dan tempEndDate (atau sama dengan start jika belum ada end). */
 
   const isDateRangeEdge = (date: Date) => {
     if (!tempStartDate) return false;
@@ -217,32 +235,30 @@ export default function Header() {
       (tempEndDate && date.getTime() === tempEndDate.getTime())
     );
   };
+  /** Apakah tanggal adalah tempStartDate atau tempEndDate (untuk styling tepi). */
 
   const handleApplyCluster = () => {
     setSelectedCluster(tempSelectedCluster);
     setShowClusterPicker(false);
   };
+  /** Terapkan pilihan cluster ke store, tutup dropdown. */
 
   const getClusterDisplayText = () => {
     if (!selectedCluster) return "SEMUA CLUSTER";
     return selectedCluster.toUpperCase();
   };
+  /** Teks tombol cluster: "SEMUA CLUSTER" atau nama cluster uppercase. */
 
   const handleLogout = () => {
-    // Clear auth data
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-
-    // Redirect to login
     router.push("/auth/login");
   };
+  /** Hapus token dan user dari localStorage, redirect ke /auth/login. */
 
   return (
-    <header
-      className="h-20 bg-white border-b border-gray-5 fixed top-0 right-0 left-80 z-[100]"
-    >
+    <header className="h-20 bg-white border-b border-gray-5 fixed top-0 right-0 left-80 z-[100]">
       <div className="h-full px-6 flex items-center justify-between">
-        {/* Search Bar */}
         <div className="flex-1 max-w-xl">
           <div
             className="relative cursor-pointer"
@@ -266,9 +282,7 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Right Section */}
         <div className="flex items-center gap-4 ml-6">
-          {/* Date Range Picker */}
           <div className="relative" ref={datePickerRef}>
             <button
               onClick={() => setShowDatePicker(!showDatePicker)}
@@ -283,10 +297,8 @@ export default function Header() {
               />
             </button>
 
-            {/* Date Picker Dropdown */}
             {showDatePicker && (
               <div className="absolute top-full right-0 mt-2 bg-white rounded-lg-bpk shadow-lg border border-gray-5 p-4 z-[200] min-w-[320px]">
-                {/* Quick Select Buttons */}
                 <div className="flex gap-2 mb-4 pb-4 border-b border-gray-5">
                   <button
                     onClick={() => handleQuickSelect(7)}
@@ -314,7 +326,6 @@ export default function Header() {
                   </button>
                 </div>
 
-                {/* Calendar Header */}
                 <div className="flex items-center justify-between mb-4">
                   <button
                     onClick={() =>
@@ -326,12 +337,20 @@ export default function Header() {
                       )
                     }
                     className="p-1 hover:bg-gray-6 rounded"
+                    aria-label="Previous month"
                   >
                     ←
                   </button>
-                  <span className="text-body font-semibold">
+
+                  <button
+                    onClick={() => setShowYearPicker(!showYearPicker)}
+                    className="text-body font-semibold cursor-pointer hover:underline underline-offset-2"
+                    aria-expanded={showYearPicker}
+                    aria-label="Pilih tahun"
+                  >
                     {format(selectedMonth, "MMMM yyyy", { locale: id })}
-                  </span>
+                  </button>
+
                   <button
                     onClick={() =>
                       setSelectedMonth(
@@ -342,53 +361,88 @@ export default function Header() {
                       )
                     }
                     className="p-1 hover:bg-gray-6 rounded"
+                    aria-label="Next month"
                   >
                     →
                   </button>
                 </div>
 
-                {/* Calendar Grid */}
-                <div className="grid grid-cols-7 gap-1 mb-4">
-                  {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map(
-                    (day) => (
-                      <div
-                        key={day}
-                        className="text-center text-overline text-gray-3 font-semibold py-1"
-                      >
-                        {day}
-                      </div>
-                    ),
-                  )}
-                  {getDaysInMonth(selectedMonth).map((date, index) => {
-                    if (!date) {
-                      return (
-                        <div key={`empty-${index}`} className="aspect-square" />
-                      );
-                    }
-                    const isInRange = isDateInRange(date);
-                    const isEdge = isDateRangeEdge(date);
-                    const isToday =
-                      format(date, "yyyy-MM-dd") ===
-                      format(new Date(), "yyyy-MM-dd");
+                {showYearPicker ? (
+                  <div className="grid grid-cols-4 gap-2 mb-4">
+                    {(() => {
+                      const currentYear = new Date().getFullYear();
+                      const start = currentYear - 5;
+                      const end = currentYear + 2;
+                      const years: number[] = [];
+                      for (let y = start; y <= end; y++) years.push(y);
+                      return years.map((y) => {
+                        const isActive = y === selectedMonth.getFullYear();
+                        return (
+                          <button
+                            key={y}
+                            onClick={() => {
+                              setSelectedMonth(
+                                new Date(y, selectedMonth.getMonth(), 1),
+                              );
+                              setShowYearPicker(false);
+                            }}
+                            className={`px-3 py-1.5 text-caption rounded-md-bpk border transition-colors text-center ${
+                              isActive
+                                ? "bg-orange-50 border border-bpk-orange text-bpk-orange font-semibold"
+                                : "border border-gray-5 hover:border-bpk-orange hover:bg-orange-50"
+                            }`}
+                          >
+                            {y}
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-7 gap-1 mb-4">
+                    {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map(
+                      (day) => (
+                        <div
+                          key={day}
+                          className="text-center text-overline text-gray-3 font-semibold py-1"
+                        >
+                          {day}
+                        </div>
+                      ),
+                    )}
+                    {getDaysInMonth(selectedMonth).map((date, index) => {
+                      if (!date) {
+                        return (
+                          <div
+                            key={`empty-${index}`}
+                            className="aspect-square"
+                          />
+                        );
+                      }
+                      const isInRange = isDateInRange(date);
+                      const isEdge = isDateRangeEdge(date);
+                      const isToday =
+                        format(date, "yyyy-MM-dd") ===
+                        format(new Date(), "yyyy-MM-dd");
 
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => handleDateClick(date)}
-                        className={`aspect-square text-caption rounded-md flex items-center justify-center transition-colors
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => handleDateClick(date)}
+                          className={`aspect-square text-caption rounded-md flex items-center justify-center transition-colors
                           ${isEdge ? "bg-bpk-orange text-white font-semibold" : ""}
                           ${isInRange && !isEdge ? "bg-orange-100 text-bpk-orange" : ""}
                           ${!isInRange && !isEdge ? "hover:bg-gray-6 text-gray-1" : ""}
                           ${isToday && !isInRange ? "border border-bpk-orange" : ""}
                         `}
-                      >
-                        {date.getDate()}
-                      </button>
-                    );
-                  })}
-                </div>
+                        >
+                          {date.getDate()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
-                {/* Apply Button */}
                 {tempStartDate && tempEndDate && (
                   <button
                     onClick={handleApplyDateRange}
@@ -401,7 +455,6 @@ export default function Header() {
             )}
           </div>
 
-          {/* Cluster Filter */}
           <div className="relative" ref={clusterPickerRef}>
             <button
               onClick={() => setShowClusterPicker(!showClusterPicker)}
@@ -416,11 +469,9 @@ export default function Header() {
               />
             </button>
 
-            {/* Cluster Picker Dropdown */}
             {showClusterPicker && (
               <div className="absolute top-full right-0 mt-2 bg-white rounded-lg-bpk shadow-lg border border-gray-5 p-4 z-[200] min-w-[280px]">
                 <div className="space-y-2 mb-4 max-h-[300px] overflow-y-auto">
-                  {/* Semua Cluster Option */}
                   <button
                     onClick={() => setTempSelectedCluster("")}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-md-bpk transition-colors ${
@@ -439,7 +490,6 @@ export default function Header() {
                     )}
                   </button>
 
-                  {/* Individual Cluster Options */}
                   {clusters.map((cluster) => (
                     <button
                       key={cluster}
@@ -462,7 +512,6 @@ export default function Header() {
                   ))}
                 </div>
 
-                {/* Apply Button */}
                 <button
                   onClick={handleApplyCluster}
                   className="w-full py-2 bg-bpk-orange text-white rounded-md-bpk hover:bg-orange-600 transition-colors text-caption font-semibold"
@@ -473,7 +522,6 @@ export default function Header() {
             )}
           </div>
 
-          {/* Notifications */}
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
@@ -489,7 +537,6 @@ export default function Header() {
               )}
             </button>
 
-            {/* Notifications Dropdown */}
             {showNotifications && (
               <div className="absolute top-full right-0 mt-2 bg-white rounded-lg-bpk shadow-lg border border-gray-5 z-[200] min-w-[280px] max-w-[320px]">
                 <div className="px-4 py-3 border-b border-gray-5">
@@ -547,7 +594,6 @@ export default function Header() {
             )}
           </div>
 
-          {/* User Profile */}
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
@@ -559,10 +605,10 @@ export default function Header() {
                           flex items-center justify-center overflow-hidden"
               >
                 {currentUser?.profile_photo ? (
-                  <img 
-                    src={currentUser.profile_photo} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover" 
+                  <img
+                    src={currentUser.profile_photo}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
                   <User className="w-5 h-5 text-white" />
@@ -581,13 +627,12 @@ export default function Header() {
               />
             </button>
 
-            {/* User Menu Dropdown */}
             {showUserMenu && (
               <div className="absolute top-full right-0 mt-2 bg-white rounded-lg-bpk shadow-lg border border-gray-5 py-2 z-[200] min-w-[200px]">
                 <button
                   onClick={() => {
                     setShowUserMenu(false);
-                    router.push('/settings');
+                    router.push("/settings");
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-6 transition-colors text-left group"
                 >

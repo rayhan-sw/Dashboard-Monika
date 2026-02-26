@@ -1,7 +1,16 @@
+/**
+ * QuickTemplates.tsx
+ *
+ * Blok "Template Pencarian Cepat": daftar template tetap (login gagal hari ini,
+ * user paling aktif, login terbaru, aktivitas pencarian, aktivitas download).
+ * Klik template → onTemplateClick(template) sehingga parent bisa mengisi query + filter.
+ */
+
 "use client";
 
 import { Icon } from "@iconify/react";
 
+/** Satu template: id, judul, deskripsi, ikon, warna, query kosong, dan filter (dateRange, status, cluster, activityTypes). */
 interface QuickTemplate {
   id: string;
   title: string;
@@ -21,6 +30,7 @@ interface QuickTemplatesProps {
   onTemplateClick: (template: QuickTemplate) => void;
 }
 
+/** Daftar template bawaan: masing-masing punya filter berbeda (today, 7days, 30days, status, cluster, activityTypes). */
 const templates: QuickTemplate[] = [
   {
     id: "failed-logins-today",
@@ -85,9 +95,13 @@ const templates: QuickTemplate[] = [
   },
 ];
 
+/**
+ * Render kartu: judul "Template Pencarian Cepat" + grid template (tombol) + hint footer.
+ */
 export default function QuickTemplates({
   onTemplateClick,
 }: QuickTemplatesProps) {
+  /** Kelas Tailwind per warna template (red, blue, green, purple, orange). */
   const getColorClasses = (color: string) => {
     const colors = {
       red: "bg-red-100 text-red-700 border-red-200 hover:bg-red-200",
@@ -110,6 +124,7 @@ export default function QuickTemplates({
         </h3>
       </div>
 
+      {/* Grid template: tiap item = tombol; klik → onTemplateClick(template) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {templates.map((template) => (
           <button
@@ -132,6 +147,7 @@ export default function QuickTemplates({
         ))}
       </div>
 
+      {/* Hint: klik template akan menerapkan filter */}
       <div className="mt-4 pt-4 border-t border-gray-100">
         <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-1">
           <Icon icon="lucide:lightbulb" className="w-3.5 h-3.5" />

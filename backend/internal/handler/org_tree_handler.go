@@ -1,3 +1,6 @@
+// File org_tree_handler.go: handler untuk pohon organisasi (satker) dan pencarian unit.
+//
+// Endpoint: pohon organisasi penuh (opsional filter eselon, hitung aktivitas per satker), daftar level eselon, pencarian unit by nama (q) + eselon.
 package handler
 
 import (
@@ -10,40 +13,38 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// OrgTreeNode represents a node in the organizational hierarchy
+// OrgTreeNode merepresentasikan satu node di pohon organisasi (id, nama, eselon, parent, children, opsional activity_count).
 type OrgTreeNode struct {
-	ID          int64          `json:"id"`
-	Name        string         `json:"name"`
-	EselonLevel string         `json:"eselon_level"`
-	ParentID    *int64         `json:"parent_id,omitempty"`
-	Children    []OrgTreeNode  `json:"children,omitempty"`
-	ActivityCount int64        `json:"activity_count,omitempty"`
+	ID            int64         `json:"id"`
+	Name          string        `json:"name"`
+	EselonLevel   string        `json:"eselon_level"`
+	ParentID      *int64        `json:"parent_id,omitempty"`
+	Children      []OrgTreeNode `json:"children,omitempty"`
+	ActivityCount int64         `json:"activity_count,omitempty"`
 }
 
-// GetOrganizationalTree returns the full organizational hierarchy from ref_satker_units
+// GetOrganizationalTree mengembalikan pohon organisasi penuh dari ref_satker_units. Query: eselon_level (opsional), include_activity_count (true/false), start_date, end_date (untuk hitung aktivitas).
 func GetOrganizationalTree(c *gin.Context) {
 	db := database.GetDB()
 
-	// Get optional filters
 	eselonLevel := c.Query("eselon_level")
 	includeActivityCount := c.Query("include_activity_count") == "true"
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 
-	// Fetch all satker units
 	var satkerUnits []entity.SatkerUnit
 	query := db.Model(&entity.SatkerUnit{}).Where("satker_name != '' AND satker_name IS NOT NULL")
-	
+
 	if eselonLevel != "" {
 		query = query.Where("eselon_level = ?", eselonLevel)
 	}
-	
+
 	if err := query.Find(&satkerUnits).Error; err != nil {
 		response.Internal(c, err)
 		return
 	}
 
-	// Build map for quick lookup
+	// Map ID -> node agar bisa pasang parent–child tanpa scan berulang.
 	nodeMap := make(map[int64]*OrgTreeNode)
 	for _, unit := range satkerUnits {
 		node := &OrgTreeNode{
@@ -54,7 +55,7 @@ func GetOrganizationalTree(c *gin.Context) {
 			Children:    []OrgTreeNode{},
 		}
 
-		// Optionally fetch activity count
+		// Opsional: hitung jumlah aktivitas untuk satker ini dalam rentang tanggal.
 		if includeActivityCount {
 			var count int64
 			countQuery := db.Model(&entity.ActivityLog{}).Where("satker_id = ?", unit.ID)
@@ -68,25 +69,19 @@ func GetOrganizationalTree(c *gin.Context) {
 		nodeMap[unit.ID] = node
 	}
 
-	// Build tree structure
+	// Bangun pohon: node tanpa parent atau parent_id=0 jadi root; yang lain tempel ke parent. Jika parent tidak ada, anggap root.
 	var rootNodes []OrgTreeNode
 	for _, node := range nodeMap {
 		if node.ParentID == nil || *node.ParentID == 0 {
-			// Root node (Eselon I or orphan)
 			rootNodes = append(rootNodes, *node)
 		} else {
-			// Child node - attach to parent
 			if parent, exists := nodeMap[*node.ParentID]; exists {
 				parent.Children = append(parent.Children, *node)
 			} else {
-				// Parent not found, treat as root
 				rootNodes = append(rootNodes, *node)
 			}
 		}
 	}
-
-	// Sort by Eselon level for better organization
-	// You can add sorting logic here if needed
 
 	c.JSON(http.StatusOK, gin.H{
 		"tree":  rootNodes,
@@ -94,7 +89,7 @@ func GetOrganizationalTree(c *gin.Context) {
 	})
 }
 
-// GetEselonLevels returns list of available eselon levels
+// GetEselonLevels mengembalikan daftar level eselon yang ada beserta jumlah satker per level (untuk filter/dropdown).
 func GetEselonLevels(c *gin.Context) {
 	db := database.GetDB()
 
@@ -120,7 +115,7 @@ func GetEselonLevels(c *gin.Context) {
 	})
 }
 
-// SearchOrganizationalUnits searches for units by name
+// SearchOrganizationalUnits mencari unit satker berdasarkan nama (q). Query: q (wajib), eselon_level (opsional). Limit dari config.
 func SearchOrganizationalUnits(c *gin.Context) {
 	db := database.GetDB()
 	query := c.Query("q")
@@ -141,12 +136,12 @@ func SearchOrganizationalUnits(c *gin.Context) {
 		dbQuery = dbQuery.Where("eselon_level = ?", eselonLevel)
 	}
 
+	// Batas hasil sesuai config (OrgTreeSearchLimit).
 	if err := dbQuery.Limit(config.OrgTreeSearchLimit).Find(&units).Error; err != nil {
 		response.Internal(c, err)
 		return
 	}
 
-	// Map to response format
 	results := make([]map[string]interface{}, len(units))
 	for i, unit := range units {
 		results[i] = map[string]interface{}{

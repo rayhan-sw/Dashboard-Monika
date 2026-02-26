@@ -1,3 +1,11 @@
+/**
+ * AccessSuccessChart.tsx
+ *
+ * Chart batang "Analisis Tingkat Keberhasilan Akses": perbandingan akses berhasil (hijau)
+ * vs gagal (merah) per tanggal. Data dari getAccessSuccess; filter dateRange dan
+ * selectedCluster dari store. Tombol expand membuka modal fullscreen dengan chart sama.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -27,6 +35,7 @@ export default function AccessSuccessChart() {
   useEffect(() => {
     loadData();
   }, [dateRange, selectedCluster]);
+  /** Muat ulang data saat rentang tanggal atau cluster berubah. */
 
   const loadData = async () => {
     setLoading(true);
@@ -49,6 +58,7 @@ export default function AccessSuccessChart() {
       setLoading(false);
     }
   };
+  /** Ambil data keberhasilan/gagal akses dari API; format: { date, success, failed }. */
 
   if (loading) {
     return (
@@ -107,12 +117,13 @@ export default function AccessSuccessChart() {
           />
           <Bar dataKey="success" fill="#10B981" radius={[4, 4, 0, 0]} />
           <Bar dataKey="failed" fill="#EF4444" radius={[4, 4, 0, 0]} />
+          {/* Bar hijau = berhasil, bar merah = gagal */}
         </BarChart>
       </ResponsiveContainer>
 
-      {/* Expanded Modal */}
       {isExpanded && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur z-[250] flex items-center justify-center p-6">
+          {/* Modal fullscreen: chart sama, tombol X untuk tutup */}
           <div className="bg-white rounded-[13px] w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div className="flex items-center gap-4">

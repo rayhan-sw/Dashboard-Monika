@@ -1,3 +1,6 @@
+// File content_repository.go: query untuk data analitik/konten dashboard (peringkat kluster, penggunaan modul pencarian, statistik ekspor, intensi operasional, chart Global Economics).
+//
+// Semua fungsi memakai raw SQL dengan parameter posisi ($1, $2, ...) untuk filter tanggal dan cluster. Data sumber: activity_logs_normalized dan tabel referensi (ref_clusters, ref_activity_types).
 package repository
 
 import (
@@ -7,7 +10,7 @@ import (
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 )
 
-// DashboardRanking represents ranking data for dashboard usage
+// DashboardRanking satu baris peringkat penggunaan dashboard: urutan (rank), nama cluster, jumlah aktivitas, persentase terhadap total.
 type DashboardRanking struct {
 	Rank       int     `json:"rank"`
 	Name       string  `json:"name"`
@@ -15,13 +18,13 @@ type DashboardRanking struct {
 	Percentage float64 `json:"percentage"`
 }
 
-// SearchModule represents search module usage data
+// SearchModule satu baris statistik modul pencarian: nama modul (scope/detail), jumlah.
 type SearchModule struct {
 	Name  string `json:"name"`
 	Count int    `json:"count"`
 }
 
-// ExportStats represents export/download statistics
+// ExportStats ringkasan ekspor/unduh: total view_data, total download_data, dan detail per aktivitas (view_details, download_details).
 type ExportStats struct {
 	ViewData        int                   `json:"view_data"`
 	DownloadData    int                   `json:"download_data"`
@@ -29,25 +32,25 @@ type ExportStats struct {
 	DownloadDetails []DetailActivityCount `json:"download_details,omitempty"`
 }
 
-// DetailActivityCount represents detailed activity breakdown
+// DetailActivityCount satu baris detail aktivitas: nama detail (detail_aktifitas/scope/at.name) dan count.
 type DetailActivityCount struct {
 	Detail string `json:"detail"`
 	Count  int    `json:"count"`
 }
 
-// OperationalIntent represents operational intent data
+// OperationalIntent satu baris intensi operasional: nama (scope/detail_aktifitas/at.name) dan count.
 type OperationalIntent struct {
 	Name  string `json:"name"`
 	Count int    `json:"count"`
 }
 
-// GlobalEconomicsData represents chart data for global economics
+// GlobalEconomicsData satu baris chart Global Economics: kategori (NTPN, KOMDLNG, INK, Trust, Other) dan count.
 type GlobalEconomicsData struct {
 	Category string `json:"category"`
 	Count    int    `json:"count"`
 }
 
-// GetDashboardRankings returns ranking of dashboard/cluster usage
+// GetDashboardRankings mengembalikan peringkat penggunaan dashboard per cluster (nama cluster = COALESCE(c.name, 'Tidak Terkategori')). Filter opsional: startDate, endDate. Persentase dihitung dari total semua count.
 func GetDashboardRankings(startDate, endDate string) ([]DashboardRanking, error) {
 	db := database.GetDB()
 
@@ -89,13 +92,13 @@ func GetDashboardRankings(startDate, endDate string) ([]DashboardRanking, error)
 	var total int
 	rank := 1
 
-	// First pass: get all data
 	type tempRanking struct {
 		Name  string
 		Count int
 	}
 	var tempData []tempRanking
 
+	// Putaran pertama: baca semua baris dan jumlahkan total untuk hitung persen nanti.
 	for rows.Next() {
 		var name string
 		var count int
@@ -106,7 +109,7 @@ func GetDashboardRankings(startDate, endDate string) ([]DashboardRanking, error)
 		total += count
 	}
 
-	// Second pass: calculate percentages
+	// Putaran kedua: hitung persentase per baris (count/total*100) dan isi rank 1, 2, 3, ...
 	for _, t := range tempData {
 		percentage := 0.0
 		if total > 0 {
@@ -124,7 +127,7 @@ func GetDashboardRankings(startDate, endDate string) ([]DashboardRanking, error)
 	return rankings, nil
 }
 
-// GetSearchModuleUsage returns search module usage statistics
+// GetSearchModuleUsage mengembalikan statistik penggunaan modul pencarian: hanya aktivitas yang namanya/scope/detail mengandung search atau pencarian; nama modul = scope jika ada kata search/pencarian, else detail_aktifitas. Filter: cluster, startDate, endDate. Hasil dibatasi 5 baris, urut count DESC.
 func GetSearchModuleUsage(startDate, endDate, cluster string) ([]SearchModule, error) {
 	db := database.GetDB()
 
@@ -196,13 +199,14 @@ func GetSearchModuleUsage(startDate, endDate, cluster string) ([]SearchModule, e
 	return modules, nil
 }
 
-// GetExportStats returns export/download statistics with details
+// GetExportStats mengembalikan statistik view vs download: view_data = aktivitas at.name ILIKE '%view%' dan BUKAN download/export; download_data = at.name ILIKE '%download%'. Detail per aktivitas (detail = detail_aktifitas atau scope atau at.name) dibatasi 10 baris masing-masing. Filter: cluster, startDate, endDate dipakai untuk semua subquery.
 func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 	db := database.GetDB()
 
 	args := []interface{}{}
 	argCount := 0
 
+	// Bangun klausa filter yang sama untuk semua query (cluster + tanggal).
 	dateFilter := ""
 	if cluster != "" {
 		argCount++
@@ -220,7 +224,6 @@ func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 		args = append(args, endDate)
 	}
 
-	// View Data count (activities with 'view' but not 'download' or 'export')
 	var viewCount int
 	viewQuery := `
 		SELECT COUNT(*) 
@@ -233,7 +236,6 @@ func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 	` + dateFilter
 	db.Raw(viewQuery, args...).Scan(&viewCount)
 
-	// Download Data count (activities with 'download' only)
 	var downloadCount int
 	downloadQuery := `
 		SELECT COUNT(*) 
@@ -244,7 +246,6 @@ func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 	` + dateFilter
 	db.Raw(downloadQuery, args...).Scan(&downloadCount)
 
-	// Get View Data Details
 	var viewDetails []DetailActivityCount
 	viewDetailQuery := `
 		SELECT 
@@ -263,7 +264,6 @@ func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 	`
 	db.Raw(viewDetailQuery, args...).Scan(&viewDetails)
 
-	// Get Download Data Details
 	var downloadDetails []DetailActivityCount
 	downloadDetailQuery := `
 		SELECT 
@@ -288,7 +288,7 @@ func GetExportStats(startDate, endDate, cluster string) (*ExportStats, error) {
 	}, nil
 }
 
-// GetOperationalIntents returns operational intent statistics
+// GetOperationalIntents mengembalikan statistik intensi operasional: aktivitas yang bukan LOGIN/LOGOUT; intent_name = scope atau detail_aktifitas atau at.name. Filter: cluster, startDate, endDate. Limit dari limitStr (parse gagal pakai config.DefaultLimit). Exclude intent_name null/kosong.
 func GetOperationalIntents(startDate, endDate, cluster, limitStr string) ([]OperationalIntent, error) {
 	db := database.GetDB()
 
@@ -356,7 +356,7 @@ func GetOperationalIntents(startDate, endDate, cluster, limitStr string) ([]Oper
 	return intents, nil
 }
 
-// GetGlobalEconomicsChart returns chart data for global economics module
+// GetGlobalEconomicsChart mengembalikan data chart Global Economics: kategori dari scope (ntpn→NTPN, komdlng/eri→KOMDLNG, ink/garuda→INK, trust/bkn→Trust, lain→Other). Hanya aktivitas dengan c.name='pencarian' atau scope ILIKE '%search%'. Filter: startDate, endDate.
 func GetGlobalEconomicsChart(startDate, endDate string) ([]GlobalEconomicsData, error) {
 	db := database.GetDB()
 

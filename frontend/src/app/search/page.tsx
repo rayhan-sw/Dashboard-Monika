@@ -1,3 +1,14 @@
+/**
+ * page.tsx – Halaman Pencarian
+ *
+ * Layout: SimpleHeader + SearchBar + tombol toggle filter + grid (Filter | Hasil).
+ * State: query, filters (dari URL searchParams), results, loading, totalCount,
+ * currentPage, totalPages, showFilters, hasSearched. handleSearch: simpan ke recent,
+ * bangun params, update URL, panggil globalSearch, set hasil & pagination. Hasil
+ * atau empty state "Mulai Pencarian" jika belum pernah cari. Page dibungkus Suspense
+ * dengan fallback SearchLoading.
+ */
+
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -24,11 +35,9 @@ function SearchPageContent() {
     customStart: "",
     customEnd: "",
     satker: searchParams.get("satker") || "",
-    satkerIds: searchParams
-      .get("satkerIds")
-      ?.split(",")
-      .map(Number)
-      .filter(Boolean) || [],
+    satkerIds:
+      searchParams.get("satkerIds")?.split(",").map(Number).filter(Boolean) ||
+      [],
     cluster: searchParams.get("cluster") || "",
     status:
       (searchParams.get("status") as "all" | "success" | "failed") || "all",
@@ -44,6 +53,10 @@ function SearchPageContent() {
   const [showFilters, setShowFilters] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
 
+  /**
+   * Jalankan pencarian: simpan ke recent (jika query ada), bangun params dari filter,
+   * update URL, panggil globalSearch, set results/totalCount/page/totalPages.
+   */
   const handleSearch = async (
     searchQuery: string,
     page = 1,
@@ -54,20 +67,19 @@ function SearchPageContent() {
     setLoading(true);
     setHasSearched(true);
 
-    // Save to recent searches if query exists
-    if (searchQuery.trim()) {
-      saveRecentSearch(searchQuery, {
+    const trimmedQuery = searchQuery?.trim() || "";
+
+    if (trimmedQuery) {
+      saveRecentSearch(trimmedQuery, {
         cluster: activeFilters.cluster,
         status: activeFilters.status,
         dateRange: activeFilters.dateRange,
       });
     }
 
-    // Build query params
     const params = new URLSearchParams();
-    if (searchQuery) params.set("q", searchQuery);
+    if (trimmedQuery) params.set("q", trimmedQuery);
 
-    // Map frontend dateRange to backend format
     if (activeFilters.dateRange && activeFilters.dateRange !== "all") {
       let mappedDateRange = activeFilters.dateRange;
       if (activeFilters.dateRange === "7") mappedDateRange = "7days";
@@ -75,6 +87,7 @@ function SearchPageContent() {
       else if (activeFilters.dateRange === "90") mappedDateRange = "90days";
       params.set("dateRange", mappedDateRange);
     }
+    /** Format backend: 7→7days, 30→30days, 90→90days; custom pakai startDate/endDate. */
 
     if (activeFilters.customStart)
       params.set("startDate", activeFilters.customStart);
@@ -93,7 +106,6 @@ function SearchPageContent() {
     params.set("page", page.toString());
     params.set("pageSize", "20");
 
-    // Update URL
     router.push(`/search?${params.toString()}`, { scroll: false });
 
     try {
@@ -116,6 +128,7 @@ function SearchPageContent() {
     setCurrentPage(page);
     handleSearch(query, page);
   };
+  /** Ganti halaman: set currentPage lalu panggil handleSearch dengan page baru. */
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -123,7 +136,6 @@ function SearchPageContent() {
 
       <main className="pt-24 pb-12">
         <div className="max-w-[1800px] mx-auto px-6">
-          {/* Search Bar */}
           <div className="mb-6">
             <SearchBar
               value={query}
@@ -132,7 +144,6 @@ function SearchPageContent() {
             />
           </div>
 
-          {/* Filter Toggle Button */}
           <div className="mb-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -143,9 +154,7 @@ function SearchPageContent() {
             </button>
           </div>
 
-          {/* Main Content: Filters + Results */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Filters Sidebar */}
             {showFilters && (
               <div className="lg:col-span-1">
                 <SearchFilters
@@ -176,7 +185,6 @@ function SearchPageContent() {
               </div>
             )}
 
-            {/* Results or Empty State */}
             <div className={showFilters ? "lg:col-span-3" : "lg:col-span-4"}>
               {!hasSearched ? (
                 <div className="bg-white rounded-lg-bpk shadow-sm border border-gray-200 p-12">
@@ -214,7 +222,7 @@ function SearchPageContent() {
   );
 }
 
-// Loading fallback component
+/** Fallback Suspense: spinner + "Memuat pencarian...". */
 function SearchLoading() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center">
@@ -226,7 +234,6 @@ function SearchLoading() {
   );
 }
 
-// Main export with Suspense boundary
 export default function SearchPage() {
   return (
     <Suspense fallback={<SearchLoading />}>

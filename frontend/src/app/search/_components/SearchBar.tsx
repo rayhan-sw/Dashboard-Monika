@@ -1,9 +1,18 @@
+/**
+ * SearchBar.tsx
+ *
+ * Input pencarian + dropdown saran: value/onChange dikontrol parent; ketik ≥2 karakter
+ * memicu getSuggestions (debounce 300ms). Saran dikelompokkan per tipe (user, satker,
+ * lokasi); klik saran → isi value + panggil onSearch. Submit form → onSearch(value.trim()).
+ */
+
 "use client";
 
 import { Icon } from "@iconify/react";
 import { useState, useRef, useEffect } from "react";
 import { searchService } from "@/services/api";
 
+/** Satu saran: tipe (user/satker/lokasi), value, label. */
 interface Suggestion {
   type: "user" | "satker" | "lokasi";
   value: string;
@@ -27,12 +36,11 @@ export default function SearchBar({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-focus on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Close suggestions when clicking outside
+  /** Tutup dropdown saran saat klik di luar containerRef. */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -47,9 +55,10 @@ export default function SearchBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch suggestions with debounce
+  /** Ambil saran saat value ≥2 karakter; debounce 300ms; map response ke { type, value, label }. */
   useEffect(() => {
-    if (value.length < 2) {
+    const q = value.trim();
+    if (q.length < 2) {
       setSuggestions([]);
       return;
     }
@@ -57,9 +66,8 @@ export default function SearchBar({
     const debounce = setTimeout(async () => {
       setLoading(true);
       try {
-        const data = await searchService.getSuggestions(value);
+        const data = await searchService.getSuggestions(q);
 
-        // Map backend response to frontend format
         const mappedSuggestions: Suggestion[] = (data.suggestions || []).map(
           (s: { type?: string; value?: string; label?: string }) => ({
             type: (s.type as "user" | "satker" | "lokasi") || "user",
@@ -87,6 +95,7 @@ export default function SearchBar({
       setShowSuggestions(false);
     }
   };
+  /** Submit: panggil onSearch dengan value trim, tutup dropdown. */
 
   const handleClear = () => {
     onChange("");
@@ -98,6 +107,7 @@ export default function SearchBar({
     onSearch(suggestion.value);
     setShowSuggestions(false);
   };
+  /** Klik saran: isi value, trigger onSearch, tutup dropdown. */
 
   const getIconForType = (type: string) => {
     switch (type) {
@@ -111,6 +121,8 @@ export default function SearchBar({
         return "mdi:magnify";
     }
   };
+
+  /** Ikon: user=account, satker=gedung, lokasi=map-marker. Warna: biru/hijau/ungu per tipe. */
 
   const getColorForType = (type: string) => {
     switch (type) {
@@ -138,7 +150,7 @@ export default function SearchBar({
     }
   };
 
-  // Group suggestions by type
+  /** Kelompokkan saran per type untuk tampil per kategori di dropdown. */
   const groupedSuggestions = suggestions.reduce(
     (acc, suggestion) => {
       if (!acc[suggestion.type]) {
@@ -207,7 +219,6 @@ export default function SearchBar({
         </div>
       </form>
 
-      {/* Suggestions Dropdown */}
       {showSuggestions && value.trim().length >= 2 && (
         <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-[500px] overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           {loading ? (
@@ -228,9 +239,13 @@ export default function SearchBar({
                   className="w-8 h-8 text-gray-400"
                 />
               </div>
-              <p className="text-base font-medium text-gray-700 mb-1">Tidak ada hasil ditemukan</p>
+              <p className="text-base font-medium text-gray-700 mb-1">
+                Tidak ada hasil ditemukan
+              </p>
               <p className="text-sm text-gray-500">
-                Tekan <span className="font-semibold text-bpk-orange">Cari</span> untuk mencari &quot;{value}&quot;
+                Tekan{" "}
+                <span className="font-semibold text-bpk-orange">Cari</span>{" "}
+                untuk mencari &quot;{value}&quot;
               </p>
             </div>
           ) : (
@@ -242,11 +257,10 @@ export default function SearchBar({
                 >
                   {/* Category Header */}
                   <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-gray-50 to-transparent sticky top-0 z-10">
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${getColorForType(type)}`}>
-                      <Icon
-                        icon={getIconForType(type)}
-                        className="w-4 h-4"
-                      />
+                    <div
+                      className={`w-6 h-6 rounded-lg flex items-center justify-center ${getColorForType(type)}`}
+                    >
+                      <Icon icon={getIconForType(type)} className="w-4 h-4" />
                     </div>
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
                       {getLabelForType(type)}
@@ -269,11 +283,16 @@ export default function SearchBar({
                           className={`w-10 h-10 rounded-xl flex items-center justify-center ${getColorForType(type)} 
                                     group-hover:scale-110 transition-transform duration-200`}
                         >
-                          <Icon icon={getIconForType(type)} className="w-5 h-5" />
+                          <Icon
+                            icon={getIconForType(type)}
+                            className="w-5 h-5"
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 group-hover:text-bpk-orange 
-                                      truncate transition-colors duration-150">
+                          <p
+                            className="text-sm font-semibold text-gray-800 group-hover:text-bpk-orange 
+                                      truncate transition-colors duration-150"
+                          >
                             {suggestion.label}
                           </p>
                           <p className="text-xs text-gray-500 mt-0.5">

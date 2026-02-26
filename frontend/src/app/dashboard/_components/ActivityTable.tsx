@@ -1,3 +1,14 @@
+/**
+ * ActivityTable.tsx
+ *
+ * Komponen tabel riwayat aktivitas pengguna di dashboard. Menampilkan 5 aktivitas terbaru (page 1, page_size 5)
+ * dengan filter dateRange dan selectedCluster dari store. Tombol "perbesar" membuka modal dengan 15 aktivitas
+ * dan kolom tambahan (Cluster, Waktu); di modal ada zoom tabel (80–140%).
+ *
+ * Data: dashboardService.getActivities(page, page_size, startDate, endDate, cluster).
+ * Badge warna per jenis aktivitas: LOGIN, LOGOUT, VIEW, EDIT, DELETE.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,6 +18,9 @@ import { useAppStore } from "@/stores/appStore";
 import type { ActivityLog } from "@/types/api";
 import { Radio, Maximize2, X, ZoomIn, ZoomOut } from "lucide-react";
 
+/**
+ * Tabel riwayat aktivitas: load 5 item di card, tombol expand → modal 15 item + zoom.
+ */
 export default function ActivityTable() {
   const dateRange = useAppStore((state) => state.dateRange);
   const selectedCluster = useAppStore((state) => state.selectedCluster);
@@ -21,6 +35,7 @@ export default function ActivityTable() {
     loadActivities();
   }, [dateRange, selectedCluster]);
 
+  /** Ambil 5 aktivitas terbaru untuk tampilan card (page 1, page_size 5). */
   const loadActivities = async () => {
     setLoading(true);
     try {
@@ -39,6 +54,7 @@ export default function ActivityTable() {
     }
   };
 
+  /** Ambil 15 aktivitas untuk modal expanded (dipanggil saat user klik tombol perbesar). */
   const loadExpandedActivities = async () => {
     setLoadingExpanded(true);
     try {
@@ -57,6 +73,7 @@ export default function ActivityTable() {
     }
   };
 
+  /** Mengembalikan kelas Tailwind untuk badge berdasarkan jenis aktivitas (LOGIN=hijau, LOGOUT=biru, dll.). */
   const getActivityBadge = (activity: string) => {
     const colors: Record<string, string> = {
       LOGIN: "bg-green-100 text-green-700",
@@ -103,6 +120,7 @@ export default function ActivityTable() {
         </div>
       </div>
 
+      {/* Tabel 3 kolom: Pengguna, Satker, Aktivitas (badge) */}
       <div className="flex-1 overflow-auto scrollbar-hide">
         <table className="w-full">
           <thead>
@@ -143,7 +161,7 @@ export default function ActivityTable() {
         </table>
       </div>
 
-      {/* Expanded Modal */}
+      {/* Modal expanded: tabel 15 item, kolom + Cluster & Waktu, zoom 80–140%, tombol tutup */}
       {isExpanded && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur z-[250] flex items-center justify-center p-6">
           <div className="bg-white rounded-[13px] w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl">
@@ -219,6 +237,7 @@ export default function ActivityTable() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
+                  {/* Di modal: pakai expandedActivities jika sudah load, fallback ke activities */}
                   {(expandedActivities ?? activities)?.map((activity) => (
                     <tr
                       key={activity.id}

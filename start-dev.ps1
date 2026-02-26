@@ -5,7 +5,7 @@ Write-Host "`n╔═════════════════════
 Write-Host "║    DASHBOARD BPK - QUICK START             ║" -ForegroundColor Cyan
 Write-Host "╚════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
-$projectRoot = "c:\Users\Rayhansw\KULIAH\MagangBPK\Dashboard-BPK"
+$projectRoot = $PSScriptRoot
 
 # Check if PostgreSQL is running
 Write-Host "Checking PostgreSQL..." -ForegroundColor Yellow

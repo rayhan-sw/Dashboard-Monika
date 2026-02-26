@@ -1,6 +1,10 @@
-// Dashboard Components
-// Following Clean Architecture pattern - each widget is a self-contained component
-// with its own data fetching, loading states, and error handling
+/**
+ * Barrel export untuk komponen dashboard.
+ *
+ * Setiap widget (ActivityTable, BusiestHourCard, DashboardStats, ErrorMonitoringTable) adalah
+ * komponen mandiri: fetch data sendiri, state loading/error sendiri. Filter tanggal dan cluster
+ * diambil dari useAppStore (dateRange, selectedCluster).
+ */
 
 export { default as ActivityTable } from "./ActivityTable";
 export { default as BusiestHourCard } from "./BusiestHourCard";

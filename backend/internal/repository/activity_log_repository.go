@@ -1,3 +1,7 @@
+// Package repository berisi akses data ke database (query, agregasi).
+//
+// File activity_log_repository.go: repository untuk tabel activity_logs_normalized dan tabel referensi (ref_clusters, ref_satker_units, ref_activity_types, ref_locations, user_profiles).
+// Menyediakan: filter regional (tanggal, cluster, eselon, satkerIds), hitung total, hitung per status, aktivitas terbaru, chart per scope/jam/provinsi/lokasi/satker, jam tersibuk, tingkat sukses akses, user unik, cluster unik, top kontributor, error logout.
 package repository
 
 import (
@@ -8,6 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// ActivityLogRepository interface untuk semua query aktivitas (dashboard, chart, filter regional).
 type ActivityLogRepository interface {
 	GetSatkerIdsUnderRoot(rootId int64) ([]int64, error)
 	GetTotalCount(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int64, error)
@@ -28,15 +33,17 @@ type ActivityLogRepository interface {
 	GetLogoutErrors(limit int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error)
 }
 
+// activityLogRepository implementasi ActivityLogRepository; menyimpan koneksi DB.
 type activityLogRepository struct {
 	db *gorm.DB
 }
 
+// NewActivityLogRepository membuat instance repository aktivitas.
 func NewActivityLogRepository(db *gorm.DB) ActivityLogRepository {
 	return &activityLogRepository{db: db}
 }
 
-// Helper function to apply date range and cluster filter
+// applyDateFilter menambah kondisi WHERE untuk kolom tanggal: BETWEEN, >= start, atau <= end. Jika keduanya nil, query tidak diubah.
 func (r *activityLogRepository) applyDateFilter(db *gorm.DB, startDate, endDate *string) *gorm.DB {
 	if startDate != nil && endDate != nil {
 		return db.Where("DATE(tanggal) BETWEEN ? AND ?", *startDate, *endDate)
@@ -48,7 +55,7 @@ func (r *activityLogRepository) applyDateFilter(db *gorm.DB, startDate, endDate 
 	return db
 }
 
-// Helper function to apply cluster filter
+// applyClusterFilter menambah JOIN ref_clusters dan WHERE c.name = cluster jika cluster tidak kosong.
 func (r *activityLogRepository) applyClusterFilter(db *gorm.DB, cluster *string) *gorm.DB {
 	if cluster != nil && *cluster != "" {
 		return db.Joins("LEFT JOIN ref_clusters c ON c.id = activity_logs_normalized.cluster_id").
@@ -57,7 +64,7 @@ func (r *activityLogRepository) applyClusterFilter(db *gorm.DB, cluster *string)
 	return db
 }
 
-// Helper function to apply eselon filter
+// applyEselonFilter menambah JOIN ref_satker_units dan WHERE s.eselon_level = eselon jika eselon tidak kosong.
 func (r *activityLogRepository) applyEselonFilter(db *gorm.DB, eselon *string) *gorm.DB {
 	if eselon != nil && *eselon != "" {
 		return db.Joins("LEFT JOIN ref_satker_units s ON s.id = activity_logs_normalized.satker_id").
@@ -66,7 +73,7 @@ func (r *activityLogRepository) applyEselonFilter(db *gorm.DB, eselon *string) *
 	return db
 }
 
-// applyEselonOrSatkerIdsFilter: when satkerIds has elements, filter by satker_id IN (...); otherwise use eselon.
+// applyEselonOrSatkerIdsFilter: jika satkerIds berisi, filter satker_id IN (satkerIds); jika tidak, pakai filter eselon.
 func (r *activityLogRepository) applyEselonOrSatkerIdsFilter(db *gorm.DB, eselon *string, satkerIds []int64) *gorm.DB {
 	if len(satkerIds) > 0 {
 		return db.Where("activity_logs_normalized.satker_id IN ?", satkerIds)
@@ -74,9 +81,10 @@ func (r *activityLogRepository) applyEselonOrSatkerIdsFilter(db *gorm.DB, eselon
 	return r.applyEselonFilter(db, eselon)
 }
 
-// GetSatkerIdsUnderRoot returns rootId and all descendant satker IDs (for filter by Eselon I unit).
+// GetSatkerIdsUnderRoot mengembalikan rootId dan semua ID satker turunan (recursive: parent_id → id). Dipakai untuk filter per unit Eselon I.
 func (r *activityLogRepository) GetSatkerIdsUnderRoot(rootId int64) ([]int64, error) {
 	var ids []int64
+	// CTE rekursif: mulai dari root, lalu UNION ALL anak yang parent_id = id di tree.
 	err := r.db.Raw(`
 		WITH RECURSIVE tree AS (
 			SELECT id FROM ref_satker_units WHERE id = ?
@@ -88,6 +96,7 @@ func (r *activityLogRepository) GetSatkerIdsUnderRoot(rootId int64) ([]int64, er
 	return ids, err
 }
 
+// GetTotalCount menghitung total baris aktivitas setelah filter tanggal, cluster, eselon/satkerIds.
 func (r *activityLogRepository) GetTotalCount(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int64, error) {
 	var count int64
 	query := r.db.Model(&entity.ActivityLog{})
@@ -98,6 +107,7 @@ func (r *activityLogRepository) GetTotalCount(startDate, endDate *string, cluste
 	return count, err
 }
 
+// GetCountByStatus menghitung jumlah aktivitas per status: SUCCESS = LOGIN dengan scope success/NULL, FAILED = LOGOUT dengan scope error; selain itu filter by at.name = status.
 func (r *activityLogRepository) GetCountByStatus(status string, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int64, error) {
 	var count int64
 	query := r.db.Model(&entity.ActivityLog{}).
@@ -107,12 +117,10 @@ func (r *activityLogRepository) GetCountByStatus(status string, startDate, endDa
 	query = r.applyClusterFilter(query, cluster)
 	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
-	// Login Berhasil: LOGIN dengan scope = 'success' atau NULL
 	if status == "SUCCESS" {
 		err := query.Where("at.name = ? AND (scope ILIKE ? OR scope IS NULL OR scope = '')", "LOGIN", "%success%").Count(&count).Error
 		return count, err
 	} else if status == "FAILED" {
-		// Kesalahan Logout: LOGOUT dengan scope = 'error' saja
 		err := query.Where("at.name = ? AND scope ILIKE ?", "LOGOUT", "%error%").Count(&count).Error
 		return count, err
 	}
@@ -120,10 +128,10 @@ func (r *activityLogRepository) GetCountByStatus(status string, startDate, endDa
 	return count, err
 }
 
+// GetRecentActivities mengembalikan aktivitas terbaru dengan paginasi; relasi User, Satker, ActivityType, Cluster, Location di-preload untuk DTO.
 func (r *activityLogRepository) GetRecentActivities(page, pageSize int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]entity.ActivityLog, error) {
 	var activities []entity.ActivityLog
 
-	// Create base query with Joins
 	query := r.db.Model(&entity.ActivityLog{}).
 		Preload("User").
 		Preload("Satker").
@@ -136,7 +144,6 @@ func (r *activityLogRepository) GetRecentActivities(page, pageSize int, startDat
 		Joins("LEFT JOIN ref_clusters c ON c.id = activity_logs_normalized.cluster_id").
 		Joins("LEFT JOIN ref_locations l ON l.id = activity_logs_normalized.location_id")
 
-	// Apply filters
 	query = r.applyDateFilter(query, startDate, endDate)
 
 	if cluster != nil && *cluster != "" {
@@ -149,12 +156,6 @@ func (r *activityLogRepository) GetRecentActivities(page, pageSize int, startDat
 		query = query.Where("s.eselon_level = ?", *eselon)
 	}
 
-	// Use DISTINCT ON logic via Subquery or GORM
-	// Since GORM doesn't support complex DISTINCT ON easily with Preloads, we might need a different approach
-	// or accept that we show all recent activities (not distinct by user/activity) which is often better for a log.
-	// If DISTINCT ON is a hard requirement, we'd need a raw SQL query that returns IDs, then fetch with Preload.
-
-	// Simplified Approach: Just get recent logs (pageSize from handler, e.g. 5 for card, 15 for expanded modal)
 	offset := (page - 1) * pageSize
 	err := query.Order("activity_logs_normalized.tanggal DESC").
 		Offset(offset).
@@ -164,7 +165,7 @@ func (r *activityLogRepository) GetRecentActivities(page, pageSize int, startDat
 	return activities, err
 }
 
-// Helper untuk build date filter string
+// buildDateFilter mengembalikan string kondisi WHERE untuk tanggal (dipakai di raw query). Tanpa filter mengembalikan "1=1".
 func (r *activityLogRepository) buildDateFilter(startDate, endDate *string) string {
 	if startDate != nil && endDate != nil {
 		return "DATE(tanggal) BETWEEN '" + *startDate + "' AND '" + *endDate + "'"
@@ -173,9 +174,10 @@ func (r *activityLogRepository) buildDateFilter(startDate, endDate *string) stri
 	} else if endDate != nil {
 		return "DATE(tanggal) <= '" + *endDate + "'"
 	}
-	return "1=1" // No filter
+	return "1=1"
 }
 
+// GetActivityCountByScope mengelompokkan aktivitas menurut kategori (at.category) lalu memetakan ke label: data_access→Monitoring & View, authentication→System Auth, search→Discovery, download→Data Extraction, lain→Other.
 func (r *activityLogRepository) GetActivityCountByScope(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (map[string]int64, error) {
 	type Result struct {
 		Category string
@@ -190,8 +192,6 @@ func (r *activityLogRepository) GetActivityCountByScope(startDate, endDate *stri
 	query = r.applyClusterFilter(query, cluster)
 	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
-	// Use the category explicitly defined in the reference table if possible,
-	// or fallback to logic based on activity name
 	err := query.
 		Select(`
 			CASE COALESCE(NULLIF(at.category, ''), 'other')
@@ -218,6 +218,7 @@ func (r *activityLogRepository) GetActivityCountByScope(startDate, endDate *stri
 	return counts, nil
 }
 
+// GetActivityCountByHour mengembalikan jumlah aktivitas per jam (0–23); hasil slice map hour/count, urut jam naik.
 func (r *activityLogRepository) GetActivityCountByHour(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Hour  int
@@ -249,6 +250,7 @@ func (r *activityLogRepository) GetActivityCountByHour(startDate, endDate *strin
 	return data, nil
 }
 
+// GetActivityCountByHourForSatker sama seperti GetActivityCountByHour tetapi difilter oleh nama satker; mengembalikan 24 jam (jam tanpa data diisi 0).
 func (r *activityLogRepository) GetActivityCountByHourForSatker(satker string, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Hour  int
@@ -261,7 +263,6 @@ func (r *activityLogRepository) GetActivityCountByHourForSatker(satker string, s
 	query = r.applyClusterFilter(query, cluster)
 	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
-	// Join with satker table to filter by name
 	query = query.Joins("LEFT JOIN ref_satker_units s ON s.id = activity_logs_normalized.satker_id").
 		Where("s.satker_name = ?", satker)
 
@@ -275,13 +276,12 @@ func (r *activityLogRepository) GetActivityCountByHourForSatker(satker string, s
 		return nil, err
 	}
 
-	// Create a map for quick lookup
 	hourMap := make(map[int]int64)
 	for _, r := range results {
 		hourMap[r.Hour] = r.Count
 	}
 
-	// Fill in all 24 hours with 0 for missing hours
+	// Pastikan response selalu 24 entri (jam 0–23); jam tanpa data = 0.
 	var data []map[string]interface{}
 	for i := 0; i < 24; i++ {
 		count := int64(0)
@@ -296,6 +296,7 @@ func (r *activityLogRepository) GetActivityCountByHourForSatker(satker string, s
 	return data, nil
 }
 
+// GetActivityCountByProvince mengelompokkan aktivitas per provinsi (ref_locations.province); mengabaikan provinsi kosong/NULL; urut count menurun.
 func (r *activityLogRepository) GetActivityCountByProvince(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Province string
@@ -330,6 +331,7 @@ func (r *activityLogRepository) GetActivityCountByProvince(startDate, endDate *s
 	return data, nil
 }
 
+// GetActivityCountByLokasi mengelompokkan aktivitas per location_name; batas hasil TopLokasiLimit; urut count menurun.
 func (r *activityLogRepository) GetActivityCountByLokasi(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Lokasi string
@@ -365,14 +367,13 @@ func (r *activityLogRepository) GetActivityCountByLokasi(startDate, endDate *str
 	return data, nil
 }
 
-// GetActivityCountBySatkerProvince aggregates activity count by province from ref_locations
+// GetActivityCountBySatkerProvince mengagregasi aktivitas per provinsi (dari ref_locations); normalisasi nama provinsi (DKI→DKI JAKARTA, DAERAH ISTIMEWA YOGYAKARTA→DI YOGYAKARTA); exclude provinsi generik (UNKNOWN, KALIMANTAN, dll.). Raw SQL dengan subquery.
 func (r *activityLogRepository) GetActivityCountBySatkerProvince(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Province string
 		Count    int64
 	}
 
-	// Build WHERE conditions for subquery
 	var conditions []string
 	var args []interface{}
 
@@ -408,7 +409,6 @@ func (r *activityLogRepository) GetActivityCountBySatkerProvince(startDate, endD
 	}
 	whereClause += "l.province != '' AND l.province IS NOT NULL AND UPPER(l.province) NOT IN ('UNKNOWN', 'KALIMANTAN', 'SULAWESI', 'PAPUA', 'JAWA', 'KEPULAUAN')"
 
-	// Use subquery to normalize first, then aggregate
 	sqlQuery := `
 		SELECT normalized_province as province, SUM(cnt) as count
 		FROM (
@@ -446,6 +446,7 @@ func (r *activityLogRepository) GetActivityCountBySatkerProvince(startDate, endD
 	return data, nil
 }
 
+// GetActivityCountBySatker mengembalikan jumlah aktivitas per satker (satker_name) dengan paginasi; field rank = offset + urutan dalam halaman.
 func (r *activityLogRepository) GetActivityCountBySatker(page, pageSize int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Satker string
@@ -483,6 +484,7 @@ func (r *activityLogRepository) GetActivityCountBySatker(page, pageSize int, sta
 	return data, nil
 }
 
+// GetBusiestHour mengembalikan jam (0–23) dengan jumlah aktivitas terbanyak dan jumlahnya; LIMIT 1 setelah ORDER count DESC.
 func (r *activityLogRepository) GetBusiestHour(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int, int64, error) {
 	type Result struct {
 		Hour  int
@@ -508,6 +510,7 @@ func (r *activityLogRepository) GetBusiestHour(startDate, endDate *string, clust
 	return result.Hour, result.Count, nil
 }
 
+// GetAccessSuccessRateByDate mengembalikan per tanggal: jumlah login sukses (LOGIN + scope success/NULL), jumlah logout error (LOGOUT + scope error), dan success_rate (persen). Urut tanggal naik.
 func (r *activityLogRepository) GetAccessSuccessRateByDate(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Date    string
@@ -553,21 +556,20 @@ func (r *activityLogRepository) GetAccessSuccessRateByDate(startDate, endDate *s
 	return data, nil
 }
 
+// GetUniqueUsersCount menghitung jumlah user_id unik (DISTINCT user_id) setelah filter tanggal, cluster, eselon/satkerIds.
 func (r *activityLogRepository) GetUniqueUsersCount(startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) (int64, error) {
 	var count int64
 	query := r.db.Model(&entity.ActivityLog{})
 	query = r.applyDateFilter(query, startDate, endDate)
 	query = r.applyClusterFilter(query, cluster)
 	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
-	// Count distinct by user_id
 	err := query.
 		Distinct("user_id").
 		Count(&count).Error
 	return count, err
 }
 
-// GetUniqueClusters returns list of unique cluster values (excluding null/empty)
-// Returns clusters with lowercase formatting for consistency
+// GetUniqueClusters mengembalikan daftar nama cluster unik dari ref_clusters (nama tidak null dan tidak kosong), urut nama naik.
 func (r *activityLogRepository) GetUniqueClusters() ([]string, error) {
 	var clusters []string
 	err := r.db.Table("ref_clusters").
@@ -578,7 +580,7 @@ func (r *activityLogRepository) GetUniqueClusters() ([]string, error) {
 	return clusters, err
 }
 
-// GetTopContributors returns top N users by activity count with their satker
+// GetTopContributors mengembalikan top N user (nama + satker) dengan jumlah aktivitas terbanyak; rank dari ROW_NUMBER(), group by nama dan satker_name.
 func (r *activityLogRepository) GetTopContributors(limit int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Rank     int
@@ -619,7 +621,7 @@ func (r *activityLogRepository) GetTopContributors(limit int, startDate, endDate
 	return data, nil
 }
 
-// GetLogoutErrors returns top N users with logout errors, sorted by latest error time
+// GetLogoutErrors mengembalikan top N user dengan error logout terbanyak (at.name = LOGOUT, scope ILIKE '%error%'); urut berdasarkan waktu error terbaru (latest_error DESC).
 func (r *activityLogRepository) GetLogoutErrors(limit int, startDate, endDate *string, cluster *string, eselon *string, satkerIds []int64) ([]map[string]interface{}, error) {
 	type Result struct {
 		Nama        string
@@ -636,7 +638,6 @@ func (r *activityLogRepository) GetLogoutErrors(limit int, startDate, endDate *s
 	query = r.applyClusterFilter(query, cluster)
 	query = r.applyEselonOrSatkerIdsFilter(query, eselon, satkerIds)
 
-	// Filter: aktifitas = LOGOUT AND scope = error
 	err := query.
 		Select("u.nama, COUNT(*) as error_count, MAX(tanggal) as latest_error").
 		Where("at.name = ? AND scope ILIKE ?", "LOGOUT", "%error%").

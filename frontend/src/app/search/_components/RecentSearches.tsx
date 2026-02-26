@@ -1,8 +1,19 @@
+/**
+ * RecentSearches.tsx
+ *
+ * Blok "Pencarian Terakhir": daftar pencarian yang disimpan di localStorage
+ * (key: monika-recent-searches). Tiap item menampilkan query + badge filter (cluster,
+ * status, dateRange). Klik item → onSearchClick(query); tombol hapus per item dan
+ * "Hapus Semua". Jika kosong, komponen return null. Fungsi saveRecentSearch diekspor
+ * untuk dipanggil saat user melakukan pencarian.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 
+/** Satu entri pencarian: query, timestamp, dan filter opsional (cluster, status, dateRange). */
 interface RecentSearch {
   query: string;
   timestamp: number;
@@ -18,14 +29,17 @@ interface RecentSearchesProps {
   maxItems?: number;
 }
 
+/**
+ * Render daftar pencarian terakhir (max maxItems); kosong → return null.
+ */
 export default function RecentSearches({
   onSearchClick,
   maxItems = 5,
 }: RecentSearchesProps) {
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
 
+  /** Muat dari localStorage saat mount / maxItems berubah; simpan max maxItems item. */
   useEffect(() => {
-    // Load from localStorage
     const stored = localStorage.getItem("monika-recent-searches");
     if (stored) {
       try {
@@ -37,12 +51,14 @@ export default function RecentSearches({
     }
   }, [maxItems]);
 
+  /** Hapus satu item di index: update state dan tulis ulang ke localStorage. */
   const handleRemove = (index: number) => {
     const updated = recentSearches.filter((_, i) => i !== index);
     setRecentSearches(updated);
     localStorage.setItem("monika-recent-searches", JSON.stringify(updated));
   };
 
+  /** Hapus semua: kosongkan state dan hapus key dari localStorage. */
   const handleClearAll = () => {
     setRecentSearches([]);
     localStorage.removeItem("monika-recent-searches");
@@ -69,6 +85,7 @@ export default function RecentSearches({
         </button>
       </div>
 
+      {/* Tiap item: klik → onSearchClick(search.query); tombol X → hapus item (stopPropagation) */}
       <div className="space-y-2">
         {recentSearches.map((search, index) => (
           <div
@@ -122,7 +139,9 @@ export default function RecentSearches({
   );
 }
 
-// Utility function to save search to localStorage
+/**
+ * Simpan pencarian ke localStorage: buang query kosong; hapus duplikat; tambah di depan; max 10.
+ */
 export function saveRecentSearch(
   query: string,
   filters?: {
@@ -144,17 +163,14 @@ export function saveRecentSearch(
     }
   }
 
-  // Remove duplicate queries
   recentSearches = recentSearches.filter((s) => s.query !== query);
 
-  // Add new search at the beginning
   recentSearches.unshift({
     query,
     timestamp: Date.now(),
     filters,
   });
 
-  // Keep only last 10 searches
   recentSearches = recentSearches.slice(0, 10);
 
   localStorage.setItem(

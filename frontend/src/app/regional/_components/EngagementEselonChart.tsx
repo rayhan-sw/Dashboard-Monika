@@ -1,6 +1,21 @@
+/**
+ * EngagementEselonChart.tsx
+ *
+ * EngagementEselonChart.tsx
+ *
+ * Chart batang (Recharts) keterlibatan per Eselon: Pengguna Unik vs Total Aktivitas.
+ * Dua mode: (1) Semua Eselon — sumbu X = Eselon I (dari eselonRoots), getStats per root.
+ * (2) Satu Eselon I dipilih — sumbu X = anak Eselon II (getChildrenOfRoot), getStats per anak.
+ * Jika Eselon II > 15: tampil top 15 dulu, tombol "Tampilkan semua" untuk scroll horizontal.
+ * Header includes `FilterBadge` aligned right; header uses `flex justify-between items-start`
+ * to keep the title left-aligned while showing active filters on the right.
+ * Rata-rata Pengguna Unik dan Total Aktivitas ditampilkan sebagai ReferenceLine dan footer.
+ */
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import FilterBadge from "@/components/ui/FilterBadge";
 import {
   BarChart,
   Bar,
@@ -12,9 +27,13 @@ import {
   Legend,
   ReferenceLine,
 } from "recharts";
-import { dashboardService, regionalService, type SatkerRoot } from "@/services/api";
+import {
+  dashboardService,
+  regionalService,
+  type SatkerRoot,
+} from "@/services/api";
 
-// Desain: batang berkelompok biru (Pengguna Unik) + oranye (Total Aktivitas)
+/** Warna chart: biru Pengguna Unik, oranye Total Aktivitas, plus card/grid/text */
 const COLORS = {
   uniqueUser: "#3B83F1",
   totalAktivitas: "#FE9A00",
@@ -40,18 +59,24 @@ interface EngagementEselonChartProps {
   selectedCluster: string;
   selectedEselonRootId: number | null;
   eselonRoots: SatkerRoot[];
+  selectedEselonName?: string;
 }
 
+/** Potong label panjang untuk sumbu X; lebih dari maxLen diganti dengan … */
 function shortenLabel(label: string, maxLen = 14): string {
   if (!label || label.length <= maxLen) return label;
   return label.slice(0, maxLen).trim() + "…";
 }
 
+/**
+ * Chart keterlibatan per Eselon I atau Eselon II; fetchData tergantung selectedEselonRootId (null = semua Eselon I, isi = anak Eselon II).
+ */
 export default function EngagementEselonChart({
   dateRange,
   selectedCluster,
   selectedEselonRootId,
   eselonRoots,
+  selectedEselonName,
 }: EngagementEselonChartProps) {
   const [data, setData] = useState<EngagementChartData>({
     labels: [],
@@ -62,9 +87,7 @@ export default function EngagementEselonChart({
   const [subtitle, setSubtitle] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  /** True when filter = satu Eselon I and that root has no Eselon II children */
   const [noEselonIIChildren, setNoEselonIIChildren] = useState(false);
-  /** When Eselon II > 15, false = show top 15 only; true = show all with horizontal scroll */
   const [showAllEselonII, setShowAllEselonII] = useState(false);
 
   const clusterParam =
@@ -79,7 +102,6 @@ export default function EngagementEselonChart({
     setLoading(true);
     try {
       if (selectedEselonRootId == null) {
-        // Mode Semua Eselon: sumbu X = Eselon I dari eselonRoots
         if (!eselonRoots.length) {
           setData({
             labels: [],
@@ -108,14 +130,12 @@ export default function EngagementEselonChart({
         setTitle("Keterlibatan per Eselon I");
         setSubtitle("Pengguna Unik vs Total Aktivitas per unit Eselon I");
       } else {
-        // Mode satu Eselon I: sumbu X = Eselon II (anak langsung)
         const selectedRoot = eselonRoots.find(
           (r) => r.id === selectedEselonRootId,
         );
         const rootName = selectedRoot?.satker_name ?? "Unit";
-        const childrenRes = await regionalService.getChildrenOfRoot(
-          selectedEselonRootId,
-        );
+        const childrenRes =
+          await regionalService.getChildrenOfRoot(selectedEselonRootId);
         const children = childrenRes.children ?? [];
         if (children.length === 0) {
           setNoEselonIIChildren(true);
@@ -125,9 +145,7 @@ export default function EngagementEselonChart({
             totalActivities: [],
           });
           setTitle(`Keterlibatan dalam ${rootName}`);
-          setSubtitle(
-            "Pengguna Unik vs Total Aktivitas per unit Eselon II",
-          );
+          setSubtitle("Pengguna Unik vs Total Aktivitas per unit Eselon II");
           return;
         }
         const results = await Promise.all(
@@ -146,9 +164,7 @@ export default function EngagementEselonChart({
           totalActivities: results.map((r) => r.total_activities ?? 0),
         });
         setTitle(`Keterlibatan dalam ${rootName}`);
-        setSubtitle(
-          "Pengguna Unik vs Total Aktivitas per unit Eselon II",
-        );
+        setSubtitle("Pengguna Unik vs Total Aktivitas per unit Eselon II");
       }
     } catch (err) {
       const message =
@@ -164,18 +180,13 @@ export default function EngagementEselonChart({
     } finally {
       setLoading(false);
     }
-  }, [
-    startDate,
-    endDate,
-    clusterParam,
-    selectedEselonRootId,
-    eselonRoots,
-  ]);
+  }, [startDate, endDate, clusterParam, selectedEselonRootId, eselonRoots]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  /** Baris untuk Recharts: name (singkat), fullName (tooltip), uniqueUsers, totalActivities, ratio aktivitas/user */
   const chartRows =
     data.labels?.map((label, i) => ({
       name: shortenLabel(label),
@@ -184,15 +195,19 @@ export default function EngagementEselonChart({
       totalActivities: data.totalActivities?.[i] ?? 0,
       ratio:
         (data.uniqueUsers?.[i] ?? 0) > 0
-          ? ((data.totalActivities?.[i] ?? 0) / (data.uniqueUsers?.[i] ?? 1)).toFixed(1)
+          ? (
+              (data.totalActivities?.[i] ?? 0) / (data.uniqueUsers?.[i] ?? 1)
+            ).toFixed(1)
           : "0",
     })) ?? [];
 
   const isEselonIIMode = selectedEselonRootId != null;
+  // Mode Eselon II: urutkan menurut totalActivities descending; mode Semua Eselon: urutan asli
   const sortedRows = isEselonIIMode
     ? [...chartRows].sort((a, b) => b.totalActivities - a.totalActivities)
     : chartRows;
   const ESELON_II_TOP_LIMIT = 15;
+  // Tampilkan hanya 15 teratas jika mode Eselon II, ada >15 baris, dan user belum klik "Tampilkan semua"
   const showTop15Only =
     isEselonIIMode &&
     sortedRows.length > ESELON_II_TOP_LIMIT &&
@@ -201,13 +216,15 @@ export default function EngagementEselonChart({
     ? sortedRows.slice(0, ESELON_II_TOP_LIMIT)
     : sortedRows;
 
+  // Rata-rata untuk ReferenceLine (sumbu kiri = uniqueUsers, kanan = totalActivities)
   const avgUniqueUsers =
     displayRows.length > 0
       ? displayRows.reduce((s, r) => s + r.uniqueUsers, 0) / displayRows.length
       : 0;
   const avgTotalActivities =
     displayRows.length > 0
-      ? displayRows.reduce((s, r) => s + r.totalActivities, 0) / displayRows.length
+      ? displayRows.reduce((s, r) => s + r.totalActivities, 0) /
+        displayRows.length
       : 0;
 
   if (error) {
@@ -221,7 +238,10 @@ export default function EngagementEselonChart({
           boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
         }}
       >
-        <p className="text-sm text-center" style={{ color: COLORS.textSecondary }}>
+        <p
+          className="text-sm text-center"
+          style={{ color: COLORS.textSecondary }}
+        >
           {error}
         </p>
         <button
@@ -286,50 +306,58 @@ export default function EngagementEselonChart({
         boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
       }}
     >
-      <div className="mb-2">
-        <h3
-          className="text-lg font-semibold"
-          style={{ color: COLORS.textPrimary }}
-        >
-          {title}
-        </h3>
-        {subtitle && (
-          <p
-            className="text-sm mt-0.5"
-            style={{ color: COLORS.textSecondary }}
+      <div className="mb-2 flex items-start justify-between">
+        <div>
+          <h3
+            className="text-lg font-semibold"
+            style={{ color: COLORS.textPrimary }}
           >
-            {subtitle}
-          </p>
-        )}
-        {showTop15Only && (
-          <div className="flex items-center gap-3 mt-2 flex-wrap">
+            {title}
+          </h3>
+          {subtitle && (
             <p
-              className="text-sm"
+              className="text-sm mt-0.5"
               style={{ color: COLORS.textSecondary }}
             >
-              Menampilkan 15 unit Eselon II teratas
+              {subtitle}
             </p>
-            <button
-              type="button"
-              onClick={() => setShowAllEselonII(true)}
-              className="px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors hover:opacity-90"
-              style={{
-                borderColor: COLORS.gridBorder,
-                color: COLORS.textPrimary,
-              }}
-            >
-              Tampilkan semua
-            </button>
-          </div>
-        )}
+          )}
+          {/* Jika hanya tampil 15 teratas: teks info + tombol "Tampilkan semua" */}
+          {showTop15Only && (
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
+              <p className="text-sm" style={{ color: COLORS.textSecondary }}>
+                Menampilkan 15 unit Eselon II teratas
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowAllEselonII(true)}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors hover:opacity-90"
+                style={{
+                  borderColor: COLORS.gridBorder,
+                  color: COLORS.textPrimary,
+                }}
+              >
+                Tampilkan semua
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="flex items-start">
+          <FilterBadge
+            dateRange={
+              dateRange
+                ? `${new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(new Date(dateRange.startDate))} – ${new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(dateRange.endDate))}`
+                : undefined
+            }
+            cluster={selectedCluster}
+            eselon={selectedEselonName}
+          />
+        </div>
       </div>
+      {/* Jika > 15 baris: container scroll horizontal, lebar min = 52px per bar */}
       <div
         className={displayRows.length > 15 ? "overflow-x-auto" : ""}
-        style={
-          displayRows.length > 15
-            ? { minHeight: 340 }
-            : undefined
-        }
+        style={displayRows.length > 15 ? { minHeight: 340 } : undefined}
       >
         <div
           style={
@@ -361,7 +389,8 @@ export default function EngagementEselonChart({
                 interval={0}
                 tick={(props) => {
                   const { x, y, payload, index } = props;
-                  const fullName = displayRows[index]?.fullName ?? payload?.value ?? "";
+                  const fullName =
+                    displayRows[index]?.fullName ?? payload?.value ?? "";
                   return (
                     <g transform={`translate(${x},${y})`}>
                       <title>{fullName}</title>
@@ -432,19 +461,28 @@ export default function EngagementEselonChart({
                       >
                         {p.fullName}
                       </p>
-                      <p className="text-xs" style={{ color: COLORS.textSecondary }}>
+                      <p
+                        className="text-xs"
+                        style={{ color: COLORS.textSecondary }}
+                      >
                         Pengguna Unik:{" "}
                         <span style={{ color: COLORS.textPrimary }}>
                           {p.uniqueUsers.toLocaleString()}
                         </span>
                       </p>
-                      <p className="text-xs" style={{ color: COLORS.textSecondary }}>
+                      <p
+                        className="text-xs"
+                        style={{ color: COLORS.textSecondary }}
+                      >
                         Total Aktivitas:{" "}
                         <span style={{ color: COLORS.textPrimary }}>
                           {p.totalActivities.toLocaleString()}
                         </span>
                       </p>
-                      <p className="text-xs mt-0.5" style={{ color: COLORS.textSecondary }}>
+                      <p
+                        className="text-xs mt-0.5"
+                        style={{ color: COLORS.textSecondary }}
+                      >
                         Rasio aktivitas/user:{" "}
                         <span style={{ color: COLORS.textPrimary }}>
                           {p.ratio}
@@ -461,6 +499,7 @@ export default function EngagementEselonChart({
                   <span style={{ color: COLORS.textPrimary }}>{value}</span>
                 )}
               />
+              {/* Garis rata-rata (dash) untuk Pengguna Unik (kiri) dan Total Aktivitas (kanan) */}
               <ReferenceLine
                 yAxisId="left"
                 y={avgUniqueUsers}
@@ -493,17 +532,22 @@ export default function EngagementEselonChart({
           </ResponsiveContainer>
         </div>
       </div>
+      {/* Footer: tampilkan rata-rata Pengguna Unik dan Total Aktivitas (sesuai data yang ditampilkan) */}
       <div
         className="flex flex-wrap items-center justify-center gap-6 pt-3 mt-1 border-t"
         style={{ borderColor: COLORS.gridBorder }}
       >
         <span className="text-sm" style={{ color: COLORS.uniqueUser }}>
           Rata-rata Pengguna Unik:{" "}
-          {avgUniqueUsers % 1 === 0 ? avgUniqueUsers.toLocaleString("id-ID") : avgUniqueUsers.toFixed(2)}
+          {avgUniqueUsers % 1 === 0
+            ? avgUniqueUsers.toLocaleString("id-ID")
+            : avgUniqueUsers.toFixed(2)}
         </span>
         <span className="text-sm" style={{ color: COLORS.totalAktivitas }}>
           Rata-rata Total Aktivitas:{" "}
-          {avgTotalActivities % 1 === 0 ? avgTotalActivities.toLocaleString("id-ID") : avgTotalActivities.toFixed(2)}
+          {avgTotalActivities % 1 === 0
+            ? avgTotalActivities.toLocaleString("id-ID")
+            : avgTotalActivities.toFixed(2)}
         </span>
       </div>
     </div>

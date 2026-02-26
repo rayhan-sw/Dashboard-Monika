@@ -1,9 +1,19 @@
+/**
+ * BPKTreeView.tsx
+ *
+ * Tree view satuan kerja BPK: data dari getSatkerList, dibangun jadi pohon (root = tanpa parent).
+ * Fitur: cari nama, expand/collapse, pilih node (cekbox) + pilih semua/hapus, urutan Eselon I
+ * sesuai organogram (Inspektorat → Sekretariat → Ditjen PKN I–VIII → Investigasi → Badan → Perwakilan).
+ * Saat cari: hanya tampil node yang cocok + semua ancestor; otomatis expand.
+ */
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { metadataService } from "@/services/api";
 
+/** Satu unit dari API: id, nama, level eselon, parent_id. */
 interface SatkerUnit {
   id: number;
   satker_name: string;
@@ -11,6 +21,7 @@ interface SatkerUnit {
   parent_id: number | null;
 }
 
+/** Node pohon: SatkerUnit + children (rekursif). */
 interface TreeNode extends SatkerUnit {
   children: TreeNode[];
 }
@@ -21,6 +32,9 @@ interface BPKTreeViewProps {
   maxHeight?: string;
 }
 
+/**
+ * Render: loading → spinner; data kosong → pesan + Coba lagi; else search + tombol aksi + tree + footer.
+ */
 export default function BPKTreeView({
   selectedIds,
   onSelectionChange,
@@ -36,12 +50,14 @@ export default function BPKTreeView({
     loadData();
   }, []);
 
+  /** Setiap allData/expandedNodes/searchQuery berubah, bangun ulang pohon (rootNodes). */
   useEffect(() => {
     if (allData.length > 0) {
       buildTree();
     }
   }, [allData, expandedNodes, searchQuery]);
 
+  /** Ambil daftar satker dari API, simpan ke allData. */
   const loadData = async () => {
     setLoading(true);
     try {
@@ -66,6 +82,7 @@ export default function BPKTreeView({
     }
   };
 
+  /** Kumpulkan id semua ancestor node (parent, grandparent, ...) sampai root. */
   const getAncestorIds = (nodeId: number): Set<number> => {
     const ids = new Set<number>();
     const item = allData.find((d) => d.id === nodeId);
@@ -76,6 +93,7 @@ export default function BPKTreeView({
     return ids;
   };
 
+  /** Bangun pohon: tanpa search pakai allData; dengan search pakai node cocok + ancestor, auto-expand. */
   const buildTree = () => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -83,7 +101,6 @@ export default function BPKTreeView({
     let expandWhenSearch = false;
 
     if (query) {
-      // Cari di SEMUA 731 unit (bukan cuma root)
       const matchingItems = allData.filter((item) =>
         item.satker_name.toLowerCase().includes(query)
       );
@@ -93,7 +110,7 @@ export default function BPKTreeView({
         return;
       }
 
-      // Sertakan semua ancestor agar path ke root tampil (Eselon I → II → III → IV)
+      /** Gabung node yang cocok + semua ancestor agar path ke root terlihat. */
       const visibleIds = new Set<number>();
       matchingItems.forEach((item) => {
         visibleIds.add(item.id);
@@ -102,11 +119,11 @@ export default function BPKTreeView({
 
       dataToShow = allData.filter((item) => visibleIds.has(item.id));
       expandWhenSearch = true;
+      /** Saat search, expand semua node yang tampil. */
     } else {
       dataToShow = allData;
     }
 
-    /** Urutan organogram untuk root Eselon I (sama dengan filter Eselon): Inspektorat → Sekretariat → Ditjen PKN I..VIII → Ditjen Investigasi → Badan → BPK Perwakilan. */
     const getEselonIRootOrder = (name: string): number => {
       const n = (name || "").trim();
       if (/^Inspektorat/i.test(n)) return 1;
@@ -124,23 +141,25 @@ export default function BPKTreeView({
       if (/^BPK Perwakilan/i.test(n)) return 30;
       return 15;
     };
+    /** Urutan root Eselon I: Inspektorat → Sekretariat → Ditjen PKN I..VIII → Investigasi → Badan → Perwakilan. */
 
-    // Urutkan by eselon dulu (I, II, III, IV) lalu by nama, agar level hierarki konsisten
     const eselonOrder = (a: SatkerUnit, b: SatkerUnit) => {
       const depthA = a.eselon_level?.toLowerCase().includes("iv") ? 4 : a.eselon_level?.toLowerCase().includes("iii") ? 3 : a.eselon_level?.toLowerCase().includes("ii") ? 2 : 1;
       const depthB = b.eselon_level?.toLowerCase().includes("iv") ? 4 : b.eselon_level?.toLowerCase().includes("iii") ? 3 : b.eselon_level?.toLowerCase().includes("ii") ? 2 : 1;
       if (depthA !== depthB) return depthA - depthB;
       return a.satker_name.localeCompare(b.satker_name);
     };
+    /** Urutan anak: eselon I→II→III→IV lalu nama. */
 
-    /** Urutan root Eselon I sesuai organogram, lalu nama. */
     const rootOrder = (a: SatkerUnit, b: SatkerUnit) => {
       const orderA = getEselonIRootOrder(a.satker_name);
       const orderB = getEselonIRootOrder(b.satker_name);
       if (orderA !== orderB) return orderA - orderB;
       return a.satker_name.localeCompare(b.satker_name);
     };
+    /** Urutan root: getEselonIRootOrder lalu nama. */
 
+    /** Anak dari parentId: filter dataToShow, rekursif buildChildren jika expand/search, urut eselonOrder. */
     const buildChildren = (parentId: number): TreeNode[] => {
       const children = dataToShow
         .filter((item) => item.parent_id === parentId)
@@ -164,6 +183,7 @@ export default function BPKTreeView({
     setRootNodes(roots);
   };
 
+  /** Apakah node punya anak (ada item di allData yang parent_id = nodeId). */
   const hasChildren = (nodeId: number): boolean => {
     return allData.some((item) => item.parent_id === nodeId);
   };
@@ -177,6 +197,7 @@ export default function BPKTreeView({
     }
     setExpandedNodes(newExpanded);
   };
+  /** Toggle expand/collapse: tambah atau hapus nodeId dari expandedNodes. */
 
   const getAllDescendantIds = (parentId: number): number[] => {
     const ids: number[] = [];
@@ -189,6 +210,7 @@ export default function BPKTreeView({
     
     return ids;
   };
+  /** Daftar id semua keturunan (anak, cucu, ...) dari parentId. */
 
   const handleSelect = (nodeId: number, checked: boolean) => {
     const descendantIds = [nodeId, ...getAllDescendantIds(nodeId)];
@@ -206,11 +228,13 @@ export default function BPKTreeView({
 
     onSelectionChange(newSelection);
   };
+  /** Cekbox: checked = tambah node + semua keturunan ke selection; unchecked = hapus dari selection. */
 
   const expandAll = () => {
     const allIds = new Set(allData.filter(item => hasChildren(item.id)).map((item) => item.id));
     setExpandedNodes(allIds);
   };
+  /** Expand semua node yang punya anak. */
 
   const collapseAll = () => {
     setExpandedNodes(new Set());
@@ -224,6 +248,7 @@ export default function BPKTreeView({
     onSelectionChange([]);
   };
 
+  /** Ikon per level eselon: I = gedung, II = sitemap, III = group, IV = person. */
   const getEselonIcon = (eselon: string, hasChild: boolean) => {
     const level = eselon.toLowerCase();
     
@@ -239,6 +264,7 @@ export default function BPKTreeView({
     return "mdi:circle-small";
   };
 
+  /** Warna badge per eselon: I ungu, II biru, III hijau, IV abu. */
   const getEselonColor = (eselon: string) => {
     const level = eselon.toLowerCase();
     if (level.includes("i") && !level.includes("ii") && !level.includes("iii") && !level.includes("iv")) {
@@ -253,7 +279,7 @@ export default function BPKTreeView({
     return "text-[#6B7280] bg-[#F3F4F6]";
   };
 
-  /** Depth by eselon: I=0, II=1, III=2, IV=3. Used for extra indent so Eselon IV lebih menjorok dari III. */
+  /** Kedalaman indent tambahan: I=0, II=1, III=2, IV=3 (Eselon IV lebih menjorok). */
   const getEselonDepth = (eselon: string): number => {
     const level = (eselon || "").toLowerCase();
     if (level.includes("iv")) return 3;
@@ -263,6 +289,7 @@ export default function BPKTreeView({
     return 0;
   };
 
+  /** Satu baris node: tombol expand, cekbox, ikon eselon, nama, badge eselon; anak di-render jika expanded. */
   const renderNode = (node: TreeNode, level: number = 0) => {
     const nodeHasChildren = hasChildren(node.id);
     const isExpanded = expandedNodes.has(node.id);
@@ -270,7 +297,6 @@ export default function BPKTreeView({
 
     return (
       <div key={node.id}>
-        {/* Node Row */}
         <div
           className={`
             flex items-center gap-2 px-3 py-2 min-w-0
@@ -284,7 +310,6 @@ export default function BPKTreeView({
             paddingLeft: `${level * 28 + getEselonDepth(node.eselon_level) * 14 + 12}px`,
           }}
         >
-          {/* Expand/Collapse Button */}
           {nodeHasChildren ? (
             <button
               onClick={() => toggleExpand(node.id)}
@@ -302,7 +327,6 @@ export default function BPKTreeView({
             <div className="w-6" />
           )}
 
-          {/* Checkbox */}
           <input
             type="checkbox"
             checked={isSelected}
@@ -314,7 +338,6 @@ export default function BPKTreeView({
             "
           />
 
-          {/* Eselon Icon */}
           <Icon
             icon={getEselonIcon(node.eselon_level, nodeHasChildren)}
             className={`w-5 h-5 flex-shrink-0 ${
@@ -322,7 +345,6 @@ export default function BPKTreeView({
             }`}
           />
 
-          {/* Name - min-w agar tidak terpotong vertikal; wrap normal supaya terbaca */}
           <span
             className={`
               text-sm flex-1 min-w-[120px] break-words whitespace-normal
@@ -333,7 +355,6 @@ export default function BPKTreeView({
             {node.satker_name}
           </span>
 
-          {/* Eselon Badge */}
           <span
             className={`
               text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0
@@ -344,7 +365,6 @@ export default function BPKTreeView({
           </span>
         </div>
 
-        {/* Children - Render ONLY if expanded */}
         {nodeHasChildren && isExpanded && node.children.length > 0 && (
           <div>
             {node.children.map((child) => renderNode(child, level + 1))}
@@ -357,6 +377,7 @@ export default function BPKTreeView({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
+        {/* Spinner + teks "Memuat struktur organisasi..." */}
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
             <div className="w-12 h-12 border-4 border-orange-100 rounded-full"></div>
@@ -371,6 +392,7 @@ export default function BPKTreeView({
   if (allData.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+        {/* Gagal memuat: ikon alert + tombol Coba lagi */}
         <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-3">
           <Icon icon="mdi:alert-circle-outline" className="w-8 h-8 text-[#E67E22]" />
         </div>
@@ -387,7 +409,6 @@ export default function BPKTreeView({
 
   return (
     <div className="space-y-3">
-      {/* Search Input */}
       <div className="relative">
         <div className="absolute left-3 top-1/2 -translate-y-1/2">
           <Icon icon="mdi:magnify" className="w-5 h-5 text-gray-400" />
@@ -415,7 +436,6 @@ export default function BPKTreeView({
         )}
       </div>
 
-      {/* Action Buttons - More compact */}
       <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={expandAll}
@@ -446,7 +466,6 @@ export default function BPKTreeView({
         </button>
       </div>
 
-      {/* Selection Info - Compact */}
       {selectedIds.length > 0 && (
         <div className="bg-[#FFF5E6] border-l-4 border-[#E67E22] rounded-lg px-3 py-2 flex items-center gap-2">
           <Icon icon="mdi:check-circle" className="w-4 h-4 text-[#E67E22]" />
@@ -456,7 +475,6 @@ export default function BPKTreeView({
         </div>
       )}
 
-      {/* Tree View - min-width agar teks tidak terpotong/vertikal */}
       <div
         className="border-2 border-[#E67E22] rounded-xl overflow-hidden bg-white min-w-[280px]"
         style={{ maxHeight }}
@@ -479,7 +497,7 @@ export default function BPKTreeView({
         </div>
       </div>
 
-      {/* Info Footer - Clean */}
+      {/* Footer: jumlah unit (atau hasil search) + jumlah root Eselon I */}
       <div className="flex items-center justify-between text-xs text-gray-500 px-1">
         <div className="flex items-center gap-1">
           <Icon icon="mdi:database" className="w-3.5 h-3.5" />
