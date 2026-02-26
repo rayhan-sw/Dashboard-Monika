@@ -1,3 +1,6 @@
+// File search_repository.go: repository untuk pencarian aktivitas dan autocomplete.
+//
+// Search: pencarian aktivitas dengan filter (query teks, satker, satkerIds, cluster, status, activityTypes, tanggal), paginasi, preload relasi. GetSuggestions: saran dari user_profiles, ref_satker_units, ref_locations. SearchUsers / SearchSatker: cari user by nama/email, cari satker by nama.
 package repository
 
 import (
@@ -8,34 +11,38 @@ import (
 	"gorm.io/gorm"
 )
 
+// SearchRepository menyimpan koneksi DB untuk operasi pencarian.
 type SearchRepository struct {
 	db *gorm.DB
 }
 
+// NewSearchRepository membuat instance SearchRepository.
 func NewSearchRepository(db *gorm.DB) *SearchRepository {
 	return &SearchRepository{db: db}
 }
 
+// SearchParams parameter untuk Search: teks query, filter satker/cluster/status/jenis aktivitas/tanggal, paginasi.
 type SearchParams struct {
-	Query         string
-	Satker        string
-	SatkerIds     []int64
-	Cluster       string
-	Status        string
-	ActivityTypes []string
-	StartDate     time.Time
-	EndDate       time.Time
-	Page          int
-	PageSize      int
+	Query         string    // Teks pencarian (nama, satker, email, nama aktivitas)
+	Satker        string    // Filter nama satker (ILIKE)
+	SatkerIds     []int64   // Filter satker_id IN (...)
+	Cluster       string    // Filter nama cluster (exact)
+	Status        string    // Filter status aktivitas
+	ActivityTypes []string  // Filter at.name IN (...)
+	StartDate     time.Time // Filter tanggal >=
+	EndDate       time.Time // Filter tanggal <=
+	Page          int       // Halaman (1-based)
+	PageSize      int       // Jumlah per halaman
 }
 
+// Suggestion satu item saran autocomplete: type (user, satker, lokasi), value, label.
 type Suggestion struct {
-	Type  string `json:"type"`  // "user", "satker", or "recent"
+	Type  string `json:"type"`
 	Value string `json:"value"`
 	Label string `json:"label"`
 }
 
-// Search performs a comprehensive search across activity logs
+// Search menjalankan pencarian aktivitas dengan filter dan paginasi. Mengembalikan slice ActivityLog (dengan preload User, Satker, ActivityType, Cluster, Location), total count, dan error.
 func (r *SearchRepository) Search(params SearchParams) ([]entity.ActivityLog, int64, error) {
 	query := r.db.Model(&entity.ActivityLog{}).
 		Preload("User").
@@ -49,7 +56,7 @@ func (r *SearchRepository) Search(params SearchParams) ([]entity.ActivityLog, in
 		Joins("LEFT JOIN ref_clusters c ON c.id = activity_logs_normalized.cluster_id").
 		Joins("LEFT JOIN ref_locations l ON l.id = activity_logs_normalized.location_id")
 
-	// Query search (nama, satker, email, or activity)
+	// Filter teks: cari di nama user, nama satker, email, atau nama jenis aktivitas (ILIKE %query%).
 	if params.Query != "" {
 		likeQuery := "%" + params.Query + "%"
 		query = query.Where(
@@ -58,32 +65,26 @@ func (r *SearchRepository) Search(params SearchParams) ([]entity.ActivityLog, in
 		)
 	}
 
-	// Satker filter
 	if params.Satker != "" {
 		query = query.Where("s.satker_name ILIKE ?", "%"+params.Satker+"%")
 	}
 
-	// Satker IDs filter (for tree view multi-select)
 	if len(params.SatkerIds) > 0 {
 		query = query.Where("activity_logs_normalized.satker_id IN ?", params.SatkerIds)
 	}
 
-	// Cluster filter
 	if params.Cluster != "" {
 		query = query.Where("c.name = ?", params.Cluster)
 	}
 
-	// Status filter
 	if params.Status != "" {
 		query = query.Where("status = ?", params.Status)
 	}
 
-	// Activity types filter
 	if len(params.ActivityTypes) > 0 {
 		query = query.Where("at.name IN ?", params.ActivityTypes)
 	}
 
-	// Date range filter
 	if !params.StartDate.IsZero() {
 		query = query.Where("tanggal >= ?", params.StartDate)
 	}
@@ -91,13 +92,11 @@ func (r *SearchRepository) Search(params SearchParams) ([]entity.ActivityLog, in
 		query = query.Where("tanggal <= ?", params.EndDate)
 	}
 
-	// Count total results
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Get paginated results
 	var results []entity.ActivityLog
 	offset := (params.Page - 1) * params.PageSize
 	err := query.Order("tanggal DESC").
@@ -112,12 +111,11 @@ func (r *SearchRepository) Search(params SearchParams) ([]entity.ActivityLog, in
 	return results, total, nil
 }
 
-// GetSuggestions provides autocomplete suggestions
+// GetSuggestions mengembalikan saran autocomplete: dari user_profiles (nama, limit 5), ref_satker_units (satker_name, SuggestionLimit), ref_locations (location_name, SuggestionLimit). Setiap sumber ditambahkan ke slice dengan type user/satker/lokasi; lokasi kosong di-skip.
 func (r *SearchRepository) GetSuggestions(query string) ([]Suggestion, error) {
 	suggestions := []Suggestion{}
 	likeQuery := "%" + query + "%"
 
-	// Search users (nama) - using user_profiles table
 	var users []struct {
 		Nama string `gorm:"column:normalized_nama"`
 	}
@@ -139,7 +137,6 @@ func (r *SearchRepository) GetSuggestions(query string) ([]Suggestion, error) {
 		}
 	}
 
-	// Search satker - using ref_satker_units table
 	var satkers []string
 	err = r.db.Table("ref_satker_units").
 		Select("DISTINCT satker_name").
@@ -157,7 +154,6 @@ func (r *SearchRepository) GetSuggestions(query string) ([]Suggestion, error) {
 		}
 	}
 
-	// Search lokasi - using ref_locations table
 	var locations []string
 	err = r.db.Table("ref_locations").
 		Select("DISTINCT location_name").
@@ -180,7 +176,7 @@ func (r *SearchRepository) GetSuggestions(query string) ([]Suggestion, error) {
 	return suggestions, nil
 }
 
-// SearchUsers finds users by name or email
+// SearchUsers mencari user di user_profiles by nama atau email (ILIKE); join ref_satker_units untuk eselon_level. Mengembalikan slice map (nama, email, eselon), batas SearchResultLimit.
 func (r *SearchRepository) SearchUsers(query string) ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
 	likeQuery := "%" + query + "%"
@@ -211,7 +207,7 @@ func (r *SearchRepository) SearchUsers(query string) ([]map[string]interface{}, 
 	return results, nil
 }
 
-// SearchSatker finds satker by name
+// SearchSatker mencari satker di ref_satker_units by nama (satker_name ILIKE). Mengembalikan slice string nama satker unik, batas SearchResultLimit.
 func (r *SearchRepository) SearchSatker(query string) ([]string, error) {
 	var satkers []string
 	likeQuery := "%" + query + "%"

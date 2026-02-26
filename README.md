@@ -1,93 +1,84 @@
-# Dashboard Monitoring Monika
+# Dashboard BPK
 
-Dashboard monitoring aktivitas pengguna
+Dashboard internal untuk memantau aktivitas pengguna, metrik operasional, dan pengaturan akses laporan.
+
+![Next.js](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5.2-blue) ![Go](https://img.shields.io/badge/Go-1.21-lightblue) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)
+
+## Fitur Utama
+
+- Otentikasi JWT dan manajemen peran untuk pembatasan akses.
+- Halaman dashboard dan regional yang menampilkan peta, grafik, dan peringkat unit kerja.
+- Pencarian aktivitas dengan saran otomatis dan normalisasi input.
+- Generator laporan terintegrasi yang mengekspor data ke CSV/Excel/PDF.
+- Notifikasi dan alur permintaan akses laporan.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 14, TypeScript, Tailwind CSS, Zustand, Recharts, Leaflet |
-| Backend | Go 1.23+, Gin, GORM, PostgreSQL 15+ |
+| Layer     | Teknologi                            |
+| --------- | ------------------------------------ |
+| Frontend  | Next.js, TypeScript, Tailwind CSS    |
+| Backend   | Go (Gin), GORM                       |
+| Database  | PostgreSQL                           |
+| Utilities | Zustand, date-fns, Recharts, Leaflet |
 
-## Quick Start
+## Prasyarat
 
-### 1. Prerequisites
-- Node.js 18.17+
+- Node.js 18+
 - Go 1.21+
 - PostgreSQL 15+
 
-### 2. Database Setup
+## Cara Menjalankan
 
-```powershell
-# Buat database
-createdb -U postgres daring_bpk
+1. Clone repositori.
+2. Siapkan variabel lingkungan (lihat bagian "Environment variables").
+3. Pasang dependensi frontend:
 
-# Jalankan migrasi database
+```bash
+cd frontend
+npm install
+```
+
+4. Jalankan migrasi skema dari folder `backend`:
+
+```bash
 cd backend
 go run cmd/migrate/main.go
 ```
 
-**Agar isi data sama persis dengan tim:** lihat [SETUP_DATA.md](SETUP_DATA.md) (export/import dump data).
+5. Jalankan backend:
 
-### 3. Run Development
-
-```powershell
-# Option 1: Satu script untuk semua
-.\start-dev.ps1
-
-# Option 2: Manual (buka 2 terminal)
-# Terminal 1 - Backend
-cd backend && go run cmd/api/main.go
-
-# Terminal 2 - Frontend
-cd frontend && npm run dev
+```bash
+go run cmd/api/main.go
 ```
 
-### 4. Access
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
-- Health Check: http://localhost:8080/health
+6. Jalankan frontend:
 
-## Project Structure
-
-```
-Dashboard-BPK/
-├── frontend/                 # Next.js Application
-│   └── src/
-│       ├── app/              # Pages (dashboard, regional, search, dll)
-│       ├── components/       # UI Components
-│       ├── services/         # API Client
-│       └── stores/           # Zustand State
-│
-├── backend/                  # Go API Server (lihat backend/README.md untuk struktur lengkap)
-│   ├── cmd/api/              # Entry point API
-│   ├── cmd/import/           # Data import tool
-│   ├── cmd/migrate/          # Database migrations
-│   ├── internal/             # auth, dto, entity, handler, middleware, repository, response, server
-│   └── migrations/           # SQL Migrations
-│
-├── start-dev.ps1             # Start all servers
-└── stop-dev.ps1              # Stop all servers
+```bash
+cd frontend
+npm run dev
 ```
 
+7. Di Windows tersedia `start-dev.ps1` untuk menjalankan layanan bersama.
 
+## Environment variables (nama saja)
 
+- PORT
+- DB_HOST
+- DB_PORT
+- DB_USER
+- DB_PASSWORD
+- DB_NAME
+- DB_SSLMODE
+- JWT_SECRET
+- JWT_EXPIRY
+- ALLOWED_ORIGINS
+- NEXT_PUBLIC_API_URL
 
-## Common Commands
+## Struktur Folder
 
-```powershell
-# Start servers
-.\start-dev.ps1
-
-# Stop servers
-.\stop-dev.ps1
-
-# Build frontend production
-cd frontend && npm run build && npm start
-
-# Database reset
-psql -U postgres -c "DROP DATABASE daring_bpk;"
-psql -U postgres -c "CREATE DATABASE daring_bpk;"
-cd backend && go run cmd/migrate/main.go
-```
+- `frontend` — aplikasi Next.js dan komponen antarmuka.
+- `backend` — server API, handler, dan logika domain.
+- `migrations` — skrip SQL untuk perubahan skema.
+- `scripts` — utilitas untuk migrasi dan import/export data.
+- `pkg` / `internal` — pustaka internal backend.
 

@@ -1,3 +1,14 @@
+/**
+ * DashboardStats.tsx
+ *
+ * Komponen baris kartu statistik dashboard: 4 kartu (Total Pengguna, Login Berhasil, Total Aktivitas,
+ * Kesalahan Logout). Data dari dashboardService.getStats(startDate, endDate, cluster); filter dateRange
+ * dan selectedCluster dari useAppStore.
+ *
+ * State: loading (skeleton 4 placeholder), error (pesan error), stats (data API). Jika total_activities
+ * dan total_users keduanya 0, tampilkan banner kuning "Tidak ada data untuk filter yang dipilih".
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,6 +19,10 @@ import { formatNumber } from "@/lib/utils";
 import { useAppStore } from "@/stores/appStore";
 import type { DashboardStats as DashboardStatsType } from "@/types/api";
 
+/**
+ * Empat kartu statistik: load stats dari API (filter tanggal & cluster), tampilkan loading/error/data;
+ * jika data kosong (total_activities dan total_users = 0) tampilkan peringatan.
+ */
 export default function DashboardStats() {
   const dateRange = useAppStore((state) => state.dateRange);
   const selectedCluster = useAppStore((state) => state.selectedCluster);
@@ -19,6 +34,7 @@ export default function DashboardStats() {
     loadStats();
   }, [dateRange, selectedCluster]);
 
+  /** Ambil statistik dashboard dari API; set loading/error/stats. */
   const loadStats = async () => {
     setLoading(true);
     try {
@@ -30,6 +46,7 @@ export default function DashboardStats() {
       setStats(data);
       setError(null);
     } catch (err) {
+      // Tampilkan err.message ke user; fallback jika bukan instance Error
       console.error("DashboardStats - Error:", err);
       setError(err instanceof Error ? err.message : "Failed to load stats");
     } finally {
@@ -40,6 +57,7 @@ export default function DashboardStats() {
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Skeleton 4 kartu (placeholder animasi) */}
         {[...Array(4)].map((_, i) => (
           <div
             key={i}
@@ -53,6 +71,7 @@ export default function DashboardStats() {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-[13px] p-4 text-red-600">
+        {/* Pesan error dari catch (err.message atau fallback) */}
         <AlertCircle className="inline mr-2 h-5 w-5" />
         {error}
       </div>
@@ -61,7 +80,7 @@ export default function DashboardStats() {
 
   if (!stats) return null;
 
-  // Check if all stats are zero - might indicate no data for selected filters
+  /** Keduanya 0 = mungkin tidak ada data untuk filter yang dipilih; tampilkan peringatan */
   const hasNoData = stats.total_activities === 0 && stats.total_users === 0;
 
   return (
@@ -75,6 +94,7 @@ export default function DashboardStats() {
           </span>
         </div>
       )}
+      {/* Grid 4 kartu: 1 kolom mobile, 2 kolom md, 4 kolom lg */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Pengguna"

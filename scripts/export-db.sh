@@ -9,6 +9,12 @@ ENV_FILE="$REPO_ROOT/backend/.env"
 OUT_DIR="$REPO_ROOT/backend/seeds"
 OUT_FILE="$OUT_DIR/daring_bpk_data.dump"
 
+if ! command -v pg_dump >/dev/null 2>&1; then
+  echo "Error: pg_dump tidak ditemukan. Install PostgreSQL client tools atau tambahkan ke PATH."
+  echo "Lihat SETUP_DATA.md untuk opsi export manual."
+  exit 1
+fi
+
 if [ ! -f "$ENV_FILE" ]; then
   echo "Error: File tidak ditemukan: $ENV_FILE (buat dari backend/.env.example)"
   exit 1

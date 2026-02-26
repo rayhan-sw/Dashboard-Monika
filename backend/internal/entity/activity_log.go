@@ -1,3 +1,7 @@
+// Package entity mendefinisikan model domain dan struktur request/response yang dipetakan ke database.
+//
+// File activity_log.go berisi entitas terkait log aktivitas: ActivityLog (tabel ter-normalisasi) serta
+// entitas referensi UserProfile, SatkerUnit, ActivityType, Cluster, Location beserta nama tabelnya untuk GORM.
 package entity
 
 import (
@@ -6,7 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// ActivityLog represents the normalized activity log table
+// ActivityLog merepresentasikan satu baris log aktivitas yang ter-normalisasi (relasi ke user, satker, jenis aktivitas, cluster, lokasi).
+// IDTrans unik per transaksi; relasi di bawah untuk preload saat query (User, Satker, ActivityType, Cluster, Location).
 type ActivityLog struct {
 	ID              int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	IDTrans         uuid.UUID `gorm:"column:id_trans;type:uuid" json:"id_trans"`
@@ -21,7 +26,7 @@ type ActivityLog struct {
 	Tanggal         time.Time `gorm:"column:tanggal;type:timestamptz" json:"tanggal"`
 	CreatedAt       time.Time `gorm:"column:created_at;type:timestamptz;autoCreateTime" json:"created_at"`
 
-	// Relationships
+	// Relasi (di-preload saat query agar bisa dipakai di DTO).
 	User         UserProfile  `gorm:"foreignKey:UserID;references:ID" json:"user"`
 	Satker       SatkerUnit   `gorm:"foreignKey:SatkerID;references:ID" json:"satker"`
 	ActivityType ActivityType `gorm:"foreignKey:ActivityTypeID;references:ID" json:"activity_type"`
@@ -29,12 +34,13 @@ type ActivityLog struct {
 	Location     Location     `gorm:"foreignKey:LocationID;references:ID" json:"location"`
 }
 
-// TableName specifies the table name for GORM
+// TableName mengembalikan nama tabel GORM untuk ActivityLog.
 func (ActivityLog) TableName() string {
 	return "activity_logs_normalized"
 }
 
-// UserProfile represents user_profiles table
+// UserProfile merepresentasikan profil pengguna yang tercatat dari log aktivitas (nama, token, satker).
+// Dipakai untuk menampilkan siapa yang melakukan aktivitas; bisa punya atau tidak punya akun login (users).
 type UserProfile struct {
 	ID            int64      `gorm:"primaryKey;column:id;autoIncrement" json:"id"`
 	Nama          string     `gorm:"column:nama" json:"nama"`
@@ -48,11 +54,12 @@ type UserProfile struct {
 	UpdatedAt     time.Time  `gorm:"column:updated_at;type:timestamptz;autoUpdateTime" json:"updated_at"`
 }
 
+// TableName mengembalikan nama tabel GORM untuk UserProfile.
 func (UserProfile) TableName() string {
 	return "user_profiles"
 }
 
-// SatkerUnit represents ref_satker_units table
+// SatkerUnit merepresentasikan unit satuan kerja (referensi hierarki organisasi).
 type SatkerUnit struct {
 	ID          int64  `gorm:"primaryKey;column:id;autoIncrement" json:"id"`
 	SatkerName  string `gorm:"column:satker_name" json:"satker_name"`
@@ -60,11 +67,12 @@ type SatkerUnit struct {
 	ParentID    *int64 `gorm:"column:parent_id" json:"parent_id"`
 }
 
+// TableName mengembalikan nama tabel GORM untuk SatkerUnit.
 func (SatkerUnit) TableName() string {
 	return "ref_satker_units"
 }
 
-// ActivityType represents ref_activity_types table
+// ActivityType merepresentasikan jenis aktivitas (referensi: nama, kategori, deskripsi).
 type ActivityType struct {
 	ID          int64  `gorm:"primaryKey" json:"id"`
 	Name        string `gorm:"column:name" json:"name"`
@@ -72,28 +80,31 @@ type ActivityType struct {
 	Description string `gorm:"column:description" json:"description"`
 }
 
+// TableName mengembalikan nama tabel GORM untuk ActivityType.
 func (ActivityType) TableName() string {
 	return "ref_activity_types"
 }
 
-// Cluster represents ref_clusters table
+// Cluster merepresentasikan cluster/pengelompokan (referensi).
 type Cluster struct {
 	ID          int64  `gorm:"primaryKey" json:"id"`
 	Name        string `gorm:"column:name" json:"name"`
 	Description string `gorm:"column:description" json:"description"`
 }
 
+// TableName mengembalikan nama tabel GORM untuk Cluster.
 func (Cluster) TableName() string {
 	return "ref_clusters"
 }
 
-// Location represents ref_locations table
+// Location merepresentasikan lokasi (referensi: nama lokasi, provinsi).
 type Location struct {
 	ID           int64  `gorm:"primaryKey" json:"id"`
 	LocationName string `gorm:"column:location_name" json:"location_name"`
 	Province     string `gorm:"column:province" json:"province"`
 }
 
+// TableName mengembalikan nama tabel GORM untuk Location.
 func (Location) TableName() string {
 	return "ref_locations"
 }

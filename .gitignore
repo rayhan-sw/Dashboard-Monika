@@ -91,7 +91,6 @@ database_backup.sql
 # Seed/dump data (bagikan via drive/link; jangan commit)
 backend/seeds/*.dump
 backend/seeds/*_data.sql
-backend/seeds/daring_bpk_data.dump
 
 # Temporary files
 *.tmp

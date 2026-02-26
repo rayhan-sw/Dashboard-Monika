@@ -1,3 +1,14 @@
+/**
+ * @file api.ts
+ * @description
+ * Modul layanan API untuk frontend Dashboard BPK. Menyediakan:
+ * - Konfigurasi base URL dan helper fetch dengan auth (token + X-User-ID).
+ * - Kelas ApiError untuk error dari backend (status + pesan).
+ * - Layanan per domain: dashboard, search, metadata, regional, content, reports,
+ *   notifications, profile, account, user, dan health check.
+ * Semua request memakai JSON; 401 akan clear auth dan redirect ke /auth/login.
+ */
+
 import type {
   DashboardStats,
   ActivityLog,
@@ -14,8 +25,13 @@ import type {
   ReportAccessRequest,
 } from "@/types/api";
 
+/** Base URL backend: dari env NEXT_PUBLIC_API_URL atau fallback localhost:8080 */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+/**
+ * Error khusus dari response API (bukan network error).
+ * Berguna untuk bedakan 4xx/5xx dari backend dengan kegagalan koneksi.
+ */
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -26,29 +42,40 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Hapus token dan data user dari localStorage lalu redirect ke halaman login.
+ * Hanya jalan di browser (window); di SSR tidak melakukan apa-apa.
+ */
 function clearAuthAndRedirectToLogin() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return; // SSR: skip
   localStorage.removeItem("token");
   localStorage.removeItem("user");
-  window.location.href = "/auth/login";
+  window.location.href = "/auth/login"; // paksa ke login
 }
 
+/**
+ * Helper fetch ke API: gabung base URL + endpoint, set header JSON + Authorization + X-User-ID.
+ * Jika response tidak ok: parse body error, jika 401 panggil clearAuthAndRedirectToLogin, lalu lempar ApiError.
+ * Jika bukan ApiError (mis. network error), lempar Error umum.
+ * @param endpoint - Path API (dimulai dengan /), digabung dengan API_BASE_URL
+ * @param options - Opsi fetch (method, body, headers tambahan, dll.)
+ * @returns Promise<T> hasil response.json()
+ */
 async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit,
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${API_BASE_URL}${endpoint}`; // URL lengkap backend
 
-  // Get token from localStorage
+  // Ambil token dari localStorage (hanya di client)
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  
-  // Get user info from localStorage
+  // Ambil data user untuk kirim user id ke backend
   const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
   let userId = null;
   if (userStr) {
     try {
       const user = JSON.parse(userStr);
-      userId = user.id;
+      userId = user.id; // ambil id dari objek user
     } catch (e) {
       console.error('Failed to parse user from localStorage', e);
     }
@@ -57,15 +84,14 @@ async function fetchApi<T>(
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      ...(options?.headers as Record<string, string> || {}),
+      ...(options?.headers as Record<string, string> || {}), // gabung header dari options
     };
 
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers['Authorization'] = `Bearer ${token}`; // auth untuk API
     }
-
     if (userId) {
-      headers['X-User-ID'] = String(userId);
+      headers['X-User-ID'] = String(userId); // identifikasi user di backend
     }
 
     const response = await fetch(url, {
@@ -76,11 +102,11 @@ async function fetchApi<T>(
     if (!response.ok) {
       const error = await response
         .json()
-        .catch(() => ({ error: "Unknown error" }));
+        .catch(() => ({ error: "Unknown error" })); // jika body bukan JSON
       const status = response.status;
       const message = error.error || response.statusText;
       if (status === 401) {
-        clearAuthAndRedirectToLogin();
+        clearAuthAndRedirectToLogin(); // unauthorized → logout & ke login
       }
       throw new ApiError(status, message);
     }
@@ -88,7 +114,7 @@ async function fetchApi<T>(
     return await response.json();
   } catch (error) {
     if (error instanceof ApiError) {
-      throw error;
+      throw error; // lempar ulang error dari backend
     }
     throw new Error(
       `Network error: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -96,12 +122,14 @@ async function fetchApi<T>(
   }
 }
 
-// Dashboard API
+/** Layanan API Dashboard: statistik, aktivitas, grafik (hourly/cluster/province), akses sukses, rentang tanggal, error logout */
 export const dashboardService = {
+  /** Ambil daftar cluster yang tersedia (untuk filter) */
   getClusters: () => {
     return fetchApi<ApiResponse<string[]>>("/api/dashboard/clusters");
   },
 
+  /** Statistik dashboard dengan filter tanggal, cluster, root_satker_id. Query string dibangun dari param yang ada. */
   getStats: (
     startDate?: string,
     endDate?: string,
@@ -111,7 +139,7 @@ export const dashboardService = {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
-    if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
+    if (cluster && cluster.trim() !== "") params.append("cluster", cluster); // abaikan string kosong
     if (rootSatkerId != null)
       params.append("root_satker_id", String(rootSatkerId));
     const query = params.toString();
@@ -119,6 +147,7 @@ export const dashboardService = {
     return fetchApi<DashboardStats>(url);
   },
 
+  /** Aktivitas terpaginate: page, page_size, filter tanggal & cluster */
   getActivities: (
     page = 1,
     pageSize = 10,
@@ -137,6 +166,7 @@ export const dashboardService = {
     );
   },
 
+  /** Data chart per jam. Filter: root_satker_id (prioritas) atau eselon jika tidak pakai root. */
   getHourlyChart: (
     startDate?: string,
     endDate?: string,
@@ -149,13 +179,14 @@ export const dashboardService = {
     if (endDate) params.append("end_date", endDate);
     if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
     if (rootSatkerId != null) params.append("root_satker_id", String(rootSatkerId));
-    else if (eselon && eselon.trim() !== "") params.append("eselon", eselon);
+    else if (eselon && eselon.trim() !== "") params.append("eselon", eselon); // eselon hanya jika tidak ada root
     const query = params.toString();
     return fetchApi<ApiResponse<HourlyData[]>>(
       `/api/dashboard/charts/hourly${query ? `?${query}` : ""}`,
     );
   },
 
+  /** Data chart per cluster (filter tanggal & cluster) */
   getClusterChart: (startDate?: string, endDate?: string, cluster?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
@@ -167,6 +198,7 @@ export const dashboardService = {
     );
   },
 
+  /** Data chart per provinsi */
   getProvinceChart: (
     startDate?: string,
     endDate?: string,
@@ -182,6 +214,7 @@ export const dashboardService = {
     );
   },
 
+  /** Data akses sukses (untuk grafik/statistik) */
   getAccessSuccess: (
     startDate?: string,
     endDate?: string,
@@ -197,11 +230,13 @@ export const dashboardService = {
     );
   },
 
+  /** Rentang tanggal min/max yang tersedia di data */
   getDateRange: () =>
     fetchApi<{ min_date: string; max_date: string }>(
       "/api/dashboard/date-range",
     ),
 
+  /** Daftar error logout (ranking user by error count), dengan limit & filter tanggal/cluster */
   getLogoutErrors: (
     limit = 10,
     startDate?: string,
@@ -226,14 +261,14 @@ export const dashboardService = {
   },
 };
 
-// Eselon I root unit for regional filter
+/** Unit Eselon I (root) untuk filter regional; dari API satker/roots */
 export interface SatkerRoot {
   id: number;
   satker_name: string;
   eselon_level: string;
 }
 
-/** Satker unit (flat list from GET /api/metadata/satker) */
+/** Satu unit satker dalam daftar flat dari GET /api/metadata/satker (untuk tree, dll.) */
 export interface SatkerUnit {
   id: number;
   satker_name: string;
@@ -241,13 +276,15 @@ export interface SatkerUnit {
   parent_id: number | null;
 }
 
-// Search API (suggestions + global search)
+/** Layanan API Search: saran (suggestions) dan pencarian global */
 export const searchService = {
+  /** Saran pencarian berdasarkan query q; query di-encode agar aman di URL */
   getSuggestions: (q: string) =>
     fetchApi<{ suggestions?: { type?: string; value?: string; label?: string }[]; data?: unknown[] }>(
       `/api/search/suggestions?q=${encodeURIComponent(q)}`,
     ),
 
+  /** Pencarian global; queryString bisa berisi page, keyword, filter, dll. */
   globalSearch: (queryString: string) =>
     fetchApi<{
       data?: ActivityLog[];
@@ -257,13 +294,13 @@ export const searchService = {
     }>(`/api/search${queryString ? `?${queryString}` : ""}`),
 };
 
-// Metadata API (flat satker list for tree, etc.)
+/** Layanan API Metadata: daftar satker flat (untuk membangun tree, dropdown, dll.) */
 export const metadataService = {
   getSatkerList: () =>
     fetchApi<{ satker: SatkerUnit[] }>("/api/metadata/satker"),
 };
 
-// Regional API
+/** Layanan API Regional: provinsi, root satker, anak root, lokasi, unit, hourly per unit, top kontributor */
 export const regionalService = {
   getProvinces: () =>
     fetchApi<ApiResponse<ProvinceData[]>>("/api/regional/provinces"),
@@ -272,12 +309,13 @@ export const regionalService = {
   getSatkerRoots: () =>
     fetchApi<{ roots: SatkerRoot[] }>("/api/metadata/satker/roots"),
 
-  /** Anak langsung satu root (Eselon I) — hanya Eselon II, untuk chart engagement. */
+  /** Anak langsung satu root (Eselon I) — Eselon II, untuk chart engagement */
   getChildrenOfRoot: (rootId: number) =>
     fetchApi<{ children: SatkerRoot[] }>(
       `/api/metadata/satker/roots/${rootId}/children`,
     ),
 
+  /** Distribusi lokasi (lokasi + count). Filter: root_satker_id atau eselon */
   getLocations: (
     startDate?: string,
     endDate?: string,
@@ -297,6 +335,7 @@ export const regionalService = {
     );
   },
 
+  /** Daftar unit (satker) terpaginate; filter sama seperti getLocations */
   getUnits: (
     page = 1,
     pageSize = 1000,
@@ -319,6 +358,7 @@ export const regionalService = {
     );
   },
 
+  /** Data per jam untuk satu satker tertentu */
   getUnitHourlyData: (
     satker: string,
     startDate?: string,
@@ -328,7 +368,7 @@ export const regionalService = {
     rootSatkerId?: number,
   ) => {
     const params = new URLSearchParams();
-    params.append("satker", satker);
+    params.append("satker", satker); // satker wajib
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
     if (cluster && cluster.trim() !== "") params.append("cluster", cluster);
@@ -339,6 +379,7 @@ export const regionalService = {
     );
   },
 
+  /** Top kontributor (user) by requests, dengan limit & filter */
   getTopContributors: (
     limit = 10,
     startDate?: string,
@@ -362,8 +403,9 @@ export const regionalService = {
   },
 };
 
-// Content Analytics API (Analisis Konten)
+/** Layanan API Analisis Konten: ranking dashboard, modul pencarian, export, maksud operasional, global economics */
 export const contentService = {
+  /** Ranking untuk dashboard konten (nama, count, persentase) */
   getDashboardRankings: (startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
@@ -374,6 +416,7 @@ export const contentService = {
     );
   },
 
+  /** Penggunaan modul pencarian (nama modul + count) */
   getSearchModuleUsage: (startDate?: string, endDate?: string, cluster?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
@@ -385,6 +428,7 @@ export const contentService = {
     );
   },
 
+  /** Statistik export: view_data, download_data, plus detail per jenis */
   getExportStats: (startDate?: string, endDate?: string, cluster?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
@@ -401,6 +445,7 @@ export const contentService = {
     );
   },
 
+  /** Maksud operasional (nama + count), opsional limit & cluster */
   getOperationalIntents: (startDate?: string, endDate?: string, limit?: number, cluster?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
@@ -413,6 +458,7 @@ export const contentService = {
     );
   },
 
+  /** Data chart global economics (kategori, count, persentase) */
   getGlobalEconomicsChart: (startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.append("start_date", startDate);
@@ -424,12 +470,14 @@ export const contentService = {
   },
 };
 
-// Reports API (Laporan)
+/** Layanan API Laporan: template, generate, unduhan terbaru, permintaan akses */
 export const reportService = {
+  /** Daftar template laporan yang tersedia */
   getTemplates: () => {
     return fetchApi<ApiResponse<ReportTemplate[]>>("/api/reports/templates");
   },
 
+  /** Generate laporan: POST dengan template_id, format, dan opsional start_date/end_date */
   generateReport: (templateId: string, format: string, startDate?: string, endDate?: string) => {
     return fetchApi<ReportGenerateResponse>(
       "/api/reports/generate",
@@ -445,6 +493,7 @@ export const reportService = {
     );
   },
 
+  /** Daftar unduhan laporan terbaru (opsional limit & filter tanggal) */
   getRecentDownloads: (limit?: number, startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
     if (limit) params.append("limit", limit.toString());
@@ -454,6 +503,7 @@ export const reportService = {
     return fetchApi<ApiResponse<ReportDownload[]>>(`/api/reports/downloads${query ? `?${query}` : ""}`);
   },
 
+  /** Daftar permintaan akses laporan (untuk admin) */
   getAccessRequests: () => {
     return fetchApi<ApiResponse<{
       id: number;
@@ -464,6 +514,7 @@ export const reportService = {
     }[]>>("/api/reports/access-requests");
   },
 
+  /** User mengajukan permintaan akses laporan (user_id + alasan) */
   requestAccess: (userId: number, reason: string) => {
     return fetchApi<{ success: boolean; message: string; request_id: number }>(
       "/api/reports/request-access",
@@ -477,6 +528,7 @@ export const reportService = {
     );
   },
 
+  /** Update status permintaan akses: approved atau rejected */
   updateAccessRequest: (id: number, status: "approved" | "rejected") => {
     return fetchApi<{ success: boolean; message: string }>(
       `/api/reports/access-requests/${id}`,
@@ -488,8 +540,9 @@ export const reportService = {
   },
 };
 
-// Notification API
+/** Layanan API Notifikasi: daftar notif per user, tandai baca satu, tandai semua baca */
 export const notificationService = {
+  /** Ambil notifikasi user + jumlah belum dibaca */
   getNotifications: (userId: number) => {
     return fetchApi<{
       data: {
@@ -507,6 +560,7 @@ export const notificationService = {
     }>(`/api/notifications?user_id=${userId}`);
   },
 
+  /** Tandai satu notifikasi sebagai sudah dibaca (PUT) */
   markAsRead: (id: number) => {
     return fetchApi<{ success: boolean; message: string }>(
       `/api/notifications/${id}/read`,
@@ -516,6 +570,7 @@ export const notificationService = {
     );
   },
 
+  /** Tandai semua notifikasi user sebagai sudah dibaca (POST body user_id) */
   markAllAsRead: (userId: number) => {
     return fetchApi<{ success: boolean; message: string }>(
       "/api/notifications/read-all",
@@ -527,8 +582,9 @@ export const notificationService = {
   },
 };
 
-// Profile API
+/** Layanan API Profil: profil user login, foto, permintaan akses laporan, daftar & approve permintaan */
 export const profileService = {
+  /** Profil user yang sedang login (termasuk report_access_status, report_access_label) */
   getProfile: () => {
     return fetchApi<{
       id: number;
@@ -544,6 +600,7 @@ export const profileService = {
     }>("/api/profile");
   },
 
+  /** Update foto profil (PUT body profile_photo) */
   updateProfilePhoto: (profilePhoto: string) => {
     return fetchApi<{
       message: string;
@@ -561,6 +618,7 @@ export const profileService = {
     });
   },
 
+  /** User mengajukan permintaan akses laporan (POST, tanpa body) */
   requestReportAccess: () => {
     return fetchApi<{
       message: string;
@@ -570,6 +628,7 @@ export const profileService = {
     });
   },
 
+  /** Daftar permintaan akses yang pending (untuk admin) */
   getPendingAccessRequests: () => {
     return fetchApi<{
       requests: Array<{
@@ -583,6 +642,7 @@ export const profileService = {
     }>("/api/profile/access-requests");
   },
 
+  /** Approve atau reject permintaan akses by user_id (PUT query action=approve|reject) */
   approveReportAccess: (userId: number, action: "approve" | "reject") => {
     return fetchApi<{
       message: string;
@@ -593,8 +653,9 @@ export const profileService = {
   },
 };
 
-// Account API (for authenticated user account management)
+/** Layanan API Akun (user yang login): ganti password */
 export const accountService = {
+  /** Ganti password: POST dengan old_password, new_password, confirm_password */
   changePassword: (oldPassword: string, newPassword: string, confirmPassword: string) => {
     return fetchApi<{
       message: string;
@@ -609,8 +670,9 @@ export const accountService = {
   },
 };
 
-// User API
+/** Layanan API User (profil user by id, untuk admin/detail user) */
 export const userService = {
+  /** Ambil profil user by user_id (query user_id) */
   getProfile: (userId: number) => {
     return fetchApi<{
       data: {
@@ -629,8 +691,6 @@ export const userService = {
   },
 };
 
-// Health Check
+/** Health check backend: status, service, version */
 export const healthCheck = () =>
   fetchApi<{ status: string; service: string; version: string }>("/health");
-
-export { ApiError };

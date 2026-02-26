@@ -1,3 +1,12 @@
+/**
+ * BusiestHourCard.tsx
+ *
+ * Kartu "Jam Tersibuk" di dashboard: menampilkan jam (0–23) dengan aktivitas terbanyak dalam periode
+ * yang dipilih. Data dari dashboardService.getStats(); filter dateRange dan selectedCluster dari store.
+ *
+ * Menampilkan: rentang jam (HH:00 - HH+1:00), jumlah aktivitas pada jam tersebut, persentase dari total_activities.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,6 +16,9 @@ import { formatNumber } from "@/lib/utils";
 import { useAppStore } from "@/stores/appStore";
 import type { DashboardStats } from "@/types/api";
 
+/**
+ * Kartu jam tersibuk: load stats → tampilkan busiest_hour (jam + count) dan persentase dari total.
+ */
 export default function BusiestHourCard() {
   const dateRange = useAppStore((state) => state.dateRange);
   const selectedCluster = useAppStore((state) => state.selectedCluster);
@@ -17,6 +29,7 @@ export default function BusiestHourCard() {
     loadStats();
   }, [dateRange, selectedCluster]);
 
+  /** Ambil statistik dashboard (termasuk busiest_hour) dari API. */
   const loadStats = async () => {
     setLoading(true);
     try {
@@ -61,6 +74,7 @@ export default function BusiestHourCard() {
         </div>
       </div>
 
+      {/* Rentang jam (HH:00 - HH+1:00) dan jumlah aktivitas */}
       <div className="flex-1 flex flex-col justify-center">
         <p className="text-caption opacity-90 mb-2">Waktu Paling Ramai</p>
         <h2 className="text-4xl font-bold mb-4">
@@ -73,6 +87,7 @@ export default function BusiestHourCard() {
         <p className="text-caption opacity-80">pada jam ini</p>
       </div>
 
+      {/* Persentase aktivitas jam ini dari total_activities */}
       <div className="pt-4 border-t border-white/20">
         <p className="text-caption opacity-80 mb-1">Persentase dari Total</p>
         <p className="text-2xl font-bold">{percentage}%</p>

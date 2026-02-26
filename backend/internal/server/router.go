@@ -1,3 +1,6 @@
+// Package server berisi inisialisasi HTTP server (Gin engine) dan pendaftaran route + middleware.
+//
+// File router.go: SetupRouter membuat engine Gin, pasang CORS, health check, dan semua route API (auth, account, dashboard, regional, content, reports, notifications, users, profile, search, metadata, org-tree).
 package server
 
 import (
@@ -7,14 +10,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SetupRouter creates and configures the Gin engine with all routes and middleware.
+// SetupRouter membuat dan mengonfigurasi engine Gin dengan semua route dan middleware (CORS, auth). Dipanggil dari cmd/api/main.go.
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
 
+	// Jangan redirect /path ke /path/ atau normalisasi path; biarkan path persis seperti request.
 	r.RedirectTrailingSlash = false
 	r.RedirectFixedPath = false
 
-	// CORS: use ALLOWED_ORIGINS env (comma-separated); if unset, allow "*"
+	// Middleware CORS: baca Origin request, set Access-Control-Allow-Origin dari config.CORSOrigin (ALLOWED_ORIGINS env; kosong = "*").
 	r.Use(func(c *gin.Context) {
 		if origin := config.CORSOrigin(c.Request.Header.Get("Origin")); origin != "" {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
@@ -28,7 +32,7 @@ func SetupRouter() *gin.Engine {
 		c.Next()
 	})
 
-	// Health
+	// Endpoint health check: GET /health → 200 + status/service/version.
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":  "ok",
@@ -37,7 +41,7 @@ func SetupRouter() *gin.Engine {
 		})
 	})
 
-	// Auth (public)
+	// Grup auth (publik): login, register, lupa password, logout.
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/login", handler.Login)
@@ -46,14 +50,17 @@ func SetupRouter() *gin.Engine {
 		auth.POST("/logout", handler.Logout)
 	}
 
-	// API
+	// Semua route di bawah prefix /api (kecuali auth sudah di atas).
 	api := r.Group("/api")
-	{ // Account management (protected routes)
+	{
+		// Akun: ganti password (butuh JWT).
 		account := api.Group("/account")
 		account.Use(middleware.AuthMiddleware())
 		{
 			account.POST("/change-password", handler.ChangePassword)
 		}
+
+		// Dashboard: statistik, aktivitas, chart, sukses akses, date-range, clusters, logout errors.
 		dashboard := api.Group("/dashboard")
 		{
 			dashboard.GET("/stats", handler.GetDashboardStats)
@@ -65,6 +72,7 @@ func SetupRouter() *gin.Engine {
 			dashboard.GET("/logout-errors", handler.GetLogoutErrors)
 		}
 
+		// Regional: provinsi, lokasi, unit, jam per satker, top kontributor.
 		regional := api.Group("/regional")
 		{
 			regional.GET("/provinces", handler.GetProvinces)
@@ -74,6 +82,7 @@ func SetupRouter() *gin.Engine {
 			regional.GET("/top-contributors", handler.GetTopContributors)
 		}
 
+		// Konten/analitik: peringkat dashboard, modul pencarian, ekspor, intensi operasional, chart global economics.
 		content := api.Group("/content")
 		{
 			content.GET("/dashboard-rankings", handler.GetDashboardRankings)
@@ -83,6 +92,7 @@ func SetupRouter() *gin.Engine {
 			content.GET("/global-economics", handler.GetGlobalEconomicsChart)
 		}
 
+		// Laporan: template, generate, download file, riwayat unduhan, permintaan akses, request/update akses.
 		reports := api.Group("/reports")
 		{
 			reports.GET("/templates", handler.GetReportTemplates)
@@ -94,6 +104,7 @@ func SetupRouter() *gin.Engine {
 			reports.PUT("/access-requests/:id", handler.UpdateAccessRequest)
 		}
 
+		// Notifikasi: daftar, tandai baca, tandai semua baca (semua butuh JWT).
 		notifications := api.Group("/notifications")
 		notifications.Use(middleware.AuthMiddleware())
 		{
@@ -102,11 +113,13 @@ func SetupRouter() *gin.Engine {
 			notifications.POST("/read-all", handler.MarkAllNotificationsRead)
 		}
 
+		// Users: profil user (query user_id).
 		users := api.Group("/users")
 		{
 			users.GET("/profile", handler.GetUserProfile)
 		}
 
+		// Profil user login: get profil, update foto, ajukan akses laporan (semua butuh JWT).
 		profile := api.Group("/profile")
 		profile.Use(middleware.AuthMiddleware())
 		{
@@ -115,13 +128,18 @@ func SetupRouter() *gin.Engine {
 			profile.POST("/request-access", handler.RequestReportAccess)
 		}
 
+		// Pencarian global, saran, cari user, cari satker.
 		api.GET("/search", handler.GlobalSearch)
 		api.GET("/search/suggestions", handler.GetSearchSuggestions)
 		api.GET("/search/users", handler.SearchUsers)
 		api.GET("/search/satker", handler.SearchSatker)
+
+		// Metadata: daftar satker, root Eselon I, anak root.
 		api.GET("/metadata/satker", handler.GetSatkerList)
 		api.GET("/metadata/satker/roots/:id/children", handler.GetSatkerRootChildren)
 		api.GET("/metadata/satker/roots", handler.GetSatkerRoots)
+
+		// Pohon organisasi: tree, level eselon, pencarian unit.
 		api.GET("/org-tree", handler.GetOrganizationalTree)
 		api.GET("/org-tree/levels", handler.GetEselonLevels)
 		api.GET("/org-tree/search", handler.SearchOrganizationalUnits)

@@ -1,3 +1,11 @@
+/**
+ * Footer.tsx
+ *
+ * Footer layout: satu baris dengan logo (logo-footer.svg) di tengah. Background putih,
+ * border atas, mt-auto agar menempel di bawah saat konten pendek. Dipakai di halaman
+ * yang punya Sidebar + Header (dashboard, regional, dll.).
+ */
+
 "use client";
 
 import Image from "next/image";

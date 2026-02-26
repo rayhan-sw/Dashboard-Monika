@@ -1,3 +1,6 @@
+// File report_generator.go: pembuatan file laporan (CSV, Excel, PDF) berdasarkan template (org-performance, user-activity, feature-usage).
+//
+// ReportGenerator punya OutputDir; GenerateCSV/GenerateExcel/GeneratePDF memilih fungsi generator sesuai templateID lalu menulis file ke OutputDir. Helper: generateFilename, writeCSVFile, formatNumber, calculatePercentage, categorizeFeature, truncateString.
 package service
 
 import (
@@ -12,7 +15,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// ReportMetadata contains metadata for report generation
+// ReportMetadata berisi metadata untuk header/ footer laporan: siapa yang generate, username, email, rentang tanggal.
 type ReportMetadata struct {
 	GeneratedBy string
 	Username    string
@@ -20,12 +23,12 @@ type ReportMetadata struct {
 	DateRange   string
 }
 
-// ReportGenerator handles report file generation
+// ReportGenerator menyimpan direktori keluaran (OutputDir) untuk menyimpan file laporan yang dihasilkan.
 type ReportGenerator struct {
 	OutputDir string
 }
 
-// NewReportGenerator creates a new report generator and ensures the output directory exists.
+// NewReportGenerator membuat instance ReportGenerator dan memastikan OutputDir ada (MkdirAll).
 func NewReportGenerator(outputDir string) *ReportGenerator {
 	_ = os.MkdirAll(outputDir, 0755)
 	return &ReportGenerator{
@@ -33,7 +36,7 @@ func NewReportGenerator(outputDir string) *ReportGenerator {
 	}
 }
 
-// GenerateCSV generates a CSV report file
+// GenerateCSV memilih generator CSV sesuai templateID (org-performance, user-activity, feature-usage) lalu mengembalikan path file yang dibuat.
 func (rg *ReportGenerator) GenerateCSV(templateID string, data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	switch templateID {
 	case "org-performance":
@@ -47,7 +50,7 @@ func (rg *ReportGenerator) GenerateCSV(templateID string, data *repository.Repor
 	}
 }
 
-// GenerateExcel generates an Excel report file
+// GenerateExcel memilih generator Excel sesuai templateID lalu mengembalikan path file.
 func (rg *ReportGenerator) GenerateExcel(templateID string, data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	switch templateID {
 	case "org-performance":
@@ -61,7 +64,7 @@ func (rg *ReportGenerator) GenerateExcel(templateID string, data *repository.Rep
 	}
 }
 
-// GeneratePDF generates a PDF report file
+// GeneratePDF memilih generator PDF sesuai templateID lalu mengembalikan path file.
 func (rg *ReportGenerator) GeneratePDF(templateID string, data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	switch templateID {
 	case "org-performance":
@@ -75,12 +78,14 @@ func (rg *ReportGenerator) GeneratePDF(templateID string, data *repository.Repor
 	}
 }
 
+// generateFilename menghasilkan path file: OutputDir/templateID_YYYYMMDD_HHmmss.format (format huruf kecil).
 func (rg *ReportGenerator) generateFilename(templateID, format string) string {
 	timestamp := time.Now().Format("20060102_150405")
 	filename := fmt.Sprintf("%s_%s.%s", templateID, timestamp, strings.ToLower(format))
 	return filepath.Join(rg.OutputDir, filename)
 }
 
+// writeCSVFile membuat direktori parent jika belum ada, membuat file, menulis content, lalu menutup file.
 func (rg *ReportGenerator) writeCSVFile(filename, content string) error {
 	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
 		return err
@@ -95,12 +100,14 @@ func (rg *ReportGenerator) writeCSVFile(filename, content string) error {
 	return err
 }
 
+// formatNumber memformat bilangan bulat dengan pemisah ribuan (titik), misal 1234567 → "1.234.567".
 func formatNumber(n int) string {
 	str := fmt.Sprintf("%d", n)
 	if len(str) <= 3 {
 		return str
 	}
 
+	// Sisipkan titik setiap 3 digit dari kanan (misal 1234567 → 1.234.567)
 	result := ""
 	for i, c := range str {
 		if i > 0 && (len(str)-i)%3 == 0 {
@@ -111,15 +118,18 @@ func formatNumber(n int) string {
 	return result
 }
 
+// calculatePercentage menghitung persentase part/total; jika total 0 mengembalikan "0.00", else format 2 desimal.
 func calculatePercentage(part, total int) string {
 	if total == 0 {
 		return "0.00"
 	}
+	// (part/total)*100 dengan 2 angka di belakang koma
 	return fmt.Sprintf("%.2f", float64(part)/float64(total)*100)
 }
 
 // CSV Generators Implementation
 
+// generateOrgPerformanceCSV membuat file CSV laporan kinerja organisasi: header metadata, ringkasan (total aktivitas, organisasi, pengguna), tabel detail per satker (No, Satker, Jumlah, Persentase), footer.
 func (rg *ReportGenerator) generateOrgPerformanceCSV(data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	filename := rg.generateFilename("laporan_kinerja_organisasi", "csv")
 
@@ -132,7 +142,7 @@ func (rg *ReportGenerator) generateOrgPerformanceCSV(data *repository.ReportData
 	content.WriteString(fmt.Sprintf("Periode Data: %s\n", data.Period))
 	content.WriteString("\n")
 
-	// Summary section
+	// Bagian ringkasan: ambil total_activities dan total_users dari Summary, tulis dengan formatNumber
 	content.WriteString("RINGKASAN\n")
 	totalActivities := int(data.Summary["total_activities"].(int))
 	totalUsers := int(data.Summary["total_users"].(int))
@@ -141,7 +151,7 @@ func (rg *ReportGenerator) generateOrgPerformanceCSV(data *repository.ReportData
 	content.WriteString(fmt.Sprintf("Total Pengguna: %s\n", formatNumber(totalUsers)))
 	content.WriteString("\n")
 
-	// Data table
+	// Tabel detail: setiap baris = satu satker, kolom No, Satker, Jumlah, Persentase
 	content.WriteString("DETAIL PER ORGANISASI\n")
 	content.WriteString("No,Satker,Jumlah Aktivitas,Persentase dari Total (%)\n")
 
@@ -161,6 +171,7 @@ func (rg *ReportGenerator) generateOrgPerformanceCSV(data *repository.ReportData
 	return filename, rg.writeCSVFile(filename, content.String())
 }
 
+// generateUserActivityCSV membuat file CSV laporan aktivitas pengguna: header, statistik login (total/sukses/gagal, tingkat keberhasilan), tabel detail per username (No, Username, Total Aktivitas, Persentase), footer.
 func (rg *ReportGenerator) generateUserActivityCSV(data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	filename := rg.generateFilename("laporan_aktivitas_pengguna", "csv")
 
@@ -218,6 +229,7 @@ func (rg *ReportGenerator) generateUserActivityCSV(data *repository.ReportData, 
 	return filename, rg.writeCSVFile(filename, content.String())
 }
 
+// generateFeatureUsageCSV membuat file CSV laporan pemanfaatan fitur: header, ringkasan (total view/download/pencarian), tabel detail per fitur (No, Nama Fitur, Jumlah, Persentase, Kategori dari categorizeFeature), footer.
 func (rg *ReportGenerator) generateFeatureUsageCSV(data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	filename := rg.generateFilename("laporan_pemanfaatan_fitur", "csv")
 
@@ -270,9 +282,11 @@ func (rg *ReportGenerator) generateFeatureUsageCSV(data *repository.ReportData, 
 	return filename, rg.writeCSVFile(filename, content.String())
 }
 
+// categorizeFeature mengelompokkan nama fitur ke kategori: mengandung "view"→View, "download"→Download, "search"/"pencarian"→Search, "login"→Authentication, "export"→Export; selain itu→Other (case-insensitive).
 func categorizeFeature(feature string) string {
 	featureLower := strings.ToLower(feature)
 
+	// Cocokkan kata kunci untuk kategori (urutan penting: yang lebih spesifik dulu)
 	if strings.Contains(featureLower, "view") {
 		return "View"
 	} else if strings.Contains(featureLower, "download") {
@@ -290,6 +304,7 @@ func categorizeFeature(feature string) string {
 
 // Excel Generators Implementation
 
+// generateOrgPerformanceExcel membuat file Excel laporan kinerja organisasi: sheet Ringkasan dan Detail per Satker, style header/title, isi dari data.Summary dan data.Details.
 func (rg *ReportGenerator) generateOrgPerformanceExcel(data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	filename := rg.generateFilename("laporan_kinerja_organisasi", "xlsx")
 
@@ -395,6 +410,7 @@ func (rg *ReportGenerator) generateOrgPerformanceExcel(data *repository.ReportDa
 	return filename, nil
 }
 
+// generateUserActivityExcel membuat file Excel laporan aktivitas pengguna: sheet Statistik Login dan Detail Aktivitas, data dari data.Summary dan data.Details.
 func (rg *ReportGenerator) generateUserActivityExcel(data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	filename := rg.generateFilename("laporan_aktivitas_pengguna", "xlsx")
 
@@ -520,6 +536,7 @@ func (rg *ReportGenerator) generateUserActivityExcel(data *repository.ReportData
 	return filename, nil
 }
 
+// generateFeatureUsageExcel membuat file Excel laporan pemanfaatan fitur: ringkasan penggunaan dan detail per fitur (dengan kategori dari categorizeFeature).
 func (rg *ReportGenerator) generateFeatureUsageExcel(data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	filename := rg.generateFilename("laporan_pemanfaatan_fitur", "xlsx")
 
@@ -683,6 +700,7 @@ func (rg *ReportGenerator) generateFeatureUsageExcel(data *repository.ReportData
 
 // PDF Generators Implementation
 
+// generateOrgPerformancePDF membuat file PDF laporan kinerja organisasi dengan gofpdf: header, ringkasan, tabel detail per satker, footer nomor halaman.
 func (rg *ReportGenerator) generateOrgPerformancePDF(data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	filename := rg.generateFilename("laporan_kinerja_organisasi", "pdf")
 
@@ -803,6 +821,7 @@ func (rg *ReportGenerator) generateOrgPerformancePDF(data *repository.ReportData
 	return filename, nil
 }
 
+// generateUserActivityPDF membuat file PDF laporan aktivitas pengguna: statistik login, tabel detail per pengguna, footer halaman.
 func (rg *ReportGenerator) generateUserActivityPDF(data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	filename := rg.generateFilename("laporan_aktivitas_pengguna", "pdf")
 
@@ -943,6 +962,7 @@ func (rg *ReportGenerator) generateUserActivityPDF(data *repository.ReportData, 
 	return filename, nil
 }
 
+// generateFeatureUsagePDF membuat file PDF laporan pemanfaatan fitur: ringkasan, tabel detail per fitur dengan kategori, footer.
 func (rg *ReportGenerator) generateFeatureUsagePDF(data *repository.ReportData, metadata ReportMetadata) (string, error) {
 	filename := rg.generateFilename("laporan_pemanfaatan_fitur", "pdf")
 
@@ -1123,10 +1143,11 @@ func (rg *ReportGenerator) generateFeatureUsagePDF(data *repository.ReportData, 
 	return filename, nil
 }
 
-// Helper function to truncate long strings for PDF
+// truncateString memotong string yang lebih panjang dari maxLen: jika sudah <= maxLen dikembalikan as-is, else s[0:maxLen-3] + "..." agar total panjang maxLen.
 func truncateString(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
+	// Potong jadi maxLen-3 karakter lalu tambah "..." agar total panjang = maxLen
 	return s[:maxLen-3] + "..."
 }

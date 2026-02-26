@@ -1,3 +1,12 @@
+/**
+ * SearchFilters.tsx
+ *
+ * Panel filter pencarian: rentang waktu (7/30/90 hari, Semua, Custom dengan date picker),
+ * Cluster (dropdown dari API), Satuan Kerja (BPKTreeView), Jenis Aktivitas (chip),
+ * Status (Semua/Berhasil/Gagal, tampil hanya jika ada jenis aktivitas). State filter
+ * dikontrol parent via filters/onChange; onApply/onClear untuk terapkan/atur ulang.
+ */
+
 "use client";
 
 import { Icon } from "@iconify/react";
@@ -8,6 +17,7 @@ import { id } from "date-fns/locale";
 import { dashboardService } from "@/services/api";
 import BPKTreeView from "./BPKTreeView";
 
+/** State filter: dateRange, customStart/End, satker/satkerIds, cluster, status, activityTypes, location. */
 export interface SearchFiltersState {
   dateRange: string;
   customStart?: string;
@@ -27,7 +37,7 @@ interface SearchFiltersProps {
   onClear: () => void;
 }
 
-// Static satker data grouped by eselon
+/** Data satker dikelompokkan per eselon (referensi statis; filter satker pakai BPKTreeView + API). */
 const SATKER_BY_ESELON: Record<string, string[]> = {
   "Eselon 1": [
     "Auditorat I.B",
@@ -443,6 +453,7 @@ const SATKER_BY_ESELON: Record<string, string[]> = {
   ],
 };
 
+/** Opsi jenis aktivitas untuk chip (LOGIN, LOGOUT, View, Download). */
 const ACTIVITY_TYPES = [
   { value: "LOGIN", label: "Login" },
   { value: "LOGOUT", label: "Logout" },
@@ -450,6 +461,7 @@ const ACTIVITY_TYPES = [
   { value: "Download", label: "Download" },
 ];
 
+/** Array hari dalam bulan untuk kalender: null untuk sel kosong di awal, lalu Date per hari. */
 function getDaysInMonth(date: Date): (Date | null)[] {
   const year = date.getFullYear();
   const month = date.getMonth();
@@ -483,7 +495,7 @@ export default function SearchFilters({
     loadClusters();
   }, []);
 
-  // Sync temp dates and month when opening custom picker from filters
+  /** Saat custom picker dibuka: isi tempStart/tempEnd/selectedMonth dari filters.customStart/End. */
   useEffect(() => {
     if (showCustomDatePicker && showCustomDate) {
       if (filters.customStart && filters.customEnd) {
@@ -504,6 +516,7 @@ export default function SearchFilters({
     }
   }, [showCustomDatePicker, showCustomDate]);
 
+  /** Tutup custom date picker saat klik di luar customDatePickerRef. */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -519,6 +532,7 @@ export default function SearchFilters({
     }
   }, [showCustomDatePicker]);
 
+  /** Teks tombol custom: "d MMM - d MMM yyyy" atau "Pilih Tanggal". */
   const formatCustomDateDisplay = () => {
     if (!filters.customStart || !filters.customEnd) return "Pilih Tanggal";
     try {
@@ -530,6 +544,7 @@ export default function SearchFilters({
     }
   };
 
+  /** Klik tanggal di kalender: pilih start lalu end; jika sudah ada range, reset jadi start baru. */
   const handleCustomDateClick = (date: Date) => {
     if (!tempStartDate || (tempStartDate && tempEndDate)) {
       setTempStartDate(date);
@@ -544,12 +559,14 @@ export default function SearchFilters({
     }
   };
 
+  /** Apakah tanggal berada di antara tempStartDate dan tempEndDate (atau sama dengan start jika belum ada end). */
   const isDateInRange = (date: Date) => {
     if (!tempStartDate) return false;
     if (!tempEndDate) return date.getTime() === tempStartDate.getTime();
     return date >= tempStartDate && date <= tempEndDate;
   };
 
+  /** Apakah tanggal adalah tempStartDate atau tempEndDate (untuk styling tepi range). */
   const isDateRangeEdge = (date: Date) => {
     if (!tempStartDate) return false;
     return (
@@ -558,6 +575,7 @@ export default function SearchFilters({
     );
   };
 
+  /** Terapkan range custom: tulis customStart/customEnd ke filters, tutup picker, reset temp. */
   const handleApplyCustomRange = () => {
     if (tempStartDate && tempEndDate) {
       onChange({
@@ -571,6 +589,7 @@ export default function SearchFilters({
     }
   };
 
+  /** Pilih quick range (7/30/90/all) dari dalam custom picker: update filters, tutup custom. */
   const handleQuickSelectInCustom = (value: string) => {
     onChange({
       ...filters,
@@ -582,6 +601,7 @@ export default function SearchFilters({
     setShowCustomDatePicker(false);
   };
 
+  /** Ambil daftar cluster dari API untuk dropdown. */
   const loadClusters = async () => {
     try {
       const response = await dashboardService.getClusters();
@@ -591,6 +611,7 @@ export default function SearchFilters({
     }
   };
 
+  /** Toggle jenis aktivitas: tambah/hapus type dari filters.activityTypes. */
   const handleActivityTypeToggle = (type: string) => {
     const updated = filters.activityTypes.includes(type)
       ? filters.activityTypes.filter((t) => t !== type)
@@ -601,7 +622,6 @@ export default function SearchFilters({
 
   return (
     <div className="bg-white rounded-lg-bpk shadow-sm border border-gray-200 p-5 sticky top-24">
-      {/* Header with Apply Button */}
       <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <Icon icon="mdi:filter-outline" className="w-5 h-5 text-bpk-orange" />
@@ -624,12 +644,10 @@ export default function SearchFilters({
       </div>
 
       <div className="space-y-5">
-        {/* Date Range - Header Style */}
         <div>
           <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">
             Rentang Waktu
           </label>
-          {/* Quick Select Buttons */}
           <div className="flex flex-wrap gap-2 mb-3">
             {[
               { value: "7", label: "7 Hari" },
@@ -814,7 +832,6 @@ export default function SearchFilters({
           )}
         </div>
 
-        {/* Cluster - Custom Dropdown */}
         <div className="relative">
           <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">
             Cluster
@@ -836,7 +853,6 @@ export default function SearchFilters({
             />
           </button>
 
-          {/* Dropdown List */}
           {clusterDropdownOpen && (
             <div className="absolute z-10 w-full mt-1 bg-white border-2 border-bpk-orange rounded-lg-bpk shadow-lg overflow-hidden">
               <div className="max-h-[200px] overflow-auto">
@@ -874,7 +890,6 @@ export default function SearchFilters({
           )}
         </div>
 
-        {/* Satker - BPK Tree View */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -903,7 +918,6 @@ export default function SearchFilters({
           )}
         </div>
 
-        {/* Activity Types - Chips */}
         <div>
           <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">
             Jenis Aktivitas
@@ -925,7 +939,6 @@ export default function SearchFilters({
           </div>
         </div>
 
-        {/* Status - Toggle Buttons (Only show when activity type is selected) */}
         {filters.activityTypes.length > 0 && (
           <div>
             <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">

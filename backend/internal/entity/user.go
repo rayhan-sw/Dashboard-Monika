@@ -2,11 +2,12 @@ package entity
 
 import "time"
 
-// User represents a user account in the system
+// User merepresentasikan akun pengguna di sistem (login, role, akses laporan, profil).
+// PasswordHash tidak di-expose di JSON (tag json:"-"). ReportAccessStatus: none, pending, approved, rejected.
 type User struct {
 	ID                 int        `gorm:"primaryKey" json:"id"`
 	Username           string     `gorm:"unique;not null" json:"username"`
-	PasswordHash       string     `gorm:"not null" json:"-"` // Never expose password in JSON
+	PasswordHash       string     `gorm:"not null" json:"-"` // Jangan pernah expose di JSON
 	Role               string     `gorm:"not null;default:user" json:"role"`
 	FullName           string     `json:"full_name,omitempty"`
 	Email              string     `json:"email,omitempty"`
@@ -18,18 +19,18 @@ type User struct {
 	LastLogin          *time.Time `json:"last_login,omitempty"`
 }
 
-// TableName specifies the table name for GORM
+// TableName mengembalikan nama tabel GORM untuk User.
 func (User) TableName() string {
 	return "users"
 }
 
-// LoginRequest represents login credentials
+// LoginRequest payload untuk endpoint login (username dan password).
 type LoginRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
-// RegisterRequest represents registration data
+// RegisterRequest payload untuk endpoint registrasi (username, password, email, dll.).
 type RegisterRequest struct {
 	Username        string `json:"username" binding:"required,min=3,max=100"`
 	Password        string `json:"password" binding:"required,min=6"`
@@ -38,33 +39,33 @@ type RegisterRequest struct {
 	Email           string `json:"email" binding:"required,email"`
 }
 
-// ForgotPasswordRequest represents forgot password data (for users who forgot their password)
+// ForgotPasswordRequest payload untuk reset password (user lupa password; biasanya dengan verifikasi).
 type ForgotPasswordRequest struct {
 	Username        string `json:"username" binding:"required"`
 	NewPassword     string `json:"new_password" binding:"required,min=6"`
 	ConfirmPassword string `json:"confirm_password" binding:"required"`
 }
 
-// ChangePasswordRequest represents change password data (for logged-in users)
+// ChangePasswordRequest payload untuk ganti password (user sudah login; butuh old password).
 type ChangePasswordRequest struct {
 	OldPassword     string `json:"old_password" binding:"required"`
 	NewPassword     string `json:"new_password" binding:"required,min=6"`
 	ConfirmPassword string `json:"confirm_password" binding:"required"`
 }
 
-// LoginResponse represents login response
+// LoginResponse response endpoint login (token JWT, data user, pesan).
 type LoginResponse struct {
 	Token   string `json:"token"`
 	User    User   `json:"user"`
 	Message string `json:"message"`
 }
 
-// UpdateProfilePhotoRequest represents update profile photo request
+// UpdateProfilePhotoRequest payload untuk update foto profil (URL atau path).
 type UpdateProfilePhotoRequest struct {
 	ProfilePhoto string `json:"profile_photo" binding:"required"`
 }
 
-// UserProfileResponse represents user profile with computed fields
+// UserProfileResponse response profil user dengan field terhitung (misalnya label status akses laporan).
 type UserProfileResponse struct {
 	User
 	ReportAccessLabel string `json:"report_access_label"`

@@ -1,3 +1,6 @@
+// File profile_handler.go: handler untuk profil user dan permintaan akses laporan.
+//
+// Endpoint: get profil (user login), update foto profil, ajukan akses laporan, daftar permintaan pending (admin), setujui/tolak akses (admin), get user by ID (testing/admin).
 package handler
 
 import (
@@ -10,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// GetProfile retrieves the current user's profile with computed fields
+// GetProfile mengembalikan profil user yang sedang login (user_id dari context) beserta label status akses laporan.
 func GetProfile(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -29,7 +32,7 @@ func GetProfile(c *gin.Context) {
 		return
 	}
 
-	// Compute report access label
+	// Label teks untuk tampilan: admin/Akses Penuh, approved/Menunggu, pending/rejected/none.
 	accessLabel := getReportAccessLabel(user.Role, user.ReportAccessStatus)
 
 	response := entity.UserProfileResponse{
@@ -40,7 +43,7 @@ func GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// UpdateProfilePhoto updates the user's profile photo
+// UpdateProfilePhoto mengubah foto profil user (body: profile_photo). user_id dari context.
 func UpdateProfilePhoto(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -56,7 +59,6 @@ func UpdateProfilePhoto(c *gin.Context) {
 
 	db := database.GetDB()
 
-	// Update profile photo
 	result := db.Model(&entity.User{}).
 		Where("id = ?", userID).
 		Update("profile_photo", req.ProfilePhoto)
@@ -71,7 +73,6 @@ func UpdateProfilePhoto(c *gin.Context) {
 		return
 	}
 
-	// Retrieve updated user
 	var user entity.User
 	if err := db.First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve updated profile"})
@@ -84,7 +85,7 @@ func UpdateProfilePhoto(c *gin.Context) {
 	})
 }
 
-// RequestReportAccess allows users to request report access
+// RequestReportAccess mengajukan permintaan akses laporan untuk user yang login. Admin tidak perlu; status pending/approved ditolak.
 func RequestReportAccess(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -99,13 +100,11 @@ func RequestReportAccess(c *gin.Context) {
 		return
 	}
 
-	// Check if user is admin (admin always has access)
 	if user.Role == "admin" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Admin users already have full access"})
 		return
 	}
 
-	// Check current status
 	if user.ReportAccessStatus == "pending" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "You already have a pending request"})
 		return
@@ -116,7 +115,7 @@ func RequestReportAccess(c *gin.Context) {
 		return
 	}
 
-	// Update status to pending
+	// Set status user ke pending agar admin bisa menyetujui/tolak.
 	result := db.Model(&entity.User{}).
 		Where("id = ?", userID).
 		Update("report_access_status", "pending")
@@ -132,7 +131,7 @@ func RequestReportAccess(c *gin.Context) {
 	})
 }
 
-// GetPendingAccessRequests retrieves all pending access requests (admin only)
+// GetPendingAccessRequests mengembalikan daftar user dengan report_access_status = pending. Hanya admin.
 func GetPendingAccessRequests(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -142,14 +141,12 @@ func GetPendingAccessRequests(c *gin.Context) {
 
 	db := database.GetDB()
 
-	// Check if user is admin
 	var user entity.User
 	if err := db.First(&user, userID).Error; err != nil || user.Role != "admin" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
 		return
 	}
 
-	// Get all users with pending requests
 	var users []entity.User
 	if err := db.Where("report_access_status = ?", "pending").Find(&users).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve access requests"})
@@ -162,18 +159,16 @@ func GetPendingAccessRequests(c *gin.Context) {
 	})
 }
 
-// ApproveReportAccess approves or rejects a user's report access request (admin only)
+// ApproveReportAccess menyetujui atau menolak permintaan akses user (path :id, query action=approve|reject). Hanya admin.
 func ApproveReportAccess(c *gin.Context) {
 	requestUserID := c.Param("id")
-	action := c.Query("action") // "approve" or "reject"
+	action := c.Query("action") // "approve" atau "reject"
 
-	// Validate action
 	if action != "approve" && action != "reject" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid action. Use 'approve' or 'reject'"})
 		return
 	}
 
-	// Check if requester is admin
 	adminID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
@@ -187,12 +182,12 @@ func ApproveReportAccess(c *gin.Context) {
 		return
 	}
 
-	// Update user's access status
 	newStatus := "rejected"
 	if action == "approve" {
 		newStatus = "approved"
 	}
 
+	// Hanya update jika user memang status pending (hindari ubah yang sudah approved/rejected).
 	result := db.Model(&entity.User{}).
 		Where("id = ? AND report_access_status = ?", requestUserID, "pending").
 		Update("report_access_status", newStatus)
@@ -213,6 +208,7 @@ func ApproveReportAccess(c *gin.Context) {
 	})
 }
 
+// getReportAccessLabel mengembalikan label teks untuk role + report_access_status (untuk tampilan UI).
 func getReportAccessLabel(role, status string) string {
 	if role == "admin" {
 		return "Akses Penuh"
@@ -223,16 +219,14 @@ func getReportAccessLabel(role, status string) string {
 		return "Akses Penuh"
 	case "pending":
 		return "Menunggu Persetujuan"
-	case "rejected":
-		return "Terbatas/Tertolak"
-	case "none":
+	case "rejected", "none", "":
 		return "Terbatas/Tertolak"
 	default:
 		return "Terbatas/Tertolak"
 	}
 }
 
-// GetUserByID retrieves a user by ID (for testing/admin purposes)
+// GetUserByID mengembalikan user berdasarkan ID (path :id). Untuk keperluan testing/admin.
 func GetUserByID(c *gin.Context) {
 	userIDStr := c.Param("id")
 	userID, err := strconv.Atoi(userIDStr)

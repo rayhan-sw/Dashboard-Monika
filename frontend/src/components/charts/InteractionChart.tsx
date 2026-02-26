@@ -1,3 +1,12 @@
+/**
+ * InteractionChart.tsx
+ *
+ * Chart pai "Mode Interaksi Pengguna": distribusi pemakaian per kategori cluster
+ * (monitoring & view, system auth, discovery, data extraction, other). Data dari
+ * getClusterChart; setiap kategori punya warna tetap (COLORS). Filter dateRange dan
+ * selectedCluster dari store.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -15,12 +24,13 @@ import type { ClusterData } from "@/types/api";
 import { PieChart as PieChartIcon } from "lucide-react";
 
 const COLORS: Record<string, string> = {
-  "monitoring & view": "#3B82F6", // blue
-  "system auth": "#10B981",       // green
-  discovery: "#F59E0B",           // amber
-  "data extraction": "#8B5CF6",   // purple
-  other: "#6B7280",               // gray
+  "monitoring & view": "#3B82F6",
+  "system auth": "#10B981",
+  discovery: "#F59E0B",
+  "data extraction": "#8B5CF6",
+  other: "#6B7280",
 };
+/** Warna tetap per kategori cluster (biru, hijau, amber, ungu, abu). */
 
 export default function InteractionChart() {
   const dateRange = useAppStore((state) => state.dateRange);
@@ -33,6 +43,7 @@ export default function InteractionChart() {
   useEffect(() => {
     loadData();
   }, [dateRange, selectedCluster]);
+  /** Muat ulang data saat rentang tanggal atau cluster berubah. */
 
   const loadData = async () => {
     setLoading(true);
@@ -63,6 +74,7 @@ export default function InteractionChart() {
       setLoading(false);
     }
   };
+  /** Ambil data cluster dari API; ubah jadi array { name, value, color } untuk Pie. */
 
   if (loading) {
     return (
@@ -102,6 +114,7 @@ export default function InteractionChart() {
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
+            {/* Tiap slice pakai entry.color dari COLORS */}
             <Tooltip
               contentStyle={{
                 backgroundColor: "#fff",

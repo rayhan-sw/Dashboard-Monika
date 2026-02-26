@@ -1,3 +1,6 @@
+// File notification_handler.go: handler untuk notifikasi user dan profil user.
+//
+// Endpoint: daftar notifikasi per user (dengan jumlah belum dibaca), tandai satu notifikasi dibaca, tandai semua dibaca, ambil profil user.
 package handler
 
 import (
@@ -10,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetNotifications returns notifications for a user
+// GetNotifications mengembalikan daftar notifikasi untuk user_id (query). Urut terbaru dulu; plus jumlah belum dibaca.
 func GetNotifications(c *gin.Context) {
 	userIDStr := c.Query("user_id")
 	if userIDStr == "" {
@@ -32,7 +35,7 @@ func GetNotifications(c *gin.Context) {
 		return
 	}
 
-	// Count unread
+	// Hitung notifikasi yang belum dibaca (is_read = false).
 	var unreadCount int64
 	db.Model(&entity.Notification{}).Where("user_id = ? AND is_read = ?", userID, false).Count(&unreadCount)
 
@@ -42,7 +45,7 @@ func GetNotifications(c *gin.Context) {
 	})
 }
 
-// MarkNotificationRead marks a notification as read
+// MarkNotificationRead menandai satu notifikasi (path :id) sebagai sudah dibaca (is_read = true).
 func MarkNotificationRead(c *gin.Context) {
 	id := c.Param("id")
 	notifID, err := strconv.Atoi(id)
@@ -64,7 +67,7 @@ func MarkNotificationRead(c *gin.Context) {
 	})
 }
 
-// MarkAllNotificationsRead marks all notifications as read for a user
+// MarkAllNotificationsRead menandai semua notifikasi milik user (body: user_id) sebagai sudah dibaca.
 func MarkAllNotificationsRead(c *gin.Context) {
 	var req struct {
 		UserID int `json:"user_id"`
@@ -88,7 +91,7 @@ func MarkAllNotificationsRead(c *gin.Context) {
 	})
 }
 
-// GetUserProfile returns user profile with report access status
+// GetUserProfile mengembalikan profil user (termasuk status akses laporan) berdasarkan user_id (query).
 func GetUserProfile(c *gin.Context) {
 	userIDStr := c.Query("user_id")
 	if userIDStr == "" {

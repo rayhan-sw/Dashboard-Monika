@@ -1,3 +1,21 @@
+// File main.go: CLI untuk mengimpor data aktivitas dari file CSV ke database PostgreSQL.
+//
+// Alur singkat:
+//   - Muat .env, koneksi DB, baca path CSV dari os.Args[1].
+//   - Baca CSV (delimiter ;), baris pertama = header, buat peta nama kolom -> index.
+//   - Untuk tiap baris data: parse id_trans (UUID), tanggal (dua format), ambil nama/satker/aktifitas/scope/lokasi/cluster/token/status.
+//   - Resolve ID referensi (cluster, activity_type, location, satker, user) via getOrCreate + cache in-memory.
+//   - Insert ActivityLog dengan ON CONFLICT (id_trans) DO NOTHING agar duplikat tidak menimpa.
+//
+// Format CSV: header di baris pertama (case-insensitive), pemisah kolom = ; (titik-koma).
+// Kolom yang dipakai: id_trans, nama, satker, aktifitas, scope, lokasi, cluster, tanggal, token, status.
+// Prasyarat: backend/.env berisi koneksi DB (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME).
+//
+// Cara menjalankan (dari root folder backend):
+//
+//	go run cmd/import/main.go <path-to-csv-file>
+//
+// Contoh: go run cmd/import/main.go data/aktivitas.csv
 package main
 
 import (
@@ -15,13 +33,13 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// main memuat .env dan koneksi DB, membaca CSV dari path argumen, lalu memproses tiap baris: resolve referensi (cluster, activity_type, location, satker, user) dan insert ActivityLog dengan ON CONFLICT DO NOTHING.
 func main() {
-	// Load environment variables
+	// Muat variabel lingkungan dari backend/.env (path ../../.env relatif dari cmd/import).
 	if err := godotenv.Load("../../.env"); err != nil {
 		log.Println("No .env file found")
 	}
 
-	// Initialize database
 	if err := database.InitDB(); err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -29,7 +47,7 @@ func main() {
 
 	log.Println("Database connected to:", os.Getenv("DB_NAME"))
 
-	// Check if CSV file path is provided
+	// Path file CSV wajib sebagai argumen pertama.
 	if len(os.Args) < 2 {
 		log.Fatal("Usage: go run main.go <path-to-csv-file>")
 	}
@@ -37,20 +55,18 @@ func main() {
 	csvPath := os.Args[1]
 	log.Printf("Reading CSV file: %s\n", csvPath)
 
-	// Open CSV file
 	file, err := os.Open(csvPath)
 	if err != nil {
 		log.Fatal("Failed to open CSV file:", err)
 	}
 	defer file.Close()
 
-	// Create CSV reader
+	// Konfigurasi reader: pemisah kolom titik-koma (;), izinkan quote tidak ketat, trim spasi di awal nilai.
 	reader := csv.NewReader(file)
-	reader.Comma = ';' // CSV uses semicolon delimiter
+	reader.Comma = ';'
 	reader.LazyQuotes = true
 	reader.TrimLeadingSpace = true
 
-	// Read all records
 	records, err := reader.ReadAll()
 	if err != nil {
 		log.Fatal("Failed to read CSV:", err)
@@ -62,11 +78,10 @@ func main() {
 
 	log.Printf("Found %d records (including header)\n", len(records))
 
-	// Parse header
+	// Baris pertama = header; colMap: nama kolom (lowercase, trim) -> index kolom.
 	header := records[0]
 	log.Println("Header:", header)
 
-	// Expected columns: id_trans, nama, satker, aktifitas, scope, lokasi, cluster, tanggal, token
 	colMap := make(map[string]int)
 	for i, col := range header {
 		colMap[strings.TrimSpace(strings.ToLower(col))] = i
@@ -74,12 +89,12 @@ func main() {
 
 	db := database.GetDB()
 
-	// In-memory caches to avoid repeated DB lookups
+	// Cache agar entitas referensi yang sama tidak dicari ulang ke DB (nama/ lokasi/ kunci -> ID).
 	clusterCache := make(map[string]int64)
 	activityTypeCache := make(map[string]int64)
 	locationCache := make(map[string]int64)
 	satkerCache := make(map[string]int64)
-	userCache := make(map[string]int64) // key: nama|token
+	userCache := make(map[string]int64) // kunci: "nama|token"
 
 	totalInserted := 0
 	skipped := 0
@@ -87,12 +102,13 @@ func main() {
 	for i := 1; i < len(records); i++ {
 		record := records[i]
 
-		// Skip empty rows
+		// Abaikan baris yang kosong atau kolom pertama kosong.
 		if len(record) == 0 || strings.TrimSpace(record[0]) == "" {
 			skipped++
 			continue
 		}
 
+		// getCol: ambil nilai kolom by nama header (aman jika kolom tidak ada atau index melebihi panjang record).
 		getCol := func(name string) string {
 			idx, ok := colMap[name]
 			if !ok || idx >= len(record) {
@@ -101,7 +117,7 @@ func main() {
 			return strings.TrimSpace(record[idx])
 		}
 
-		// Parse UUID
+		// id_trans harus UUID valid; jika tidak valid, skip baris ini.
 		idTrans, err := uuid.Parse(getCol("id_trans"))
 		if err != nil {
 			log.Printf("Row %d: Invalid id_trans UUID: %v\n", i+1, err)
@@ -109,7 +125,7 @@ func main() {
 			continue
 		}
 
-		// Parse timestamp
+		// Parse tanggal: coba format "2006-01-02 15:04:05", fallback "02/01/2006 15:04"; jika gagal, skip baris.
 		tanggalStr := getCol("tanggal")
 		tanggal, err := time.Parse("2006-01-02 15:04:05", tanggalStr)
 		if err != nil {
@@ -133,7 +149,7 @@ func main() {
 			status = "SUCCESS"
 		}
 
-		// --- Resolve cluster_id ---
+		// Dapatkan cluster_id: dari cache atau getOrCreate lalu isi cache (boleh nil jika clusterName kosong).
 		var clusterID *int64
 		if clusterName != "" {
 			if id, ok := clusterCache[clusterName]; ok {
@@ -145,10 +161,10 @@ func main() {
 			}
 		}
 
-		// --- Resolve activity_type_id ---
+		// Dapatkan activity_type_id (wajib); cache di activityTypeCache.
 		actTypeID := getOrCreateActivityType(db, aktifitas, activityTypeCache)
 
-		// --- Resolve location_id ---
+		// Dapatkan location_id: provinsi ditebak dari satker (extractProvince); cache by lokasi.
 		var locationID *int64
 		if lokasi != "" {
 			province := extractProvince(satkerName)
@@ -161,7 +177,7 @@ func main() {
 			}
 		}
 
-		// --- Resolve satker_id ---
+		// Dapatkan satker_id dari cache atau getOrCreateSatker.
 		var satkerID *int64
 		if satkerName != "" {
 			if id, ok := satkerCache[satkerName]; ok {
@@ -173,7 +189,7 @@ func main() {
 			}
 		}
 
-		// --- Resolve user_id ---
+		// Dapatkan user_id: kunci unik = nama|token; jika belum ada buat UserProfile baru lalu cache.
 		userKey := nama + "|" + tokenStr
 		var userID int64
 		if id, ok := userCache[userKey]; ok {
@@ -183,6 +199,7 @@ func main() {
 			userCache[userKey] = userID
 		}
 
+		// Susun struct ActivityLog untuk satu baris CSV.
 		activity := entity.ActivityLog{
 			IDTrans:        idTrans,
 			UserID:         userID,
@@ -195,6 +212,7 @@ func main() {
 			Tanggal:        tanggal,
 		}
 
+		// INSERT dengan ON CONFLICT (id_trans) DO NOTHING: jika id_trans sudah ada di DB, baris ini di-skip (tidak error).
 		if err := db.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "id_trans"}},
 			DoNothing: true,
@@ -205,6 +223,7 @@ func main() {
 		}
 		totalInserted++
 
+		// Log progres setiap 1000 baris berhasil.
 		if totalInserted%1000 == 0 {
 			log.Printf("Inserted %d records...\n", totalInserted)
 		}
@@ -217,12 +236,14 @@ func main() {
 	log.Println("\n CSV import completed!")
 }
 
+// getOrCreateCluster mencari baris di tabel clusters dengan name = name; jika tidak ada, INSERT baris baru dengan Name: name, lalu mengembalikan ID.
 func getOrCreateCluster(db *gorm.DB, name string) int64 {
 	var c entity.Cluster
 	db.Where("name = ?", name).FirstOrCreate(&c, entity.Cluster{Name: name})
 	return c.ID
 }
 
+// getOrCreateActivityType mengembalikan ID activity_types by nama; cache dipakai agar tidak query DB berulang. Jika belum di cache, FirstOrCreate lalu simpan ID ke cache.
 func getOrCreateActivityType(db *gorm.DB, name string, cache map[string]int64) int64 {
 	if id, ok := cache[name]; ok {
 		return id
@@ -233,6 +254,7 @@ func getOrCreateActivityType(db *gorm.DB, name string, cache map[string]int64) i
 	return at.ID
 }
 
+// getOrCreateLocation mencari Location by location_name; jika tidak ada, buat baru dengan LocationName dan Province, lalu kembalikan ID.
 func getOrCreateLocation(db *gorm.DB, locationName, province string) int64 {
 	var l entity.Location
 	db.Where("location_name = ?", locationName).FirstOrCreate(&l, entity.Location{
@@ -242,18 +264,21 @@ func getOrCreateLocation(db *gorm.DB, locationName, province string) int64 {
 	return l.ID
 }
 
+// getOrCreateSatker mencari SatkerUnit by satker_name; jika tidak ada, FirstOrCreate dengan SatkerName lalu kembalikan ID.
 func getOrCreateSatker(db *gorm.DB, satkerName string) int64 {
 	var s entity.SatkerUnit
 	db.Where("satker_name = ?", satkerName).FirstOrCreate(&s, entity.SatkerUnit{SatkerName: satkerName})
 	return s.ID
 }
 
+// getOrCreateUser mencari UserProfile dengan nama (dan token jika token tidak kosong/"NULL"); jika tidak ketemu, buat profil baru (Nama, Token, SatkerID, IsActive true) lalu kembalikan ID.
 func getOrCreateUser(db *gorm.DB, nama, token string, satkerID *int64) int64 {
 	var u entity.UserProfile
 	query := db.Where("nama = ?", nama)
 	if token != "" && token != "NULL" {
 		query = query.Where("token = ?", token)
 	}
+	// First gagal = belum ada -> buat baru
 	if query.First(&u).Error != nil {
 		u = entity.UserProfile{
 			Nama:     nama,
@@ -266,7 +291,7 @@ func getOrCreateUser(db *gorm.DB, nama, token string, satkerID *int64) int64 {
 	return u.ID
 }
 
-// extractProvince extracts province name from satker string
+// extractProvince menebak provinsi dari string satker: cocokkan dengan daftar nama provinsi Indonesia (lowercase); jika cocok, kembalikan nama provinsi dengan kapitalisasi kata; jika tidak ketemu kembalikan "Lainnya".
 func extractProvince(satker string) string {
 	satker = strings.ToLower(satker)
 
@@ -285,6 +310,7 @@ func extractProvince(satker string) string {
 
 	for _, province := range provinces {
 		if strings.Contains(satker, province) {
+			// Kapitalisasi tiap kata (huruf pertama besar) lalu gabung.
 			words := strings.Split(province, " ")
 			for i, word := range words {
 				if len(word) > 0 {

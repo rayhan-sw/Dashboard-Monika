@@ -1,3 +1,11 @@
+/**
+ * SearchSuggestions.tsx
+ *
+ * Dropdown saran pencarian: saat query ≥2 karakter, panggil getSuggestions (debounce 300ms).
+ * Hasil dikelompokkan per tipe (user, satker, recent); klik item → onSelect(text).
+ * Tampil loading atau daftar; kosong → return null.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,6 +17,7 @@ interface SearchSuggestionsProps {
   onSelect: (suggestion: string) => void;
 }
 
+/** Satu saran: tipe (user/satker/recent), text, subtitle opsional. */
 interface Suggestion {
   type: "user" | "satker" | "recent";
   text: string;
@@ -22,6 +31,7 @@ export default function SearchSuggestions({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
 
+  /** Fetch saran saat query berubah; debounce 300ms; map response ke { type, text, subtitle }. */
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (query.length < 2) {
@@ -32,7 +42,6 @@ export default function SearchSuggestions({
       setLoading(true);
       try {
         const data = await searchService.getSuggestions(query);
-        // Backend returns { suggestions: [{ type, value, label }] }
         const raw = data.suggestions || (data.data as { type?: string; value?: string; label?: string; text?: string; subtitle?: string }[] | undefined) || [];
         const mapped: Suggestion[] = raw.map((s) => ({
           type: (s.type as "user" | "satker" | "recent") || "user",
@@ -69,10 +78,10 @@ export default function SearchSuggestions({
     satker: suggestions.filter((s) => s.type === "satker"),
     recent: suggestions.filter((s) => s.type === "recent"),
   };
+  /** Pisahkan saran per tipe untuk tampil per blok (Pengguna, Satuan Kerja, Pencarian Terakhir). */
 
   return (
     <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-50">
-      {/* Users */}
       {groupedSuggestions.users.length > 0 && (
         <div className="p-3 border-b border-gray-100">
           <div className="flex items-center gap-2 px-2 mb-2">
@@ -98,7 +107,6 @@ export default function SearchSuggestions({
         </div>
       )}
 
-      {/* Satker */}
       {groupedSuggestions.satker.length > 0 && (
         <div className="p-3 border-b border-gray-100">
           <div className="flex items-center gap-2 px-2 mb-2">
@@ -121,7 +129,6 @@ export default function SearchSuggestions({
         </div>
       )}
 
-      {/* Recent */}
       {groupedSuggestions.recent.length > 0 && (
         <div className="p-3">
           <div className="flex items-center gap-2 px-2 mb-2">

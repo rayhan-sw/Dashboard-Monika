@@ -1,3 +1,11 @@
+/**
+ * HourlyActivityChart.tsx
+ *
+ * Chart garis "Distribusi Aktivitas": tren aktivitas per jam (0–23). Data dari
+ * getHourlyChart; filter dateRange dan selectedCluster dari store. Data diurut
+ * menurut hour; sumbu X jam (format "n.00"), sumbu Y jumlah; tooltip "Jam n:00" + nilai.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -26,6 +34,7 @@ export default function HourlyActivityChart() {
   useEffect(() => {
     loadData();
   }, [dateRange, selectedCluster]);
+  /** Muat ulang data saat rentang tanggal atau cluster berubah. */
 
   const loadData = async () => {
     setLoading(true);
@@ -48,6 +57,7 @@ export default function HourlyActivityChart() {
       setLoading(false);
     }
   };
+  /** Ambil data per jam dari API; urutkan menurut hour (0→23). */
 
   const formatPeriod = () => {
     try {
@@ -58,6 +68,7 @@ export default function HourlyActivityChart() {
       return "Tren per jam untuk periode yang dipilih";
     }
   };
+  /** Teks subjudul: "Tren per jam untuk periode dd MMM yyyy hingga dd MMM yyyy". */
 
   if (loading) {
     return (
@@ -121,6 +132,7 @@ export default function HourlyActivityChart() {
             dot={{ fill: "#3B82F6", r: 5, strokeWidth: 0 }}
             activeDot={{ r: 7, fill: "#3B82F6" }}
           />
+          {/* Garis biru: dataKey count per jam */}
         </LineChart>
       </ResponsiveContainer>
     </div>

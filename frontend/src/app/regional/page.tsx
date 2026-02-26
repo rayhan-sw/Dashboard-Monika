@@ -1,16 +1,30 @@
+/**
+ * page.tsx – Halaman Analisis Organisasi & Regional
+ *
+ * Layout: Sidebar + Header + main. Filter: rentang tanggal & cluster dari store;
+ * filter Eselon I (dropdown) mempengaruhi semua data. Data di-fetch sekali saat
+ * mount/ubah filter: performa satker, lokasi (provinsi), peta, geo region, top
+ * kontributor, hourly global; peak time per unit dan hourly per unit terpilih
+ * di-fetch terpisah. Komponen: UnitPerformanceRanking, Peta, Jam Operasional,
+ * Distribusi Geografis (list + chart), Engagement Eselon, Top Contributors.
+ */
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
-import { dashboardService, regionalService, type SatkerRoot } from "@/services/api";
+import {
+  dashboardService,
+  regionalService,
+  type SatkerRoot,
+} from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import type { HourlyData } from "@/types/api";
 import { Filter, ChevronDown, Check } from "lucide-react";
 import Footer from "@/components/layout/Footer";
 
-// Import regional-specific components using barrel exports
 import {
   UnitPerformanceRanking,
   IndonesiaMapSection,
@@ -21,7 +35,7 @@ import {
   TopContributors,
 } from "./_components";
 
-// Interfaces untuk data regional
+/** Satu satker: nama, jumlah request, jam puncak, peringkat. */
 interface SatkerPerformance {
   satker: string;
   requests: number;
@@ -29,6 +43,7 @@ interface SatkerPerformance {
   rank: number;
 }
 
+/** Satu region geografis: total akses + daftar provinsi (name, count, highlighted). */
 interface GeoRegion {
   total: number;
   provinces: {
@@ -38,6 +53,7 @@ interface GeoRegion {
   }[];
 }
 
+/** Satu kontributor: peringkat, username, unit, jumlah request. */
 interface TopContributor {
   rank: number;
   username: string;
@@ -45,11 +61,12 @@ interface TopContributor {
   requests: number;
 }
 
+/** Mapping nama provinsi (UPPERCASE) → nama region untuk chart/daftar geografis. */
 interface RegionMap {
   [key: string]: string;
 }
 
-// Province to Region mapping (using GeoJSON format - UPPERCASE)
+/** Provinsi → region (format GeoJSON UPPERCASE); dipakai untuk agregasi geoData. */
 const REGION_MAP: RegionMap = {
   ACEH: "SUMATERA",
   BALI: "JAWA, BALI & NUSA TENGGARA",
@@ -98,15 +115,19 @@ export default function RegionalPage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState<string>("");
   const [selectedEselon, setSelectedEselon] = useState<string>("Semua Eselon");
-  const [selectedEselonRootId, setSelectedEselonRootId] = useState<number | null>(null);
+  const [selectedEselonRootId, setSelectedEselonRootId] = useState<
+    number | null
+  >(null);
   const [tempSelectedEselon, setTempSelectedEselon] =
     useState<string>("Semua Eselon");
-  const [tempSelectedEselonRootId, setTempSelectedEselonRootId] = useState<number | null>(null);
+  const [tempSelectedEselonRootId, setTempSelectedEselonRootId] = useState<
+    number | null
+  >(null);
   const [showEselonPicker, setShowEselonPicker] = useState(false);
   const eselonPickerRef = useRef<HTMLDivElement>(null);
   const [eselonRoots, setEselonRoots] = useState<SatkerRoot[]>([]);
 
-  // Auth check
+  /** Cek token: tidak ada → redirect ke /auth/login; ada → set authLoading false. */
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -116,7 +137,7 @@ export default function RegionalPage() {
     }
   }, [router]);
 
-  // Fetch Eselon I roots untuk filter dropdown
+  /** Ambil daftar Eselon I (roots) untuk opsi filter dropdown. */
   useEffect(() => {
     regionalService
       .getSatkerRoots()
@@ -124,7 +145,6 @@ export default function RegionalPage() {
       .catch(() => setEselonRoots([]));
   }, []);
 
-  // State untuk data dari API
   const [performanceData, setPerformanceData] = useState<SatkerPerformance[]>(
     [],
   );
@@ -139,13 +159,13 @@ export default function RegionalPage() {
     {},
   );
 
-  // Sync temp with selected
+  /** Sinkronkan temp (pilihan di dropdown) dengan selected saat selected berubah. */
   useEffect(() => {
     setTempSelectedEselon(selectedEselon);
     setTempSelectedEselonRootId(selectedEselonRootId);
   }, [selectedEselon, selectedEselonRootId]);
 
-  // Handle click outside
+  /** Tutup dropdown Eselon saat klik di luar eselonPickerRef. */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -165,7 +185,7 @@ export default function RegionalPage() {
     };
   }, [showEselonPicker]);
 
-  // Fetch data dari API
+  /** Fetch semua data regional: satker, lokasi, peta, geo region, top contributors, hourly. */
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -182,7 +202,7 @@ export default function RegionalPage() {
           rootSatkerId: selectedEselonRootId,
         });
 
-        // 1. Fetch satker performance data (filter by Eselon I root + anak bila dipilih)
+        /** 1. Performa satker: getUnits dengan filter root (Eselon I) opsional. */
         const satkerResponse = await regionalService.getUnits(
           1,
           10000,
@@ -198,7 +218,7 @@ export default function RegionalPage() {
           satkerResponse.data?.length || 0,
         );
 
-        // Filter out NULL, ---, and numeric-only satkers
+        /** Buang satker invalid: kosong, "NULL", "---", atau nama hanya angka. */
         const satkerPerformance = (satkerResponse.data || [])
           .filter((item: any) => {
             const satkerName = item.satker?.trim() || "";
@@ -231,7 +251,7 @@ export default function RegionalPage() {
           satkerPerformance.length,
         );
 
-        // 2. Fetch locations (now returns satker-based province data)
+        /** 2. Lokasi per provinsi (agregasi dari backend) untuk peta dan distribusi geografis. */
         const locationsResponse = await regionalService.getLocations(
           startDate,
           endDate,
@@ -246,12 +266,13 @@ export default function RegionalPage() {
           locations.length,
         );
 
-        // 3. Process Geographic Distribution for map
-        // Backend already returns normalized UPPERCASE province names
-        const mapProvinceData = locations.map((item: { lokasi?: string; count?: number }) => ({
-          name: item.lokasi?.trim() || "",
-          count: item.count || 0,
-        })).filter(item => item.name !== "");
+        /** 3. Data peta: lokasi → { name, count }, buang yang nama kosong. */
+        const mapProvinceData = locations
+          .map((item: { lokasi?: string; count?: number }) => ({
+            name: item.lokasi?.trim() || "",
+            count: item.count || 0,
+          }))
+          .filter((item) => item.name !== "");
 
         setMapData(mapProvinceData);
 
@@ -262,10 +283,9 @@ export default function RegionalPage() {
         );
         console.log("Regional Page - Province mapping:", mapProvinceData);
 
-        // 4. Process Geographic Distribution for chart
-        // Backend already returns normalized UPPERCASE province names
+        /** 4. Agregasi per region: provinsi → region via REGION_MAP; DKI/PUSAT → PUSAT; provinsi diurut count desc. */
         const regionData: { [key: string]: GeoRegion } = {};
-        
+
         locations.forEach((item) => {
           const provinceName = item.lokasi?.trim() || "";
           const count = item.count || 0;
@@ -274,14 +294,12 @@ export default function RegionalPage() {
 
           let region;
 
-          // Check if it's PUSAT
           if (
             provinceName === "DKI JAKARTA" ||
             provinceName.includes("PUSAT")
           ) {
             region = "PUSAT";
           } else {
-            // Get region from REGION_MAP (keys are already UPPERCASE)
             region = REGION_MAP[provinceName];
 
             if (!region) {
@@ -312,7 +330,7 @@ export default function RegionalPage() {
           "regions",
         );
 
-        // 5. Fetch Top Contributors
+        /** 5. Top 10 kontributor (username, unit, requests). */
         const contributorsResponse = await regionalService.getTopContributors(
           10,
           startDate,
@@ -328,7 +346,7 @@ export default function RegionalPage() {
           contributorsResponse.data?.length || 0,
         );
 
-        // 6. Fetch Hourly Chart Data
+        /** 6. Data hourly global (fallback chart jika belum pilih unit). */
         const hourlyResponse = await dashboardService.getHourlyChart(
           startDate,
           endDate,
@@ -356,7 +374,7 @@ export default function RegionalPage() {
     fetchData();
   }, [selectedCluster, dateRange, selectedEselon, selectedEselonRootId]);
 
-  // Fetch peak times for all units
+  /** Hitung jam puncak tiap unit (10 teratas): getUnitHourlyData → cari jam dengan count max. */
   useEffect(() => {
     const fetchAllUnitPeakTimes = async () => {
       if (performanceData.length === 0) return;
@@ -403,7 +421,7 @@ export default function RegionalPage() {
     fetchAllUnitPeakTimes();
   }, [performanceData, selectedCluster, dateRange, selectedEselonRootId]);
 
-  // Fetch hourly data for selected unit
+  /** Data jam-per-jam untuk unit terpilih: dipakai chart Jam Operasional. */
   useEffect(() => {
     const fetchUnitHourlyData = async () => {
       if (!selectedUnit) {
@@ -436,21 +454,26 @@ export default function RegionalPage() {
     };
 
     fetchUnitHourlyData();
-  }, [selectedUnit, selectedCluster, dateRange, selectedEselonRootId, hourlyData]);
+  }, [
+    selectedUnit,
+    selectedCluster,
+    dateRange,
+    selectedEselonRootId,
+    hourlyData,
+  ]);
 
-  // Handle apply eselon filter (Eselon I root atau Semua Eselon)
+  /** Terapkan filter Eselon: salin temp ke selected dan tutup dropdown. */
   const handleApplyEselon = () => {
     setSelectedEselon(tempSelectedEselon);
     setSelectedEselonRootId(tempSelectedEselonRootId);
     setShowEselonPicker(false);
   };
 
-  // Get eselon display text
   const getEselonDisplayText = () => {
     return selectedEselon;
   };
 
-  // Calculate peak time from hourly data
+  /** Jam puncak unit terpilih: dari unitHourlyData, ambil jam dengan count tertinggi. */
   const getPeakTime = () => {
     if (unitHourlyData.length === 0) return "00:00";
 
@@ -462,6 +485,7 @@ export default function RegionalPage() {
     return `${maxData.hour.toString().padStart(2, "0")}:00`;
   };
 
+  /** Chart jam operasional: pakai data unit terpilih jika ada, else data hourly global. */
   const displayHourlyData =
     unitHourlyData.length > 0 ? unitHourlyData : hourlyData;
 
@@ -495,9 +519,7 @@ export default function RegionalPage() {
         <Header />
         <main className="pt-20 p-8 flex-1 bg-white">
           <div className="max-w-[1800px] mx-auto space-y-8">
-            {/* Page Header with Filter */}
             <div className="flex items-center justify-between gap-6">
-              {/* Left: Page Title and Description */}
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent mb-2">
                   Analisis Organisasi & Regional
@@ -508,7 +530,6 @@ export default function RegionalPage() {
                 </p>
               </div>
 
-              {/* Right: Filter Eselon */}
               <div className="relative flex-shrink-0" ref={eselonPickerRef}>
                 <button
                   onClick={() => setShowEselonPicker(!showEselonPicker)}
@@ -525,11 +546,9 @@ export default function RegionalPage() {
                   />
                 </button>
 
-                {/* Eselon Picker Dropdown */}
                 {showEselonPicker && (
                   <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50 min-w-[280px]">
                     <div className="space-y-2 mb-4 max-h-[300px] overflow-y-auto">
-                      {/* Semua Eselon Option */}
                       <button
                         onClick={() => {
                           setTempSelectedEselon("Semua Eselon");
@@ -555,7 +574,6 @@ export default function RegionalPage() {
                         )}
                       </button>
 
-                      {/* Daftar unit Eselon I (root) — data aktivitas termasuk semua anak (Eselon II, III, IV) */}
                       {eselonRoots.map((root) => (
                         <button
                           key={root.id}
@@ -586,7 +604,6 @@ export default function RegionalPage() {
                       ))}
                     </div>
 
-                    {/* Apply Button */}
                     <button
                       onClick={handleApplyEselon}
                       className="w-full py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors text-sm font-semibold shadow-sm"
@@ -598,13 +615,23 @@ export default function RegionalPage() {
               </div>
             </div>
 
-            {/* Row 1: Performance Ranking + Map */}
+            {/* Baris 1: Peringkat kinerja unit (Top/Bottom 10) + Peta Indonesia */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 isolate">
-              <UnitPerformanceRanking performanceData={performanceData} />
-              <IndonesiaMapSection mapData={mapData} />
+              <UnitPerformanceRanking
+                performanceData={performanceData}
+                dateRange={dateRange}
+                selectedCluster={selectedCluster}
+                selectedEselon={selectedEselon}
+              />
+              <IndonesiaMapSection
+                mapData={mapData}
+                dateRange={dateRange}
+                selectedCluster={selectedCluster}
+                selectedEselon={selectedEselon}
+              />
             </div>
 
-            {/* Row 2: Operational Hours Chart */}
+            {/* Baris 2: Jam operasional unit (daftar unit + chart per jam) */}
             <UnitOperationalHours
               performanceData={performanceData}
               selectedUnit={selectedUnit}
@@ -613,24 +640,43 @@ export default function RegionalPage() {
               loadingHourly={loadingHourly}
               getPeakTime={getPeakTime}
               unitPeakTimes={unitPeakTimes}
+              dateRange={dateRange}
+              selectedCluster={selectedCluster}
+              selectedEselon={selectedEselon}
             />
 
-            {/* Row 3: Geographic Distribution */}
+            {/* Baris 3: Distribusi geografis (daftar region + donut chart) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <GeographicDistributionList geoData={geoData} />
-              <GeographicDistributionChart geoData={geoData} />
+              <GeographicDistributionList
+                geoData={geoData}
+                dateRange={dateRange}
+                selectedCluster={selectedCluster}
+                selectedEselon={selectedEselon}
+              />
+              <GeographicDistributionChart
+                geoData={geoData}
+                dateRange={dateRange}
+                selectedCluster={selectedCluster}
+                selectedEselon={selectedEselon}
+              />
             </div>
 
-            {/* Row 4: Engagement per Eselon I/II */}
+            {/* Baris 4: Keterlibatan per Eselon I / Eselon II */}
             <EngagementEselonChart
               dateRange={dateRange}
               selectedCluster={selectedCluster}
               selectedEselonRootId={selectedEselonRootId}
               eselonRoots={eselonRoots}
+              selectedEselonName={selectedEselon}
             />
 
-            {/* Row 5: Top Contributors */}
-            <TopContributors topContributors={topContributors} />
+            {/* Baris 5: Kontributor aktivitas teratas */}
+            <TopContributors
+              topContributors={topContributors}
+              dateRange={dateRange}
+              selectedCluster={selectedCluster}
+              selectedEselon={selectedEselon}
+            />
           </div>
         </main>
         <Footer />

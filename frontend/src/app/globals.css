@@ -1,3 +1,8 @@
+/**
+ * globals.css – Gaya global aplikasi
+ * Tailwind base/components/utilities; variabel :root; body/html; card-bpk, btn-primary, stat-card;
+ * scrollbar-hide, custom-scrollbar, gpu-accelerated, smooth-transition, prefers-reduced-motion.
+ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,10 +12,12 @@
     --background: 0 0% 100%;
     --foreground: 0 0% 0%;
   }
+  /* Variabel CSS: background putih, foreground hitam (HSL). */
 
   * {
     @apply border-gray-5;
   }
+  /* Border default semua elemen. */
 
   body {
     @apply bg-gray-6 text-gray-1 font-sans antialiased;
@@ -18,38 +25,41 @@
       "rlig" 1,
       "calt" 1;
     font-display: swap;
-    /* Lebih nyaman dibaca di layar */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: 0.01em;
   }
+  /* Body: bg gray-6, teks gray-1; font smoothing agar nyaman dibaca. */
 
-  /* Prevent layout shift from scrollbar */
   html {
     overflow-y: scroll;
   }
+  /* Scrollbar selalu ada agar layout tidak bergeser. */
 }
 
 @layer components {
   .card-bpk {
     @apply bg-white border border-gray-5 rounded-lg-bpk shadow-card;
   }
+  /* Kartu standar BPK. */
 
   .btn-primary {
     @apply bg-gradient-bpk text-white font-semibold rounded-sm-bpk px-8 py-2.5 shadow-card hover:opacity-90 transition-opacity;
   }
+  /* Tombol primer: gradient BPK. */
 
   .stat-card {
     @apply card-bpk p-6 min-h-[168px] w-full sm:w-[248px];
   }
+  /* Kartu statistik. */
 }
 
 @layer utilities {
   .text-gradient-bpk {
     @apply bg-gradient-bpk bg-clip-text text-transparent;
   }
+  /* Teks gradient BPK. */
 
-  /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -58,8 +68,8 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  /* Sembunyikan scrollbar, scroll tetap berfungsi. */
 
-  /* Custom scrollbar for dropdown */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
@@ -76,20 +86,21 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #D1D5DB;
   }
+  /* Scrollbar custom: lebar 6px, thumb abu. */
 
-  /* Performance optimization utilities */
   .gpu-accelerated {
     transform: translateZ(0);
     will-change: transform;
     backface-visibility: hidden;
     perspective: 1000px;
   }
+  /* Paksa layer GPU untuk animasi halus. */
 
   .smooth-transition {
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
+  /* Easing standar untuk transisi. */
 
-  /* Optimize animations for reduced motion */
   @media (prefers-reduced-motion: reduce) {
     * {
       animation-duration: 0.01ms !important;
@@ -97,4 +108,5 @@
       transition-duration: 0.01ms !important;
     }
   }
+  /* Prefer reduced motion: percepat animasi/transisi. */
 }

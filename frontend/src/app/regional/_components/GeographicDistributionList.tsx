@@ -1,5 +1,17 @@
+/**
+ * GeographicDistributionList.tsx
+ *
+ * Daftar distribusi geografis: menampilkan total akses dan per region (key = nama region),
+ * tiap region berisi total + daftar provinsi dengan count. Bullet warna dinamis: tinggi (BB4D00),
+ * sedang (FE9A00), rendah (FDC233), nol (abu-abu). Threshold dihitung dari distribusi data
+ * (high = top 33%, medium = 33% tengah).
+ */
+
 "use client";
 
+import FilterBadge from "@/components/ui/FilterBadge";
+
+/** Satu region: total akses dan daftar provinsi (name, count, highlighted). */
 interface GeoRegion {
   total: number;
   provinces: {
@@ -11,44 +23,57 @@ interface GeoRegion {
 
 interface GeographicDistributionListProps {
   geoData: { [key: string]: GeoRegion };
+  dateRange?: any;
+  selectedCluster?: string;
+  selectedEselon?: string;
 }
 
+/**
+ * GeographicDistributionList.tsx
+ *
+ * List distribusi geografis: total akses di header, lalu grid 2 kolom per region (nama region, total).
+ * Header sekarang menyertakan `FilterBadge` di kanan — header menggunakan `flex justify-between items-start`
+ * sehingga judul tetap left-aligned dan badge berada di sisi kanan.
+ */
 export default function GeographicDistributionList({
   geoData,
+  dateRange,
+  selectedCluster,
+  selectedEselon,
 }: GeographicDistributionListProps) {
+  // Jumlah total akses = jumlah region.total dari semua region
   const totalAccess = Object.values(geoData).reduce(
     (sum, region) => sum + region.total,
     0,
   );
 
-  // Get all province counts to calculate thresholds
+  // Kumpulkan semua count provinsi untuk hitung batas warna (tinggi/sedang/rendah)
   const allCounts = Object.values(geoData).flatMap((region) =>
     region.provinces.map((p) => p.count),
   );
   const maxCount = Math.max(...allCounts, 1);
   const minCount = Math.min(...allCounts.filter((c) => c > 0), 0);
 
-  // Calculate dynamic thresholds based on data distribution
   const range = maxCount - minCount;
-  const highThreshold = minCount + range * 0.67; // Top 33%
-  const mediumThreshold = minCount + range * 0.33; // Middle 33%
+  const highThreshold = minCount + range * 0.67; // Batas "banyak": 67% atas
+  const mediumThreshold = minCount + range * 0.33; // Batas "sedang": 33% atas
 
-  // Function to get bullet color based on activity count
+  // Warna bullet: tinggi = oranye gelap, sedang = oranye, rendah = kuning, nol = abu
   const getBulletColor = (count: number) => {
     if (count >= highThreshold) {
-      return "#BB4D00"; // Banyak aktivitas
+      return "#BB4D00";
     } else if (count >= mediumThreshold) {
-      return "#FE9A00"; // Aktivitas sedang
+      return "#FE9A00";
     } else if (count > 0) {
-      return "#FDC233"; // Sedikit aktivitas
+      return "#FDC233";
     }
-    return "#D1D5DB"; // Tidak ada aktivitas (gray-300)
+    return "#D1D5DB";
   };
 
   return (
     <div className="lg:col-span-7">
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 h-[632px]">
-        <div className="flex items-start gap-4 mb-4">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center">
             <svg
               className="w-6 h-6 text-amber-600"
@@ -75,6 +100,26 @@ export default function GeographicDistributionList({
                 </p>
               </div>
               <div className="text-right">
+                <div className="mb-1">
+                  <FilterBadge
+                    dateRange={
+                      dateRange && dateRange.startDate
+                        ? new Intl.DateTimeFormat("id-ID", {
+                            day: "numeric",
+                            month: "short",
+                          }).format(new Date(dateRange.startDate)) +
+                          " – " +
+                          new Intl.DateTimeFormat("id-ID", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          }).format(new Date(dateRange.endDate))
+                        : undefined
+                    }
+                    cluster={selectedCluster}
+                    eselon={selectedEselon}
+                  />
+                </div>
                 <p className="text-sm font-semibold text-gray-500">
                   Total Akses
                 </p>
@@ -86,7 +131,7 @@ export default function GeographicDistributionList({
           </div>
         </div>
 
-        {/* Scrollable Geographic List */}
+        {/* Area scroll vertikal: tinggi tetap 522px, grid 2 kolom per region */}
         <div className="h-[522px] overflow-y-auto scrollbar-hide">
           <div className="grid grid-cols-2 gap-4">
             {Object.entries(geoData).map(([region, data]) => (
@@ -102,7 +147,7 @@ export default function GeographicDistributionList({
                 </div>
                 <div className="space-y-2">
                   {data.provinces.map((province, idx) => {
-                    const bulletColor = getBulletColor(province.count);
+                    const bulletColor = getBulletColor(province.count); // Warna berdasarkan threshold
                     return (
                       <div
                         key={idx}

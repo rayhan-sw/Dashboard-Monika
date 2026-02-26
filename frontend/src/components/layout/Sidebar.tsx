@@ -1,3 +1,11 @@
+/**
+ * Sidebar.tsx
+ *
+ * Sidebar navigasi: fixed kiri, lebar 80 (320px), logo Monika di atas, lalu daftar
+ * menu (Dashboard, Analisis Regional & Unit, Analisis Konten, Laporan). Item aktif
+ * mengikuti pathname; styling gradient BPK untuk item aktif, hover untuk yang tidak.
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -35,6 +43,7 @@ const menuItems = [
     description: "Reports & Export",
   },
 ];
+/** Daftar item menu: nama, href, ikon, deskripsi. */
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -57,7 +66,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation Menu */}
       <nav
         className="flex-1 overflow-y-auto py-6 px-3 scrollbar-hide"
         style={{
@@ -69,6 +77,7 @@ export default function Sidebar() {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
+            /** Item aktif = pathname sama dengan href; tampil gradient + indikator putih. */
 
             return (
               <li key={item.name}>

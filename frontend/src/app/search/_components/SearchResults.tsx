@@ -1,3 +1,12 @@
+/**
+ * SearchResults.tsx
+ *
+ * Tampilan hasil pencarian: dua mode (Linimasa / Tabel). Linimasa: grup per tanggal,
+ * dalam tiap tanggal grup per cluster; klik cluster untuk expand aktivitas. Tabel:
+ * grup per tanggal, baris header tanggal + baris data. Pagination dengan sliding window
+ * (max 5 nomor). Komponen TimelineItem dan TableView dipakai di dalam.
+ */
+
 "use client";
 
 import React, { useState } from "react";
@@ -26,8 +35,8 @@ export default function SearchResults({
   onPageChange,
 }: SearchResultsProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("timeline");
-  // Timeline minimalis: cluster diklik baru tampil aktivitasnya. Key: "date|clusterName"
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
+  /** Key expand: "date|clusterName" — cluster mana yang sedang dibuka di linimasa. */
 
   const toggleCluster = (date: string, clusterName: string) => {
     const key = `${date}|${clusterName}`;
@@ -38,6 +47,7 @@ export default function SearchResults({
       return next;
     });
   };
+  /** Toggle expand/collapse cluster di linimasa (tambah/hapus key dari expandedClusters). */
 
   if (loading) {
     return (
@@ -70,7 +80,6 @@ export default function SearchResults({
     );
   }
 
-  // Group by date, sort aktivitas terbaru dulu (newest first)
   const groupedByDate = results.reduce(
     (acc, item) => {
       const date = new Date(item.tanggal).toDateString();
@@ -80,8 +89,8 @@ export default function SearchResults({
     },
     {} as Record<string, ActivityLog[]>,
   );
+  /** Grup hasil per tanggal (toDateString). */
 
-  // Tanggal: terbaru dulu (newest date first). Aktivitas dalam tiap hari: terlama dulu ke terbaru (oldest first)
   const sortedDates = Object.keys(groupedByDate).sort(
     (a, b) => new Date(b).getTime() - new Date(a).getTime(),
   );
@@ -91,8 +100,8 @@ export default function SearchResults({
         new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime(),
     );
   });
+  /** Tanggal terurut terbaru dulu; dalam tiap hari aktivitas terlama → terbaru. */
 
-  // Timeline minimalis: per tanggal → per cluster (aktivitas baru tampil saat cluster diklik)
   const byDateByCluster: Record<string, Record<string, ActivityLog[]>> = {};
   sortedDates.forEach((date) => {
     byDateByCluster[date] = {};
@@ -102,10 +111,10 @@ export default function SearchResults({
       byDateByCluster[date][clusterName].push(item);
     });
   });
+  /** Struktur linimasa: per tanggal → per cluster (item.cluster || item.lokasi || "Lainnya"). */
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
         <div className="flex items-center justify-between">
           <div>
@@ -120,7 +129,6 @@ export default function SearchResults({
             </p>
           </div>
 
-          {/* View Toggle */}
           <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
             <button
               onClick={() => setViewMode("timeline")}
@@ -148,7 +156,6 @@ export default function SearchResults({
         </div>
       </div>
 
-      {/* Results - Timeline minimalis: per tanggal tampil daftar cluster; klik cluster untuk tampilkan aktivitas */}
       {viewMode === "timeline" ? (
         <div className="space-y-4">
           {sortedDates.map((date) => {
@@ -264,7 +271,7 @@ export default function SearchResults({
             </button>
 
             {(() => {
-              // Calculate sliding window for pagination
+              /** Sliding window: tampilkan max 5 nomor halaman di sekitar currentPage. */
               const maxVisible = 5;
               let startPage = Math.max(
                 1,
@@ -272,14 +279,12 @@ export default function SearchResults({
               );
               let endPage = Math.min(totalPages, startPage + maxVisible - 1);
 
-              // Adjust start if we're near the end
               if (endPage - startPage < maxVisible - 1) {
                 startPage = Math.max(1, endPage - maxVisible + 1);
               }
 
               const pages = [];
 
-              // First page button if not in range
               if (startPage > 1) {
                 pages.push(
                   <button
@@ -299,7 +304,6 @@ export default function SearchResults({
                 }
               }
 
-              // Page number buttons
               for (let page = startPage; page <= endPage; page++) {
                 pages.push(
                   <button
@@ -316,7 +320,6 @@ export default function SearchResults({
                 );
               }
 
-              // Last page button if not in range
               if (endPage < totalPages) {
                 if (endPage < totalPages - 1) {
                   pages.push(
@@ -353,6 +356,7 @@ export default function SearchResults({
   );
 }
 
+/** Satu baris aktivitas di linimasa: ikon sesuai jenis, waktu, nama, cluster, detail, status. */
 function TimelineItem({
   item,
   showCluster = false,
@@ -412,6 +416,7 @@ function TimelineItem({
       bg: "bg-gray-100",
     };
   };
+  /** Ikon + warna per jenis aktivitas (login, logout, view, download, search, dll.). */
 
   const activityStyle = getActivityIcon(item.aktifitas);
   const cluster = clusterLabel || item.cluster || item.lokasi || "—";
@@ -486,8 +491,8 @@ function TimelineItem({
   );
 }
 
+/** Tabel hasil: grup per tanggal, baris header tanggal lalu baris data per aktivitas. */
 function TableView({ results }: { results: ActivityLog[] }) {
-  // Kelompokkan per tanggal, urut: tanggal terbaru dulu; dalam tiap hari aktivitas terlama dulu
   const groupedByDate = results.reduce(
     (acc, item) => {
       const date = new Date(item.tanggal).toDateString();

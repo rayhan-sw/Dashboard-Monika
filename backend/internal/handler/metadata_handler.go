@@ -1,3 +1,6 @@
+// File metadata_handler.go: handler untuk metadata yang dipakai filter/UI (rentang tanggal, daftar satker, root, anak root).
+//
+// Endpoint: rentang tanggal aktivitas (min/max), daftar satker (untuk tree), root Eselon I (dropdown regional), anak langsung dari satu root (Eselon II).
 package handler
 
 import (
@@ -10,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetDateRange returns min and max date from database
+// GetDateRange mengembalikan tanggal minimum dan maksimum dari tabel aktivitas (untuk batas filter tanggal di UI).
 func GetDateRange(c *gin.Context) {
 	db := database.GetDB()
 
@@ -19,6 +22,7 @@ func GetDateRange(c *gin.Context) {
 		MaxDate string
 	}
 
+	// Ambil MIN/MAX tanggal dari activity_logs_normalized (tanggal saja, tanpa waktu).
 	err := db.Model(&entity.ActivityLog{}).
 		Select("DATE(MIN(tanggal)) as min_date, DATE(MAX(tanggal)) as max_date").
 		Scan(&result).Error
@@ -34,7 +38,7 @@ func GetDateRange(c *gin.Context) {
 	})
 }
 
-// SatkerOption represents a satker with its eselon
+// SatkerOption dipakai untuk response daftar satker (id, nama, eselon, parent_id).
 type SatkerOption struct {
 	ID          int64   `json:"id"`
 	SatkerName  string  `json:"satker_name"`
@@ -42,13 +46,13 @@ type SatkerOption struct {
 	ParentID    *int64  `json:"parent_id"`
 }
 
-// GetSatkerList returns list of satker units for tree view
+// GetSatkerList mengembalikan daftar satker untuk tree view (hanya Eselon, tanpa KAP, Eksternal, Staf Ahli, Wakil Ketua).
 func GetSatkerList(c *gin.Context) {
 	db := database.GetDB()
 
 	var satkerList []SatkerOption
 
-	// Get all satker units with parent relationship (Eselon only, exclude KAP, Eksternal, Staf Ahli, Wakil Ketua)
+	// Hanya Eselon; exclude Eksternal, Kelompok Jabatan Fungsional, KAP, Staf Ahli, Wakil Ketua. Urut: root dulu, lalu eselon_level, nama.
 	err := db.Raw(`
 		SELECT 
 			id,
@@ -82,12 +86,13 @@ func GetSatkerList(c *gin.Context) {
 	})
 }
 
-// GetSatkerRoots returns only Eselon I (root) units that have at least one child, for regional filter dropdown.
-// Excludes roots without children (e.g. Wakil Ketua, Staf Ahli tanpa anak).
+// GetSatkerRoots mengembalikan hanya unit Eselon I (root) yang punya setidaknya satu anak, untuk dropdown filter regional.
+// Root tanpa anak (mis. Wakil Ketua, Staf Ahli) tidak disertakan.
 func GetSatkerRoots(c *gin.Context) {
 	db := database.GetDB()
 
 	var roots []SatkerOption
+	// parent_id NULL/0, eselon Eselon I, dan EXISTS anak. Urut: Inspektorat, Sekretariat Jenderal, Ditjen PKN I–VIII, Investigasi, Badan, BPK Perwakilan, lalu nama.
 	err := db.Raw(`
 		SELECT r.id, r.satker_name, r.eselon_level, r.parent_id
 		FROM ref_satker_units r
@@ -125,9 +130,8 @@ func GetSatkerRoots(c *gin.Context) {
 	})
 }
 
-// GetSatkerRootChildren returns direct children of a root (Eselon I) that are Eselon II.
-// Used for engagement chart when filtering by one Eselon I (X-axis = Eselon II units).
-// GET /api/metadata/satker/roots/:id/children
+// GetSatkerRootChildren mengembalikan anak langsung dari satu root (Eselon I) yang berlevel Eselon II.
+// Dipakai misalnya untuk chart engagement saat filter per satu Eselon I (sumbu X = unit Eselon II). Path: GET /api/metadata/satker/roots/:id/children
 func GetSatkerRootChildren(c *gin.Context) {
 	idStr := c.Param("id")
 	if idStr == "" {
@@ -142,6 +146,7 @@ func GetSatkerRootChildren(c *gin.Context) {
 	db := database.GetDB()
 
 	var children []SatkerOption
+	// Ambil satker yang parent_id = rootID dan eselon Eselon II saja.
 	if err := db.Raw(`
 		SELECT id, satker_name, eselon_level, parent_id
 		FROM ref_satker_units

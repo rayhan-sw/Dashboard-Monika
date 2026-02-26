@@ -1,3 +1,7 @@
+// Package middleware berisi middleware HTTP untuk autentikasi dan otorisasi.
+//
+// File auth.go: AuthMiddleware (validasi JWT dari header Authorization, set user_id dan user_role di context),
+// AdminMiddleware (pastikan user punya role admin; harus dipasang setelah AuthMiddleware).
 package middleware
 
 import (
@@ -11,7 +15,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AuthMiddleware validates JWT from Authorization header and sets user_id and user_role in context.
+// AuthMiddleware memvalidasi JWT dari header Authorization (format "Bearer <token>") dan menyimpan user_id serta user_role di context.
+// Jika token tidak ada, format salah, atau invalid/kedaluwarsa, request di-abort dengan 401. Handler berikutnya bisa membaca c.Get("user_id") dan c.Get("user_role").
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -21,6 +26,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Harus "Bearer <token>" (dua bagian dipisah spasi).
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Format token tidak valid"})
@@ -47,6 +53,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Simpan di context agar handler bisa pakai c.Get("user_id") dan c.Get("user_role").
 		c.Set("user_id", userID)
 		c.Set("user_role", role)
 
@@ -54,10 +61,10 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-// AdminMiddleware ensures user has admin role
+// AdminMiddleware memastikan user yang sudah login punya role admin. Harus dipasang setelah AuthMiddleware (butuh user_id di context).
+// Jika user_id tidak ada atau user tidak ditemukan: 401. Jika role bukan admin: 403.
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get user from context (set by AuthMiddleware)
 		userID, exists := c.Get("user_id")
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -65,7 +72,7 @@ func AdminMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Check if user is admin
+		// Ambil user dari DB untuk cek role (bisa saja role di JWT sudah berubah; sumber kebenaran tetap DB).
 		db := database.GetDB()
 		var user entity.User
 		if err := db.First(&user, userID).Error; err != nil {

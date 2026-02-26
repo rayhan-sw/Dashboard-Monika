@@ -1,7 +1,16 @@
 /**
- * Change Password Page
+ * Halaman Ubah Kata Sandi (Change Password)
+ *
  * Route: /account/change-password
- * Ketentuan kata sandi baru sama seperti registrasi: min 8 karakter, besar/kecil/angka; simbol disarankan.
+ * Digunakan untuk: user yang sudah login mengganti password. Setelah berhasil, token dan user di localStorage
+ * dihapus lalu redirect ke /auth/login dengan pesan sukses.
+ *
+ * Ketentuan kata sandi baru: sama seperti registrasi — min 8 karakter, huruf besar, huruf kecil, angka;
+ * simbol disarankan. Validasi via validatePassword (username/email tidak boleh terkandung di password).
+ *
+ * Alur: cek token di useEffect (jika tidak ada → redirect login) → form old/new/confirm password →
+ * validasi client-side → accountService.changePassword (API) → sukses: set success, hapus token & user,
+ * redirect ke login setelah 2 detik.
  */
 
 'use client';
@@ -20,15 +29,25 @@ import {
   AuthLink,
 } from '@/app/auth/_components';
 
+/** Label teks untuk indikator kekuatan password (indeks 0–5). */
 const STRENGTH_LABELS = ['Sangat lemah', 'Lemah', 'Cukup', 'Cukup', 'Kuat', 'Sangat kuat'];
+/** Kelas Tailwind untuk warna bar kekuatan (merah → oranye → kuning → hijau). */
 const STRENGTH_COLORS = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-green-600', 'bg-green-700'];
 
+/**
+ * Mengambil username dan email dari localStorage (objek user). Dipakai untuk validasi password agar
+ * password tidak mengandung username/email. Di SSR (window undefined) mengembalikan string kosong.
+ */
 function getCurrentUser() {
   if (typeof window === 'undefined') return { username: '', email: '' };
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   return { username: user.username ?? '', email: user.email ?? '' };
 }
 
+/**
+ * Halaman ubah kata sandi: form kata sandi lama, baru, konfirmasi; validasi client-side;
+ * panggil API change password; setelah sukses logout (hapus token/user) dan redirect ke login.
+ */
 export default function ChangePasswordPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -60,6 +79,7 @@ export default function ChangePasswordPage() {
     if (!token) router.push('/auth/login');
   }, [router]);
 
+  /** Pada perubahan input: update formData by name, hapus error field tersebut, dan hapus pesan error global. */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -67,6 +87,11 @@ export default function ChangePasswordPage() {
     setError('');
   };
 
+  /**
+   * Submit form: validasi old/new/confirm; jika ada error tampilkan per field dan return.
+   * Jika valid: panggil accountService.changePassword; sukses → set success, hapus token & user dari localStorage,
+   * redirect ke login dengan message setelah 2 detik; gagal → set error.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -100,6 +125,7 @@ export default function ChangePasswordPage() {
 
     setIsLoading(true);
     try {
+      // API memakai header Authorization Bearer; backend validasi old password lalu update hash
       const response = await accountService.changePassword(
         formData.oldPassword,
         formData.newPassword,
@@ -123,6 +149,7 @@ export default function ChangePasswordPage() {
       <AuthLogo />
 
       <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6 max-w-[472px] mx-auto">
+        {/* Info singkat: syarat password dan bahwa user akan logout setelah berhasil */}
         <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm">
           <p className="font-semibold mb-1">Keamanan Akun</p>
           <p>Isi kata sandi lama dan baru (min. 8 karakter: huruf besar, kecil, angka; simbol disarankan). Setelah berhasil Anda akan logout dan harus login lagi.</p>
@@ -136,6 +163,7 @@ export default function ChangePasswordPage() {
           />
         )}
 
+        {/* Input kata sandi lama + tombol tampilkan/sembunyikan */}
         <AuthInput
           id="oldPassword"
           name="oldPassword"
@@ -180,6 +208,7 @@ export default function ChangePasswordPage() {
               </button>
             }
           />
+          {/* Bar kekuatan password (5 segmen); tampil hanya jika newPassword tidak kosong */}
           {formData.newPassword.length > 0 && (
             <div className="mt-2">
               <div className="flex gap-1">
@@ -201,6 +230,7 @@ export default function ChangePasswordPage() {
           )}
         </div>
 
+        {/* Input konfirmasi kata sandi baru + tombol tampilkan/sembunyikan */}
         <AuthInput
           id="confirmPassword"
           name="confirmPassword"
