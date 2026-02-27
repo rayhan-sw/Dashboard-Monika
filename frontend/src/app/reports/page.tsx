@@ -22,7 +22,6 @@ interface UserData {
   role: string;
   full_name: string;
   report_access_status: string;
-  rejection_count?: number;
 }
 
 /**
@@ -155,7 +154,6 @@ export default function ReportsPage() {
               <AccessLockedView
                 userId={userData?.id || 0}
                 accessStatus={accessStatus}
-                rejectionCount={userData?.rejection_count || 0}
                 onRequestSent={handleRequestSent}
               />
             )}

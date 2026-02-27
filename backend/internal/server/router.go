@@ -50,26 +50,29 @@ func SetupRouter() *gin.Engine {
 		auth.POST("/login", handler.Login)
 		auth.POST("/register", handler.Register)
 		auth.POST("/forgot-password", handler.ForgotPassword)
-		auth.POST("/logout", handler.Logout)
 		auth.POST("/refresh", handler.RefreshToken) // New: refresh access token
 
 		// Protected auth endpoints
 		authProtected := auth.Group("")
 		authProtected.Use(middleware.AuthMiddleware())
 		{
-			authProtected.POST("/logout-all", handler.LogoutAll)      // New: logout all devices
-			authProtected.GET("/sessions", handler.GetActiveSessions) // New: get active sessions
+			authProtected.POST("/logout", handler.Logout)             // Logout current device (requires auth)
+			authProtected.POST("/logout-all", handler.LogoutAll)      // Logout all devices
+			authProtected.GET("/sessions", handler.GetActiveSessions) // Get active sessions
 		}
 	}
 
-	// API
+	// API - All endpoints require authentication
 	api := r.Group("/api")
-	{ // Account management (protected routes)
+	api.Use(middleware.AuthMiddleware()) // Apply auth middleware to all API routes
+	{
+		// Account management
 		account := api.Group("/account")
-		account.Use(middleware.AuthMiddleware())
 		{
 			account.POST("/change-password", handler.ChangePassword)
 		}
+
+		// Dashboard endpoints
 		dashboard := api.Group("/dashboard")
 		{
 			dashboard.GET("/stats", handler.GetDashboardStats)
@@ -81,6 +84,7 @@ func SetupRouter() *gin.Engine {
 			dashboard.GET("/logout-errors", handler.GetLogoutErrors)
 		}
 
+		// Regional endpoints
 		regional := api.Group("/regional")
 		{
 			regional.GET("/provinces", handler.GetProvinces)
@@ -90,6 +94,7 @@ func SetupRouter() *gin.Engine {
 			regional.GET("/top-contributors", handler.GetTopContributors)
 		}
 
+		// Content endpoints
 		content := api.Group("/content")
 		{
 			content.GET("/dashboard-rankings", handler.GetDashboardRankings)
@@ -99,6 +104,7 @@ func SetupRouter() *gin.Engine {
 			content.GET("/global-economics", handler.GetGlobalEconomicsChart)
 		}
 
+		// Reports endpoints
 		reports := api.Group("/reports")
 		{
 			reports.GET("/templates", handler.GetReportTemplates)
@@ -110,34 +116,40 @@ func SetupRouter() *gin.Engine {
 			reports.PUT("/access-requests/:id", handler.UpdateAccessRequest)
 		}
 
+		// Notifications endpoints
 		notifications := api.Group("/notifications")
-		notifications.Use(middleware.AuthMiddleware())
 		{
 			notifications.GET("", handler.GetNotifications)
 			notifications.PUT("/:id/read", handler.MarkNotificationRead)
 			notifications.POST("/read-all", handler.MarkAllNotificationsRead)
 		}
 
+		// Users endpoints
 		users := api.Group("/users")
 		{
 			users.GET("/profile", handler.GetUserProfile)
 		}
 
+		// Profile endpoints
 		profile := api.Group("/profile")
-		profile.Use(middleware.AuthMiddleware())
 		{
 			profile.GET("", handler.GetProfile)
 			profile.PUT("/photo", handler.UpdateProfilePhoto)
 			profile.POST("/request-access", handler.RequestReportAccess)
 		}
 
+		// Search endpoints
 		api.GET("/search", handler.GlobalSearch)
 		api.GET("/search/suggestions", handler.GetSearchSuggestions)
 		api.GET("/search/users", handler.SearchUsers)
 		api.GET("/search/satker", handler.SearchSatker)
+
+		// Metadata endpoints
 		api.GET("/metadata/satker", handler.GetSatkerList)
 		api.GET("/metadata/satker/roots/:id/children", handler.GetSatkerRootChildren)
 		api.GET("/metadata/satker/roots", handler.GetSatkerRoots)
+
+		// Organization tree endpoints
 		api.GET("/org-tree", handler.GetOrganizationalTree)
 		api.GET("/org-tree/levels", handler.GetEselonLevels)
 		api.GET("/org-tree/search", handler.SearchOrganizationalUnits)

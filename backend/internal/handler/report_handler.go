@@ -1,3 +1,6 @@
+// File report_handler.go: handler untuk laporan (template, generate, unduh, riwayat) dan permintaan akses laporan (report_access_requests).
+//
+// Endpoint: daftar template, generate report (CSV/Excel/PDF), download file, riwayat unduhan, daftar permintaan akses (admin), ajukan akses, update status permintaan (admin).
 package handler
 
 import (
@@ -18,7 +21,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ReportTemplate represents available report templates
+// ReportTemplate dipakai untuk response daftar template laporan (id, judul, deskripsi, format yang didukung).
 type ReportTemplate struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
@@ -26,7 +29,7 @@ type ReportTemplate struct {
 	Formats     []string `json:"formats"`
 }
 
-// DownloadHistory represents report download history
+// DownloadHistory dipakai untuk response riwayat unduhan (id, nama laporan, format, ukuran, waktu, status).
 type DownloadHistory struct {
 	ID         int       `json:"id"`
 	ReportName string    `json:"report_name"`
@@ -36,16 +39,16 @@ type DownloadHistory struct {
 	Status     string    `json:"status"`
 }
 
-// AccessRequest represents report access request
+// AccessRequest dipakai untuk response permintaan akses (id, username, unit, waktu, status pending/approved/rejected).
 type AccessRequest struct {
 	ID          int       `json:"id"`
 	Username    string    `json:"username"`
 	Unit        string    `json:"unit"`
 	RequestTime time.Time `json:"request_time"`
-	Status      string    `json:"status"` // pending, approved, rejected
+	Status      string    `json:"status"`
 }
 
-// GetReportTemplates returns available report templates
+// GetReportTemplates mengembalikan daftar template laporan yang tersedia (hardcoded: org-performance, user-activity, feature-usage).
 func GetReportTemplates(c *gin.Context) {
 	templates := []ReportTemplate{
 		{
@@ -71,7 +74,7 @@ func GetReportTemplates(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": templates})
 }
 
-// GenerateReport generates a report based on template and format
+// GenerateReport membuat laporan berdasarkan template_id, format (CSV/Excel/PDF), dan rentang tanggal. Menyimpan file di generated_reports, mencatat di report_downloads, mengembalikan URL unduh.
 func GenerateReport(c *gin.Context) {
 	var req struct {
 		TemplateID string `json:"template_id"`
@@ -85,31 +88,27 @@ func GenerateReport(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from context or header
 	userID, exists := c.Get("user_id")
 
-	// Default values for anonymous/testing access
-	var userIDInt int = 1 // Default to system user
+	var userIDInt int = 1
 	generatedBy := "System"
 	username := "anonymous"
 	email := "system@bpk.go.id"
 
-	// If user is authenticated via context, get their info
 	if exists {
 		userIDInt = userID.(int)
 	} else {
-		// Try to get user ID from header (for non-auth middleware routes)
+		// Fallback: baca X-User-ID dari header (rute tanpa middleware auth).
 		userIDStr := c.GetHeader("X-User-ID")
 		if userIDStr != "" {
 			if _, err := fmt.Sscanf(userIDStr, "%d", &userIDInt); err == nil && userIDInt > 0 {
-				// Successfully parsed user ID from header
+				// OK
 			} else {
-				userIDInt = 1 // Reset to default if parse failed
+				userIDInt = 1
 			}
 		}
 	}
 
-	// Get user info from database if not default system user
 	if userIDInt > 0 {
 		db := database.GetDB()
 		var user entity.User
@@ -123,18 +122,15 @@ func GenerateReport(c *gin.Context) {
 		}
 	}
 
-	// Generate report data based on template
 	reportData, err := repository.GenerateReportData(req.TemplateID, req.StartDate, req.EndDate)
 	if err != nil {
 		response.Internal(c, err)
 		return
 	}
 
-	// Initialize report generator
 	outputDir := "generated_reports"
 	generator := service.NewReportGenerator(outputDir)
 
-	// Prepare metadata
 	metadata := service.ReportMetadata{
 		GeneratedBy: generatedBy,
 		Username:    username,
@@ -142,7 +138,6 @@ func GenerateReport(c *gin.Context) {
 		DateRange:   req.StartDate + " - " + req.EndDate,
 	}
 
-	// Generate file based on format
 	var filename string
 	formatUpper := strings.ToUpper(req.Format)
 
@@ -163,17 +158,14 @@ func GenerateReport(c *gin.Context) {
 		return
 	}
 
-	// Get file info
 	fileInfo, err := os.Stat(filename)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file info"})
 		return
 	}
 
-	// Calculate file size in human-readable format
 	fileSize := formatFileSize(fileInfo.Size())
 
-	// Prepare date pointers (nil if empty string)
 	var startDate, endDate *string
 	if req.StartDate != "" {
 		startDate = &req.StartDate
@@ -182,7 +174,6 @@ func GenerateReport(c *gin.Context) {
 		endDate = &req.EndDate
 	}
 
-	// Track the download in database
 	download := &entity.ReportDownload{
 		UserID:     userIDInt,
 		ReportName: reportData.Title,
@@ -194,11 +185,9 @@ func GenerateReport(c *gin.Context) {
 	}
 
 	if err := repository.CreateReportDownload(download); err != nil {
-		// Log error but don't fail the request
-		c.Error(err)
+		c.Error(err) // Catat error tapi jangan gagalkan response
 	}
 
-	// Return download URL
 	baseFilename := filepath.Base(filename)
 	downloadURL := fmt.Sprintf("/api/reports/download/%s", baseFilename)
 
@@ -213,26 +202,23 @@ func GenerateReport(c *gin.Context) {
 	})
 }
 
-// DownloadFile serves generated report files
+// DownloadFile mengirim file laporan yang sudah di-generate (path :filename). Cegah path traversal; set Content-Type dan Content-Disposition.
 func DownloadFile(c *gin.Context) {
 	filename := c.Param("filename")
 
-	// Security: prevent directory traversal
+	// Cegah directory traversal (.., /, \).
 	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid filename"})
 		return
 	}
 
-	// Construct file path
 	filePath := filepath.Join("generated_reports", filename)
 
-	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
 		return
 	}
 
-	// Determine content type based on file extension
 	ext := strings.ToLower(filepath.Ext(filename))
 	var contentType string
 	switch ext {
@@ -251,6 +237,7 @@ func DownloadFile(c *gin.Context) {
 	c.File(filePath)
 }
 
+// formatFileSize mengonversi ukuran dalam byte ke string terbaca (B, KB, MB, GB, ...).
 func formatFileSize(bytes int64) string {
 	const unit = 1024
 	if bytes < unit {
@@ -264,7 +251,7 @@ func formatFileSize(bytes int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
-// GetRecentDownloads returns recent download history from database
+// GetRecentDownloads mengembalikan riwayat unduhan terbaru. Query: limit, start_date, end_date (opsional). Jika tabel report_downloads belum ada, kembalikan array kosong agar UI tidak error.
 func GetRecentDownloads(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", strconv.Itoa(config.DefaultLimit))
 	limit, err := strconv.Atoi(limitStr)
@@ -272,14 +259,11 @@ func GetRecentDownloads(c *gin.Context) {
 		limit = config.DefaultLimit
 	}
 
-	// Get optional date filters
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 
-	// Get downloads from database with optional date filters
 	downloads, err := repository.GetRecentDownloadsWithFilter(limit, startDate, endDate)
 	if err != nil {
-		// If table report_downloads does not exist (migration 007 not applied), return empty list so UI does not break
 		if strings.Contains(err.Error(), "report_downloads") && strings.Contains(err.Error(), "does not exist") {
 			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
 			return
@@ -288,7 +272,6 @@ func GetRecentDownloads(c *gin.Context) {
 		return
 	}
 
-	// Transform to response format
 	type DownloadResponse struct {
 		ID           int    `json:"id"`
 		ReportName   string `json:"report_name"`
@@ -321,18 +304,16 @@ func GetRecentDownloads(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": response})
 }
 
-// GetAccessRequests returns pending access requests (Admin only)
+// GetAccessRequests mengembalikan semua permintaan akses laporan (dengan data user). Untuk admin. Response termasuk pending_count.
 func GetAccessRequests(c *gin.Context) {
 	db := database.GetDB()
 
-	// Get all access requests with user data
 	var requests []entity.ReportAccessRequest
 	if err := db.Preload("User").Order("requested_at DESC").Find(&requests).Error; err != nil {
 		response.Internal(c, err)
 		return
 	}
 
-	// Transform to response format
 	type AccessRequestResponse struct {
 		ID          int       `json:"id"`
 		UserID      int       `json:"user_id"`
@@ -360,7 +341,7 @@ func GetAccessRequests(c *gin.Context) {
 			ID:          r.ID,
 			UserID:      r.UserID,
 			UserName:    userName,
-			Unit:        "Biro TI", // Default unit, can be extended later
+			Unit:        "Biro TI", // Default unit; bisa diperluas dari profil/satker
 			RequestedAt: r.RequestedAt,
 			Status:      r.Status,
 			Reason:      r.Reason,
@@ -377,7 +358,7 @@ func GetAccessRequests(c *gin.Context) {
 	})
 }
 
-// RequestAccess allows user to request report access
+// RequestAccess membuat permintaan akses laporan (body: user_id, reason). Buat record di report_access_requests dan set user.report_access_status = pending.
 func RequestAccess(c *gin.Context) {
 	var req struct {
 		UserID int    `json:"user_id"`
@@ -396,14 +377,12 @@ func RequestAccess(c *gin.Context) {
 
 	db := database.GetDB()
 
-	// Check if user exists
 	var user entity.User
 	if err := db.First(&user, req.UserID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	// Check if user already has pending or approved request
 	if user.ReportAccessStatus == "pending" {
 		c.JSON(http.StatusConflict, gin.H{"error": "Permintaan akses sedang diproses"})
 		return
@@ -423,7 +402,7 @@ func RequestAccess(c *gin.Context) {
 	if err == nil {
 		// User has previous requests
 		rejectionCount = lastRequest.RejectionCount
-		
+
 		// If last request was rejected, increment the count
 		if lastRequest.Status == "rejected" {
 			rejectionCount++
@@ -433,7 +412,7 @@ func RequestAccess(c *gin.Context) {
 	// Check if user has reached maximum rejection limit (3 times)
 	if rejectionCount >= 3 {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Anda telah mencapai batas maksimal penolakan (3 kali). Silakan hubungi administrator untuk informasi lebih lanjut.",
+			"error":           "Anda telah mencapai batas maksimal penolakan (3 kali). Silakan hubungi administrator untuk informasi lebih lanjut.",
 			"rejection_count": rejectionCount,
 		})
 		return
@@ -453,7 +432,7 @@ func RequestAccess(c *gin.Context) {
 		return
 	}
 
-	// Update user's report access status
+	// Sinkronkan status user ke pending agar konsisten dengan permintaan.
 	if err := db.Model(&user).Update("report_access_status", "pending").Error; err != nil {
 		response.Internal(c, err)
 		return
@@ -466,7 +445,7 @@ func RequestAccess(c *gin.Context) {
 	})
 }
 
-// UpdateAccessRequest updates access request status (Admin only)
+// UpdateAccessRequest mengubah status permintaan akses (path :id, body: status approved/rejected, admin_notes). Hanya admin. Update report_access_requests dan users.report_access_status; buat notifikasi untuk user.
 func UpdateAccessRequest(c *gin.Context) {
 	id := c.Param("id")
 	requestID, err := strconv.Atoi(id)
@@ -476,7 +455,7 @@ func UpdateAccessRequest(c *gin.Context) {
 	}
 
 	var req struct {
-		Status     string `json:"status"` // approved or rejected
+		Status     string `json:"status"`
 		AdminNotes string `json:"admin_notes,omitempty"`
 	}
 
@@ -492,14 +471,12 @@ func UpdateAccessRequest(c *gin.Context) {
 
 	db := database.GetDB()
 
-	// Find the access request
 	var accessRequest entity.ReportAccessRequest
 	if err := db.First(&accessRequest, requestID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Request not found"})
 		return
 	}
 
-	// Update the access request
 	now := time.Now()
 	accessRequest.Status = req.Status
 	accessRequest.ProcessedAt = &now
@@ -519,17 +496,16 @@ func UpdateAccessRequest(c *gin.Context) {
 		return
 	}
 
-	// Update user's report access status
+	// Jika ditolak, set user ke "none" agar bisa ajukan lagi.
 	newStatus := req.Status
 	if req.Status == "rejected" {
-		newStatus = "none" // Reset to none so they can request again
+		newStatus = "none"
 	}
 	if err := db.Model(&entity.User{}).Where("id = ?", accessRequest.UserID).Update("report_access_status", newStatus).Error; err != nil {
 		response.Internal(c, err)
 		return
 	}
 
-	// Create notification for the user
 	notifTitle := "Akses Laporan"
 	notifMessage := "Permintaan akses laporan Anda telah disetujui"
 	notifType := "success"
@@ -549,7 +525,7 @@ func UpdateAccessRequest(c *gin.Context) {
 		CreatedAt:     time.Now(),
 	}
 
-	db.Create(&notification) // Ignore error, notification is not critical
+	db.Create(&notification)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,

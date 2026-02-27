@@ -186,43 +186,72 @@ func RefreshToken(c *gin.Context) {
 
 // Logout handles user logout - blacklists current refresh token
 func Logout(c *gin.Context) {
-	// Get refresh token from cookie
-	refreshToken, err := c.Cookie(RefreshTokenCookie)
-	if err != nil {
-		// No refresh token, but logout is still successful (client-side cleanup)
-		c.SetCookie(RefreshTokenCookie, "", -1, "/", "", false, true)
-		c.JSON(http.StatusOK, gin.H{"message": "Logout berhasil"})
+	// Get user ID and access token JTI from context (set by auth middleware)
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User tidak terautentikasi"})
 		return
 	}
 
-	// Extract JTI from refresh token
-	jti, err := auth.ExtractJTI(refreshToken)
-	if err == nil && jti != "" {
-		// Get token details for blacklist
-		claims, err := auth.ValidateToken(refreshToken)
-		if err == nil {
-			// Add to blacklist
-			blacklistRepo := getTokenBlacklistRepo()
-			blacklist := &entity.TokenBlacklist{
-				JTI:           jti,
-				UserID:        claims.UserID,
-				TokenType:     entity.BlacklistReasonLogout,
-				Reason:        entity.BlacklistReasonLogout,
-				BlacklistedAt: time.Now(),
-				ExpiresAt:     claims.ExpiresAt.Time,
-			}
-			blacklistRepo.Add(blacklist)
+	accessTokenJTI, _ := c.Get("token_jti")
+	blacklistRepo := getTokenBlacklistRepo()
+	refreshTokenRepo := getRefreshTokenRepo()
 
-			// Delete from refresh_tokens table
-			refreshTokenRepo := getRefreshTokenRepo()
-			refreshTokenRepo.Delete(jti)
+	// 1. Blacklist the current access token
+	if accessTokenJTI != nil && accessTokenJTI.(string) != "" {
+		accessBlacklist := &entity.TokenBlacklist{
+			JTI:           accessTokenJTI.(string),
+			UserID:        userID.(int),
+			TokenType:     "access",
+			Reason:        entity.BlacklistReasonLogout,
+			BlacklistedAt: time.Now(),
+			ExpiresAt:     time.Now().Add(15 * time.Minute), // Access token expiry
+		}
+		blacklistRepo.Add(accessBlacklist)
+	}
+
+	// 2. Get and blacklist refresh token from cookie
+	refreshToken, err := c.Cookie(RefreshTokenCookie)
+	if err == nil && refreshToken != "" {
+		// Extract JTI from refresh token
+		jti, err := auth.ExtractJTI(refreshToken)
+		if err == nil && jti != "" {
+			// Get token details for blacklist
+			claims, err := auth.ValidateToken(refreshToken)
+			if err == nil {
+				// Add refresh token to blacklist
+				refreshBlacklist := &entity.TokenBlacklist{
+					JTI:           jti,
+					UserID:        claims.UserID,
+					TokenType:     "refresh",
+					Reason:        entity.BlacklistReasonLogout,
+					BlacklistedAt: time.Now(),
+					ExpiresAt:     claims.ExpiresAt.Time,
+				}
+				blacklistRepo.Add(refreshBlacklist)
+
+				// Delete from refresh_tokens table
+				refreshTokenRepo.Delete(jti)
+			}
 		}
 	}
 
-	// Clear cookie
+	// 3. Clear refresh token cookie
 	c.SetCookie(RefreshTokenCookie, "", -1, "/", "", false, true)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Logout berhasil"})
+	// Get user info for response
+	db := database.GetDB()
+	var user entity.User
+	db.Select("id, username, role").First(&user, userID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logout berhasil",
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"role":     user.Role,
+		},
+	})
 }
 
 // LogoutAll handles logout from all devices - blacklists all user's refresh tokens
