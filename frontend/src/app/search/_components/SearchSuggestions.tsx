@@ -42,7 +42,7 @@ export default function SearchSuggestions({
       setLoading(true);
       try {
         const data = await searchService.getSuggestions(query);
-        const raw = data.suggestions || (data.data as { type?: string; value?: string; label?: string; text?: string; subtitle?: string }[] | undefined) || [];
+        const raw: any[] = data.suggestions || data.data || [];
         const mapped: Suggestion[] = raw.map((s) => ({
           type: (s.type as "user" | "satker" | "recent") || "user",
           text: s.text ?? s.value ?? s.label ?? "",
