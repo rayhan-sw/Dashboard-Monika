@@ -1,0 +1,955 @@
+--- Page 1 ---
+LAPORAN CAPSTONE PROJECT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Disusun oleh: 
+Rayhan Septian Wijaya (24060123140123) 
+Moh Yusril Nur Syabani (24060123140181) 
+ 
+ 
+ 
+Pembimbing: 
+Khadijah, S.Kom., M.Cs. 
+ 
+ 
+ 
+ 
+DEPARTEMEN INFORMATIKA 
+FAKULTAS SAINS DAN MATEMATIKA 
+UNIVERSITAS DIPONEGORO 
+2026 
+​
+ 
+ 
+ 
+
+--- Page 2 ---
+HALAMAN PENGESAHAN 
+LAPORAN CAPSTONE PROJECT  
+ 
+Judul  
+: …………………………………………….. 
+Disusun oleh : 
+ 
+No. 
+Nama Mahasiswa 
+NIM 
+1 
+Rayhan Septian Wijaya 
+24060123140123 
+2 
+Moh Yusril Nur Syabani 
+24060123140181 
+Laporan ini telah diperiksa, disetujui, dan disahkan sebagai syarat kelulusan pada Program 
+Studi S1 Informatika, Fakultas Sains dan Matematika, Universitas Diponegoro. 
+ 
+​
+​
+​
+​
+​
+​
+Semarang, ................................ 
+Koordinator Capstone Project 
+ 
+ 
+ 
+ 
+Dosen Pembimbing 
+Sandy Kurniawan, S.Kom., M.Kom. 
+NIP. 199603032024061003 
+Khadijah, S.Kom., M.Cs. 
+NIP. 198903032015042002 
+ 
+ 
+ 
+Mengetahui, 
+Ketua Departemen Informatika 
+ 
+ 
+ 
+ 
+ 
+Dr. Aris Sugiharto, S.Si., M.Kom.​
+NIP. 197108111997021004 
+ 
+ 
+ 
+ 
+ 
+ 
+2 
+ 
+
+--- Page 3 ---
+ABSTRAK 
+Pengelolaan data log aktivitas pengguna pada sistem BIDICS di lingkungan Badan 
+Pemeriksa Keuangan (BPK) Republik Indonesia sebelumnya masih berupa data tekstual 
+mentah tanpa dukungan visualisasi analitik. Kondisi tersebut mengakibatkan proses 
+pemantauan operasional, identifikasi pola trafik, serta deteksi anomali berjalan kurang 
+efisien karena sangat bergantung pada analisis manual. Selain itu, ketiadaan data 
+pembanding pemanfaatan dashboard yang terstruktur menyebabkan proses optimalisasi 
+dan pengambilan keputusan manajerial belum sepenuhnya berbasis pada data yang terukur. 
+Sebagai solusi teknis, dikembangkan produk MONIKA (Monitoring Kluster Analitik), 
+sebuah sistem single view dashboard terpusat yang dirancang untuk mengagregasi dan 
+memvisualisasikan jutaan baris data log interaksi pengguna menjadi informasi strategis 
+yang dinamis. Pengembangan perangkat lunak ini diimplementasikan menggunakan 
+metode Software Development Life Cycle (SDLC) ICONIX yang secara presisi memetakan 
+kebutuhan fungsional ke dalam perancangan berbasis objek. Arsitektur sistem dibangun 
+menggunakan kerangka kerja Next.js pada sisi antarmuka dengan mekanisme Server-Side 
+Rendering (SSR) untuk mempercepat pemuatan halaman, dipadukan dengan bahasa 
+pemrograman Golang pada sisi peladen yang mengimplementasikan fitur konkurensi 
+Goroutines untuk pemrosesan data asinkron secara paralel. Berdasarkan hasil pengujian 
+yang dilakukan, sistem tervalidasi 100% pada seluruh skenario uji fungsionalitas fitur 
+pelaporan dan analitik. Lebih lanjut, pengukuran performa arsitektur menunjukkan bahwa 
+integrasi SSR dan optimasi konkurensi mampu meningkatkan kecepatan muat data metrik 
+(Time-to-First-Byte) hingga 38% lebih efisien, serta mempertahankan stabilitas pemakaian 
+sumber daya memori saat memproses volume log akses yang masif. Sebagai 
+kesimpulannya, sistem MONIKA terbukti secara signifikan meningkatkan efisiensi 
+operasional tim teknologi informasi dalam mendeteksi anomali secara dini dan 
+memfasilitasi manajemen BPK RI dalam melakukan evaluasi kinerja aplikasi berbasis data 
+analitik yang presisi.​
+​
+Kata kunci​
+: Dashboard, Golang, ICONIX, Monitoring, Next.js 
+ 
+3 
+ 
+
+--- Page 4 ---
+ABSTRACT 
+The management of user activity log data on the BIDICS system within the Audit Board of 
+the Republic of Indonesia (BPK RI) was previously in the form of raw textual data without 
+analytical visualization support. This condition caused operational monitoring, traffic 
+pattern identification, and anomaly detection processes to run inefficiently as they heavily 
+relied on manual analysis. Furthermore, the absence of structured dashboard utilization 
+comparison data caused the optimization process and managerial decision-making to not 
+be fully based on measurable data. As a technical solution, the MONIKA (Monitoring 
+Kluster Analitik) product was developed, which was a centralized single-view dashboard 
+system designed to aggregate and visualize millions of rows of user interaction log data 
+into dynamic strategic information. The software development was implemented using the 
+ICONIX Software Development Life Cycle (SDLC) method, which precisely mapped 
+functional requirements into object-oriented design. The system architecture was built 
+using the Next.js framework on the interface side with a Server-Side Rendering (SSR) 
+mechanism to accelerate page loading, combined with the Golang programming language 
+on the server side which implemented Goroutines concurrency features for parallel 
+asynchronous data processing. Based on the testing results, the system was 100% validated 
+across all functional test scenarios for reporting and analytical features. Furthermore, the 
+architecture's performance measurement showed that the integration of SSR and 
+concurrency optimization improved metric data load speed (Time-to-First-Byte) by up to 
+38% more efficiently, and maintained memory resource usage stability when processing 
+massive access log volumes. In conclusion, the MONIKA system was proven to 
+significantly improve the operational efficiency of the information technology team in 
+detecting anomalies early and facilitated the management of BPK RI in evaluating 
+application performance based on precise analytical data. 
+ 
+Keywords : Dashboard, Golang, ICONIX, Monitoring, Next.js 
+ 
+ 
+4 
+ 
+
+--- Page 5 ---
+DAFTAR ISI 
+ 
+HALAMAN PENGESAHAN​ ii 
+ABSTRAK​
+iii 
+ABSTRACT​
+iv 
+DAFTAR ISI​
+v 
+DAFTAR GAMBAR​
+vii 
+DAFTAR TABEL​
+viii 
+BAB I PENDAHULUAN​
+1 
+1.1​
+Latar Belakang Proyek​
+1 
+1.2​
+Tujuan dan Manfaat Proyek​ 2 
+1.3​
+Ruang Lingkup​
+2 
+BAB II TINJAUAN PUSTAKA​
+3 
+2.1​
+Domain​
+3 
+2.2​
+Konsep​
+3 
+2.2.1​
+Subsubbab Konsep 1​ 3 
+2.2.2​
+Subsubbab Konsep 2​ 3 
+2.3​
+Model​3 
+2.3.1​
+Subsubbab Model 1​ 3 
+2.3.2​
+Subsubbab Model 2​ 4 
+2.4​
+Teknologi​
+4 
+BAB III ANALISIS DAN PERANCANGAN​5 
+3.1​
+Analisis Sistem Berjalan​
+5 
+3.2​
+Analisis Kebutuhan​
+5 
+3.2.1​
+Deskripsi Umum Sistem​
+5 
+3.2.2​
+Karakteristik pengguna​
+6 
+3.2.3​
+Kebutuhan fungsional​6 
+3.2.4​
+Kebutuhan non-fungsional​
+6 
+3.2.5​
+Kebutuhan Antarmuka​
+6 
+3.3​
+Analisis Sistem Usulan​
+6 
+3.3.1​
+Pemodelan Proses​
+6 
+3.3.2​
+Pemodelan Data​
+7 
+5 
+ 
+
+--- Page 6 ---
+3.3.3​
+Pemodelan Antarmuka​
+7 
+3.4​
+Perancangan Sistem​ 7 
+3.4.1​
+Perancangan Proses​ 7 
+3.4.2​
+Perancangan Data​
+7 
+3.4.3​
+Perancangan Antarmuka​
+7 
+BAB IV IMPLEMENTASI DAN PENGUJIAN​
+8 
+4.1​
+Lingkungan Implementasi​
+8 
+4.2​
+Implementasi​ 8 
+4.2.1​
+Arsitektur Sistem​
+8 
+4.2.2​
+Implementasi Data​
+8 
+4.2.3​
+Implementasi Antarmuka​
+9 
+4.3​
+Pengujian​
+9 
+4.3.1​
+Skenario Pengujian​
+9 
+4.3.2​
+Hasil Pengujian​
+9 
+BAB V PENUTUP​
+10 
+5.1​
+Kesimpulan​
+10 
+5.2​
+Saran​ 10 
+DAFTAR PUSTAKA​ 11 
+LAMPIRAN​
+12 
+Lampiran 1 Dokumentasi Wawancara/TOR/SRS​
+12 
+Lampiran 2 Organisasi Tim Proyek​
+13 
+Lampiran 3 Jadwal Rencana & Realisasi Pelaksanaan Proyek​14 
+Lampiran 4 Dokumentasi Kegiatan Expo​
+15 
+Lampiran 5 Daftar Hadir Pengunjung Expo​
+16 
+ 
+ 
+ 
+6 
+ 
+
+--- Page 7 ---
+DAFTAR GAMBAR 
+ 
+Gambar 1 Ini adalah contoh dari caption gambar.​
+1 
+Gambar 2 Ini adalah contoh dari caption gambar.​
+3 
+Gambar 3 Ini adalah contoh dari caption gambar.​
+5 
+Gambar 4 Ini adalah contoh dari caption gambar.​
+7 
+Gambar 5 Ini adalah contoh dari caption gambar.​
+9 
+ 
+ 
+7 
+ 
+
+--- Page 8 ---
+DAFTAR TABEL 
+ 
+Tabel 1 Tabel Karakteristik Pengguna​
+6 
+Tabel 2 Tabel Kebutuhan Fungsional​
+6 
+Tabel 3 Spesifikasi Lingkungan Implementasi​
+8 
+Tabel 4 Rencana Pengujian​
+9 
+Tabel 5 Deskripsi dan Hasil Pengujian​
+9 
+ 
+ 
+8 
+ 
+
+--- Page 9 ---
+BAB I​
+PENDAHULUAN 
+Bagian pendahuluan ini menguraikan deskripsi mengenai latar belakang 
+permasalahan, rumusan masalah, target pencapaian serta manfaat, batasan ruang lingkup, 
+hingga kerangka sistematika penulisan yang diimplementasikan dalam penyusunan laporan 
+Capstone Project ini. 
+1.1​
+Latar Belakang Proyek 
+Badan Pemeriksa Keuangan Republik Indonesia (BPK RI) terus beradaptasi 
+dengan transformasi digital dalam sektor publik yang bergeser menuju pemanfaatan 
+analisis data besar (Big Data Analytics). Sebagai wujud nyata dari upaya tersebut, BPK RI 
+memiliki sistem BIDICS, yaitu sebuah platform yang memuat berbagai kluster dashboard 
+analitik untuk menunjang aktivitas audit dan evaluasi kinerja. Keberadaan dashboard ini 
+merupakan instrumen penting bagi pemangku kepentingan, seperti para auditor dan jajaran 
+manajemen BPK RI, untuk memantau data strategis negara. 
+Meskipun sistem BIDICS telah digunakan, terdapat permasalahan pada aspek pengelolaan 
+data rekam jejak (log) aktivitas pengguna yang selama ini masih berupa data tekstual 
+mentah tanpa adanya dukungan visualisasi analitik. Kondisi ini menyebabkan proses 
+pemantauan kestabilan sistem, identifikasi pola trafik, dan deteksi potensi anomali menjadi 
+sangat tidak efisien karena sangat bergantung pada proses analisis manual oleh tim 
+Teknologi Informasi (TI). 
+Hingga saat ini, mekanisme pemantauan (monitoring) untuk dashboard BIDICS masih 
+berjalan secara terpisah dan belum terintegrasi ke dalam satu sistem yang terpusat. Selain 
+itu, belum tersedianya data pembanding penggunaan dashboard yang terstruktur 
+menyebabkan proses optimalisasi, sosialisasi ulang, dan evaluasi operasional belum 
+sepenuhnya berbasis pada data yang terukur. 
+Sebagai solusi atas permasalahan tersebut, diusulkan pengembangan produk MONIKA 
+(Monitoring Kluster Analitik). MONIKA adalah sebuah sistem single view dashboard 
+terpusat yang secara khusus dirancang untuk mengolah dan memvisualisasikan data log 
+pengguna menjadi informasi yang mudah dipahami oleh manajemen. Sistem ini 
+diharapkan mampu memvisualisasikan insight interaktif seperti statistik login, riwayat 
+aktivitas, dan pola penggunaan kluster dashboard untuk memfasilitasi tim TI maupun 
+manajemen BPK RI dalam melakukan deteksi anomali secara proaktif dan mengevaluasi 
+kinerja aplikasi secara presisi. 
+1 
+ 
+
+--- Page 10 ---
+ 
+Gambar 1 Ini adalah contoh dari caption gambar. 
+1.2​
+Tujuan dan Manfaat Proyek 
+Pelaksanaan proyek ini memiliki target pencapaian berupa output dan outcome 
+sebagai berikut: 
+Output:  
+Menghasilkan produk berupa aplikasi MONIKA (Monitoring Kluster Analitik), yakni 
+sebuah single view dashboard berbasis website yang mengolah data log mentah pengguna 
+BIDICS BPK RI menjadi visualisasi analitik yang terpusat dan interaktif. 
+Outcome: 
+●​ Memudahkan tim TI BPK RI dalam memantau tingkat pemanfaatan dashboard 
+BIDICS secara objektif dan berbasis data. 
+●​ Membantu mempercepat deteksi dini terhadap anomali penggunaan dan permasalahan 
+pada sistem autentikasi (seperti login success dan failure). 
+●​ Mengidentifikasi secara akurat dashboard kluster analitik mana saja yang aktif, kurang 
+dimanfaatkan, atau tidak digunakan sama sekali. 
+●​ Menyediakan dasar evaluasi berbasis data bagi manajemen untuk perencanaan dan 
+pengembangan ekosistem dashboard BPK RI di masa mendatang. 
+1.3​
+Ruang Lingkup 
+Batasan ruang lingkup pada pengembangan Capstone Project ini mencakup 
+hal-hal yang akan dikerjakan (in-scope) dan hal-hal yang tidak dikerjakan (out-of-scope), 
+yaitu sebagai berikut : 
+In-Scope : 
+1.​ Pemantauan Penggunaan: Sistem berfokus pada visualisasi metrik pemantauan 
+pengguna, mencakup peringkat kinerja satuan kerja (satker), distribusi geografis 
+akses, kontributor pengguna teratas, dan jam operasional unit kerja.  
+2.​ Manajemen Laporan: Sistem memiliki fitur untuk mengekspor laporan pemantauan 
+dalam format file CSV, Microsoft Excel (.xlsx), dan PDF.   
+2 
+ 
+
+--- Page 11 ---
+3.​ Metode dan Teknologi: Pengembangan perangkat lunak dilakukan menggunakan 
+pendekatan metode Software Development Life Cycle (SDLC) ICONIX, dengan 
+teknologi frontend Next.js dan backend menggunakan Golang.   
+Out-of-Scope : 
+1.​ Pembatasan Aksi Remediasi: Sistem pemantauan ini bersifat analitik pasif 
+(Read-Only) dan tidak memiliki integrasi dua arah (Two-Way Integration). Sistem 
+tidak mencakup fitur untuk melakukan perbaikan otomatis (self-healing), 
+mematikan sesi user, atau memblokir IP address secara otomatis.   
+2.​ Pembatasan Fitur Analitik:Sistem tidak mencakup penggunaan fitur analitik 
+prediktif (Advanced AI / Machine Learning & Forecasting), sehingga tidak 
+melayani prediksi tren masa depan, analisis sentimen, maupun deteksi kecurangan 
+(fraud detection) yang berbasis Deep Learning.   
+ 
+3 
+ 
+
+--- Page 12 ---
+BAB II​
+TINJAUAN PUSTAKA 
+ 
+Bab tinjauan pustaka menyajikan rangkuman komprehensif mengenai literatur 
+ilmiah dan teknologi yang relevan dengan topik proyek. Bab ini juga memuat penjelasan 
+terminologi sebagai rujukan. Perlu diperhatikan bahwa bab ini bukan berisi dokumentasi 
+perancangan sistem penulis, melainkan referensi pengetahuan (knowledge base) yang 
+mendukung argumen pemilihan solusi.  
+2.​  
+2.1​
+Domain 
+Domain proyek MONIKA berada pada irisan antara pemeriksaan keuangan 
+negara, pemanfaatan big data analytics dalam audit sektor publik, serta pemantauan 
+pemanfaatan dashboard analitik di lingkungan Badan Pemeriksa Keuangan Republik 
+Indonesia (BPK RI). Dalam Peraturan BPK Nomor 1 Tahun 2025, BPK didefinisikan 
+sebagai lembaga negara yang bertugas memeriksa pengelolaan dan tanggung jawab 
+keuangan negara, serta dinyatakan sebagai lembaga yang bebas dan mandiri dalam 
+menjalankan fungsi pemeriksaan tersebut (BPK RI, 2025). Oleh karena itu, sistem 
+informasi dan platform analitik yang digunakan di lingkungan BPK tidak hanya 
+diposisikan sebagai perangkat operasional, tetapi juga sebagai sarana pendukung 
+akuntabilitas, efektivitas pemeriksaan, dan pengambilan keputusan berbasis data.  
+Transformasi 
+digital 
+sektor 
+publik 
+menjadi 
+konteks 
+utama 
+yang 
+melatarbelakangi kebutuhan pemanfaatan data secara lebih terstruktur. OECD melalui 
+Digital Government Index menjelaskan bahwa transformasi digital pemerintahan 
+menekankan pembangunan fondasi pemerintahan digital yang koheren dan berpusat pada 
+manusia, sementara World Bank melalui GovTech Maturity Index mengukur kematangan 
+GovTech melalui empat area, yaitu sistem inti pemerintahan, layanan publik digital, 
+keterlibatan warga secara digital, dan faktor pendukung GovTech. Dalam konteks proyek 
+ini, transformasi digital tersebut tercermin pada upaya BPK memanfaatkan data, 
+dashboard, dan analitik untuk memperkuat proses audit serta evaluasi kinerja sistem.  
+Salah satu platform utama dalam domain ini adalah BPK Big Data Analytics 
+atau BIDICS. BIDICS merupakan platform analitik milik BPK yang digunakan untuk 
+4 
+ 
+
+--- Page 13 ---
+mengumpulkan, memproses, dan melakukan berbagai analisis data sesuai kebutuhan audit 
+(Bakri & Tirta, 2023). Menurut artikel INTOSAI Journal, BIDICS berkembang dari konsep 
+e-Audit dan digunakan untuk mendukung proses audit berbasis big data analytics. Platform 
+ini mendukung analisis deskriptif, diagnostik, dan prediksi risiko, serta memfasilitasi 
+kegiatan eksploratif untuk menemukan sinyal anomali, ketidakwajaran, atau pola tertentu 
+yang kemudian dapat ditindaklanjuti melalui prosedur konfirmatif.  
+Dalam arsitektur dan pemanfaatannya, BIDICS menangani data yang beragam, 
+meliputi data terstruktur, semi-terstruktur, dan tidak terstruktur. Data terstruktur umumnya 
+berbentuk tabel dengan baris dan kolom, sedangkan data semi-terstruktur dapat berupa 
+JSON, XML, atau HTML, dan data tidak terstruktur dapat berupa teks, gambar, suara, atau 
+video. Hasil analisis dari data tersebut dapat disimpan dalam repositori hasil analitik dan 
+ditampilkan secara visual melalui dashboard agar dapat dikonsumsi oleh auditor maupun 
+aplikasi pendukung audit lainnya. Pada tahun 2023, BIDICS telah memiliki 10 kluster data 
+analitik yang dapat digunakan dalam pemeriksaan, seperti pemerintah pusat, pemerintah 
+daerah, ekonomi global, data berbasis wilayah, bantuan sosial dan subsidi, peta 
+pembangunan nasional, LPSE, pencarian data keuangan, serta monitoring evaluasi 
+kelembagaan.  
+Pada pengembangan sistem Monitoring Kluster Analitik (MONIKA) ini, 
+terdapat beberapa istilah yang digunakan dalam sistem dan berkaitan langsung dengan 
+kasus proyek. 
+1.​ Istilah kluster dashboard analitik dalam proyek ini merujuk pada 
+pengelompokan dashboard atau data analitik berdasarkan area pemeriksaan, 
+jenis data, atau kebutuhan pemantauan tertentu. Kluster semacam ini 
+penting karena membantu pengguna memilih data yang relevan dengan 
+kebutuhan 
+analisisnya. 
+Pada 
+BIDICS, 
+pengelompokan 
+kluster 
+memungkinkan auditor mengakses data dan model analitik sesuai konteks 
+pemeriksaan, sehingga proses eksplorasi informasi dapat dilakukan lebih 
+terarah. Dalam kaitannya dengan MONIKA, kluster dashboard analitik 
+menjadi objek pemantauan, yaitu untuk mengetahui dashboard mana yang 
+aktif digunakan, kurang dimanfaatkan, atau tidak digunakan berdasarkan 
+data log aktivitas pengguna. 
+5 
+ 
+
+--- Page 14 ---
+2.​ Istilah dashboard analitik mengacu pada media visual yang menyajikan 
+indikator, metrik, atau pola data dalam bentuk yang lebih mudah dipahami 
+oleh pengguna. Kajian Bach dkk. (2022) mengenai dashboard design 
+patterns menunjukkan bahwa dashboard memiliki beragam pola desain 
+untuk mendukung kebutuhan analisis, narasi data, maupun pemantauan 
+tertanam pada sistem. Sementara itu, kajian Rabiei dkk. (2024) menekankan 
+bahwa dashboard yang efektif perlu mempertimbangkan tujuan, pengguna 
+sasaran, konten, antarmuka, bentuk penyajian data, serta infrastruktur agar 
+dapat mendukung fungsi monitoring dan pengambilan keputusan. Dengan 
+demikian, dashboard dalam domain proyek MONIKA tidak dipahami 
+sekadar sebagai tampilan grafik, tetapi sebagai media konsolidasi informasi 
+untuk membantu pengguna memahami kondisi operasional sistem. 
+3.​ Istilah log aktivitas pengguna atau user activity log merujuk pada catatan 
+peristiwa yang terjadi ketika pengguna berinteraksi dengan suatu sistem. 
+NIST mendefinisikan log sebagai rekaman peristiwa yang terjadi pada aset 
+komputasi organisasi, mencakup platform fisik maupun virtual, jaringan, 
+layanan, dan lingkungan cloud. Log management mencakup proses 
+menghasilkan, mengirimkan, menyimpan, mengakses, menganalisis, hingga 
+membuang data log. Tujuan pengelolaan log meliputi identifikasi insiden 
+keamanan siber, penemuan masalah operasional, dan pemenuhan kebutuhan 
+penyimpanan rekaman sesuai periode yang ditentukan. Dalam konteks 
+MONIKA, log aktivitas pengguna menjadi sumber data utama untuk 
+memahami pola login, akses dashboard, intensitas penggunaan, waktu 
+akses, dan perilaku pemanfaatan sistem BIDICS.  
+4.​ Istilah event logging berkaitan erat dengan pencatatan aktivitas sistem yang 
+dapat digunakan untuk mendukung deteksi ancaman dan pemantauan 
+operasional. Panduan Best Practices for Event Logging and Threat 
+Detection yang diterbitkan pada tahun 2024 menekankan bahwa solusi 
+event logging yang efektif membantu meningkatkan visibilitas jaringan 
+serta mendukung keberlanjutan operasi dan ketahanan sistem kritis. 
+Panduan tersebut juga menyoroti empat faktor utama dalam praktik logging, 
+yaitu kebijakan event logging yang disetujui organisasi, akses dan korelasi 
+log secara terpusat, penyimpanan aman serta integritas log, dan strategi 
+deteksi terhadap ancaman yang relevan. Prinsip tersebut relevan dengan 
+6 
+ 
+
+--- Page 15 ---
+MONIKA karena data log tidak cukup hanya disimpan, tetapi perlu 
+dikorelasikan dan divisualisasikan agar dapat menghasilkan informasi yang 
+dapat ditindaklanjuti oleh tim TI maupun manajemen.  
+5.​ Istilah monitoring pemanfaatan aplikasi dalam domain proyek ini 
+mengacu pada proses pengamatan dan pengukuran penggunaan sistem 
+berdasarkan data aktual, seperti jumlah akses, frekuensi login, persebaran 
+pengguna, waktu penggunaan, serta dashboard yang paling sering atau 
+paling jarang digunakan. Pada laporan proyek, MONIKA direncanakan 
+sebagai single view dashboard yang memvisualisasikan metrik pemantauan 
+pengguna, termasuk peringkat kinerja satuan kerja, distribusi geografis 
+akses, kontributor pengguna teratas, dan jam operasional unit kerja. Dengan 
+demikian, monitoring pemanfaatan aplikasi berfungsi sebagai dasar evaluasi 
+operasional yang objektif, bukan sekadar penilaian subjektif terhadap aktif 
+atau tidaknya suatu dashboard.  
+6.​ Istilah 
+anomali 
+penggunaan merujuk pada pola aktivitas yang 
+menyimpang dari perilaku normal atau pola yang diharapkan. Dalam 
+lingkungan sistem informasi, anomali dapat muncul dalam bentuk lonjakan 
+akses tidak biasa, kegagalan login berulang, akses pada jam yang tidak 
+lazim, atau perubahan pola penggunaan dashboard tertentu. Pada BIDICS, 
+analisis 
+eksploratif 
+digunakan untuk menemukan sinyal anomali, 
+ketidakwajaran, atau pola kejadian, yang kemudian dapat diperiksa lebih 
+lanjut melalui aktivitas konfirmatif. Pada MONIKA, konsep anomali 
+digunakan secara operasional untuk membantu tim TI mengidentifikasi 
+indikasi gangguan atau penyimpangan pemanfaatan sistem secara lebih 
+awal, tanpa menjadikan sistem sebagai alat otomatis untuk melakukan 
+remediasi atau tindakan pemblokiran.  
+ 
+7 
+ 
+
+--- Page 16 ---
+ 
+Gambar 2 Ini adalah contoh dari caption gambar. 
+2.2​
+Konsep 
+Konsep utama dalam proyek MONIKA mencakup sistem informasi 
+monitoring, pengelolaan log aktivitas pengguna, analitik data operasional, dashboard 
+visualisasi, rekayasa kebutuhan, serta pendekatan pengembangan perangkat lunak berbasis 
+SDLC ICONIX. Konsep-konsep tersebut diperlukan karena MONIKA diposisikan sebagai 
+sistem single view dashboard yang mengolah data log pengguna BIDICS menjadi 
+informasi pemantauan yang lebih mudah dipahami oleh tim TI dan manajemen BPK RI. 
+Dengan demikian, pembahasan pada bagian ini tidak menjelaskan rancangan teknis 
+MONIKA secara spesifik, melainkan menjelaskan dasar teoretis yang mendukung 
+pemilihan solusi pemantauan berbasis dashboard dan data log.  
+2.2.1​ Sistem Informasi Monitoring  
+Sistem informasi dapat dipahami sebagai gabungan dari sumber daya manusia, 
+infrastruktur, perangkat lunak, dan perangkat keras yang bekerja bersama untuk mengelola 
+data menjadi informasi yang berguna. Dalam organisasi, sistem informasi berperan untuk 
+mendukung operasi, pengolahan transaksi, proses strategis, serta penyediaan laporan bagi 
+pihak yang membutuhkan informasi. Pada konteks monitoring, sistem informasi tidak 
+hanya menyimpan data, tetapi juga mengubah data operasional menjadi indikator yang 
+dapat digunakan untuk memahami kondisi sistem, tingkat penggunaan, dan potensi 
+masalah operasional.  
+Monitoring dalam sistem informasi berhubungan dengan konsep observability, 
+yaitu kemampuan suatu sistem untuk menghasilkan, mengumpulkan, dan mengekspor data 
+telemetri agar perilaku sistem dapat dianalisis. OpenTelemetry menjelaskan observability 
+sebagai kerangka kerja terbuka dan netral vendor untuk instrumentasi, pembuatan, 
+pengumpulan, serta ekspor data telemetri seperti traces, metrics, dan logs. Berdasarkan 
+konsep tersebut, log aktivitas pengguna pada sistem BIDICS dapat dipandang sebagai 
+8 
+ 
+
+--- Page 17 ---
+salah satu bentuk data telemetri yang penting untuk memahami bagaimana sistem 
+digunakan secara aktual.  
+Dalam proyek MONIKA, sistem informasi monitoring bersifat analitik dan 
+read-only. Artinya, sistem berfokus pada penyajian informasi pemantauan, bukan pada 
+tindakan remediasi otomatis seperti pemblokiran IP, penghentian sesi pengguna, atau 
+self-healing. Pendekatan ini sesuai dengan ruang lingkup proyek yang menempatkan 
+MONIKA sebagai sarana pemantauan pemanfaatan dashboard BIDICS, pelaporan 
+aktivitas, dan pendukung evaluasi operasional berbasis data.  
+2.2.2​ Pengelolaan Log Aktivitas Pengguna  
+Log merupakan rekaman peristiwa yang terjadi pada aset komputasi organisasi, 
+termasuk platform fisik, platform virtual, jaringan, layanan, dan lingkungan cloud. NIST 
+menjelaskan bahwa log management mencakup proses menghasilkan, mengirimkan, 
+menyimpan, mengakses, dan membuang data log. Pengelolaan log digunakan untuk 
+berbagai keperluan, seperti identifikasi dan investigasi insiden keamanan siber, penemuan 
+masalah operasional, serta pemenuhan kebutuhan penyimpanan rekaman dalam periode 
+tertentu.  
+Pada sistem berbasis web, log aktivitas pengguna dapat mencakup berbagai 
+peristiwa, seperti keberhasilan login, kegagalan login, akses halaman tertentu, waktu akses, 
+identitas pengguna, satuan kerja, alamat IP, serta pola penggunaan fitur. Data tersebut 
+menjadi penting karena aktivitas pengguna yang sebelumnya hanya berupa catatan tekstual 
+dapat diolah menjadi informasi agregat, misalnya jumlah akses per periode, dashboard 
+yang paling sering digunakan, pengguna paling aktif, atau waktu akses yang tidak biasa. 
+Dalam konteks MONIKA, log aktivitas tidak hanya diperlakukan sebagai arsip teknis, 
+tetapi sebagai sumber data analitik untuk memahami pemanfaatan dashboard BIDICS.  
+Praktik event logging yang baik membutuhkan kebijakan logging yang 
+disetujui organisasi, akses dan korelasi log secara terpusat, penyimpanan log yang aman 
+dan terjaga integritasnya, serta strategi deteksi terhadap ancaman yang relevan. Panduan 
+Best Practices for Event Logging and Threat Detection juga menekankan bahwa platform 
+logging perlu dapat digunakan dan memiliki performa yang memadai bagi analis. Oleh 
+karena itu, sistem monitoring berbasis log perlu memperhatikan kualitas data log, 
+9 
+ 
+
+--- Page 18 ---
+konsistensi struktur, kemudahan pencarian, serta kemampuan korelasi agar log dapat 
+menghasilkan informasi yang dapat ditindaklanjuti. 
+2.2.3​ Analitik Data Operasional  
+Analitik data operasional adalah proses mengubah data yang dihasilkan dari 
+aktivitas sistem menjadi informasi yang dapat digunakan untuk evaluasi, pemantauan, dan 
+pengambilan keputusan. Dalam sistem monitoring, analitik data operasional biasanya 
+dilakukan melalui proses ekstraksi, pembersihan, agregasi, perhitungan metrik, dan 
+penyajian informasi dalam bentuk visual. Konsep ini relevan dengan MONIKA karena 
+data log pengguna BIDICS memiliki volume besar dan perlu diringkas menjadi metrik 
+yang dapat dipahami, seperti frekuensi login, pola trafik, penggunaan dashboard, serta 
+distribusi akses pengguna.  
+Salah satu pendekatan yang berkaitan dengan analitik operasional adalah 
+real-time analytics atau analitik waktu nyata. Kuznetsov dkk. menjelaskan bahwa analitik 
+waktu nyata pada dasarnya berkaitan dengan proses menganalisis data secepat mungkin 
+terhadap data terbaru yang tersedia, meskipun implementasinya dapat berbeda-beda 
+bergantung pada arsitektur, fungsi, dan kebutuhan waktu respons sistem. Konsep ini 
+menunjukkan bahwa sistem monitoring tidak selalu harus benar-benar memproses data 
+secara instan, tetapi harus mampu menyajikan informasi yang cukup mutakhir untuk 
+mendukung keputusan operasional.  
+Dalam proyek MONIKA, analitik data operasional berperan sebagai jembatan 
+antara data log mentah dan informasi manajerial. Data yang semula sulit dibaca secara 
+manual dapat diringkas menjadi indikator penggunaan, tren aktivitas, dan kemungkinan 
+anomali. Dengan demikian, analitik data operasional mendukung tujuan sistem untuk 
+membantu tim TI dan manajemen dalam mengevaluasi tingkat pemanfaatan dashboard 
+BIDICS secara objektif dan berbasis data.  
+2.2.4​ Dashboard Analitik dan Visualisasi Data  
+Dashboard analitik merupakan media visual yang menggabungkan beberapa 
+tampilan data untuk membantu pengguna memahami kondisi tertentu secara cepat. Kajian 
+Bach dkk. terhadap 144 dashboard menunjukkan bahwa desain dashboard memiliki 
+pola-pola umum yang dapat digunakan untuk mendukung proses perancangan, termasuk 
+dashboard dengan karakter naratif, analitik, maupun tertanam dalam sistem. Temuan 
+10 
+ 
+
+--- Page 19 ---
+tersebut menunjukkan bahwa dashboard bukan sekadar kumpulan grafik, melainkan media 
+komunikasi informasi yang perlu dirancang berdasarkan tujuan analisis, keterbatasan ruang 
+tampilan, interaksi pengguna, dan jenis informasi yang disajikan.   
+Dashboard yang efektif perlu mempertimbangkan tujuan, pengguna sasaran, 
+konten, antarmuka, bentuk analisis dan penyajian data, serta infrastruktur pendukung. 
+Rabiei dkk. menekankan bahwa keberhasilan dashboard dipengaruhi oleh pemahaman 
+kebutuhan pengguna, aksesibilitas data, penggunaan indikator kinerja utama, serta 
+antarmuka yang interaktif dan intuitif. Prinsip tersebut relevan dengan sistem monitoring 
+karena dashboard harus menyajikan informasi yang ringkas, mudah ditafsirkan, dan sesuai 
+dengan kebutuhan pengguna yang berbeda, misalnya tim TI sebagai analis operasional dan 
+manajemen sebagai pengambil keputusan.  
+Kualitas visualisasi juga berpengaruh terhadap kualitas pengambilan 
+keputusan. Studi Hjelle dkk. menunjukkan bahwa format, kemutakhiran, dan kelengkapan 
+informasi pada visualisasi dashboard dapat memengaruhi kualitas keputusan secara tidak 
+langsung dengan menurunkan kompleksitas tugas yang dirasakan pengguna dan 
+meningkatkan kepuasan terhadap informasi. Oleh karena itu, dashboard monitoring perlu 
+menyajikan metrik secara jelas, menggunakan visualisasi yang sesuai dengan jenis data, 
+serta menghindari tampilan yang terlalu padat agar informasi penting tidak tertutup oleh 
+beban kognitif pengguna. 
+Pada MONIKA, konsep dashboard analitik digunakan untuk menjelaskan 
+alasan data log perlu divisualisasikan. Data seperti jumlah login, kegagalan autentikasi, 
+akses per satuan kerja, aktivitas per kluster dashboard, dan distribusi waktu akses akan 
+lebih mudah dipahami apabila ditampilkan dalam bentuk grafik, tabel ringkasan, indikator, 
+dan laporan. Dengan demikian, dashboard berfungsi sebagai lapisan interpretasi yang 
+mengubah data log menjadi informasi pemantauan yang lebih komunikatif.  
+2.2.5​ Rekayasa Kebutuhan Perangkat Lunak  
+Rekayasa kebutuhan merupakan bagian penting dalam pengembangan 
+perangkat lunak karena kebutuhan menjadi dasar untuk menentukan fungsi, batasan, dan 
+kualitas sistem yang akan dibangun. SWEBOK V4.0a mendefinisikan kebutuhan 
+perangkat lunak sebagai kondisi atau kemampuan yang diperlukan pengguna untuk 
+menyelesaikan masalah atau mencapai tujuan, serta kondisi atau kemampuan yang harus 
+11 
+ 
+
+--- Page 20 ---
+dipenuhi sistem untuk memenuhi kontrak, standar, spesifikasi, atau dokumen formal 
+lainnya. Secara sederhana, kebutuhan perangkat lunak adalah properti yang harus dimiliki 
+sistem untuk menyelesaikan masalah nyata.   
+Kebutuhan perangkat lunak dapat dibedakan menjadi kebutuhan fungsional 
+dan kebutuhan non-fungsional. Kebutuhan fungsional menjelaskan layanan atau fungsi 
+yang harus disediakan sistem, sedangkan kebutuhan non-fungsional menjelaskan batasan 
+kualitas sistem, seperti performa, keamanan, keandalan, kemudahan penggunaan, dan 
+kompatibilitas. Pada sistem monitoring seperti MONIKA, kebutuhan fungsional dapat 
+berkaitan dengan kemampuan menampilkan metrik penggunaan, memfilter data, dan 
+mengekspor laporan, sedangkan kebutuhan non-fungsional dapat berkaitan dengan 
+kecepatan pemuatan data, keamanan akses, serta kestabilan sistem ketika memproses log 
+dalam jumlah besar.  
+Rekayasa kebutuhan juga berkaitan dengan keterlacakan atau traceability. 
+SWEBOK menjelaskan bahwa kebutuhan perangkat lunak dapat ditelusuri kembali ke 
+dokumen sumber, seperti kebutuhan sistem, standar, atau spesifikasi lain, dan dapat 
+ditelusuri ke depan menuju elemen desain, kasus uji berbasis kebutuhan, serta bagian 
+manual pengguna. Dengan demikian, kebutuhan tidak berdiri sendiri, tetapi menjadi 
+penghubung antara masalah pengguna, rancangan sistem, implementasi, dan pengujian.  
+2.2.6​ SDLC dan ICONIX Process  
+Software Development Life Cycle atau SDLC merupakan pendekatan siklus 
+hidup dalam pengembangan perangkat lunak yang mencakup proses dari perumusan 
+kebutuhan hingga sistem siap digunakan dan dipelihara. SWEBOK menjelaskan bahwa 
+proses rekayasa perangkat lunak merupakan serangkaian aktivitas yang saling 
+berhubungan untuk mengubah masukan menjadi keluaran, sedangkan siklus hidup 
+mencakup evolusi suatu sistem, produk, layanan, atau proyek dari konsepsi hingga 
+penghentian penggunaannya. Dalam pengembangan perangkat lunak, fase pengembangan 
+berarti membangun atau mengubah sistem sesuai kebutuhan para pemangku kepentingan.  
+ICONIX Process merupakan metode pengembangan perangkat lunak berbasis 
+UML yang berfokus pada pemodelan berbasis use case. Penelitian Fitri dkk. menjelaskan 
+bahwa ICONIX Process menggunakan UML untuk menghasilkan deskripsi alur kerja 
+sistem yang jelas dan mudah diimplementasikan. Metode ini mengintegrasikan GUI 
+12 
+ 
+
+--- Page 21 ---
+prototype dengan diagram dinamis, seperti use case, robustness diagram, dan sequence 
+diagram, serta menghasilkan tahapan seperti GUI prototype, use case model, robustness 
+diagram, sequence diagram, dan test plan.  
+Keunggulan ICONIX Process terletak pada kemampuannya menjembatani 
+kebutuhan pengguna dengan rancangan sistem. Pada tahap use case model, interaksi antara 
+aktor eksternal dan sistem divisualisasikan dari sudut pandang pengguna sehingga fungsi 
+sistem dapat dipahami oleh pengembang maupun pemangku kepentingan. Pada tahap 
+robustness diagram, alur dari use case dianalisis melalui elemen boundary, control, dan 
+entity untuk memastikan seluruh elemen sistem telah dipertimbangkan dan alur kerja 
+sesuai dengan kebutuhan fungsional. Pada tahap sequence diagram, interaksi objek 
+dimodelkan secara kronologis untuk memperjelas tanggung jawab objek dan urutan proses 
+dalam sistem.  
+Dalam konteks MONIKA, ICONIX Process relevan karena proyek 
+membutuhkan pemetaan yang jelas dari kebutuhan pemantauan pengguna menjadi model 
+proses, model data, rancangan antarmuka, dan skenario pengujian. Pendekatan berbasis use 
+case membantu memastikan bahwa fitur sistem dibangun berdasarkan kebutuhan 
+pengguna, bukan semata-mata berdasarkan asumsi teknis pengembang.  
+2.2.7​ Pengujian Fungsional  
+Pengujian perangkat lunak bertujuan memastikan bahwa sistem yang 
+dikembangkan memenuhi kebutuhan dan bekerja sesuai perilaku yang diharapkan. Dalam 
+SWEBOK, pengujian dibahas sebagai aktivitas yang berhubungan dengan proses 
+pengembangan serta digunakan untuk menemukan kegagalan yang tampak pada layanan 
+sistem. Pengujian tidak hanya mencari kesalahan teknis, tetapi juga memastikan bahwa 
+sistem memberikan keluaran yang sesuai terhadap masukan dan skenario penggunaan 
+tertentu.  
+Salah satu teknik pengujian yang umum digunakan adalah black-box testing 
+atau teknik berbasis spesifikasi. SWEBOK menjelaskan bahwa pada teknik berbasis 
+spesifikasi, pembuatan kasus uji didasarkan pada perilaku masukan dan keluaran sistem, 
+bukan pada struktur internal kode. Teknik ini memeriksa apakah sistem mampu mengelola 
+masukan dalam rentang tertentu dan mengembalikan keluaran yang dibutuhkan. Dengan 
+demikian, black-box testing sesuai digunakan untuk memvalidasi fitur dashboard, filter 
+13 
+ 
+
+--- Page 22 ---
+data, ekspor laporan, dan skenario interaksi pengguna berdasarkan kebutuhan fungsional 
+yang telah didefinisikan.  
+Dalam proyek MONIKA, konsep pengujian fungsional menjadi dasar untuk 
+menyusun skenario uji pada tahap implementasi dan pengujian. Setiap fitur yang 
+dirumuskan pada kebutuhan fungsional perlu memiliki skenario pengujian, data masukan, 
+hasil yang diharapkan, serta status diterima atau ditolak. Dengan pendekatan tersebut, 
+keberhasilan sistem dapat dinilai secara objektif berdasarkan kesesuaian antara kebutuhan 
+dan hasil pengujian. 
+2.3​
+Model 
+Model dalam rekayasa perangkat lunak digunakan untuk merepresentasikan 
+aspek penting dari sistem secara terstruktur sehingga kebutuhan, alur proses, data, dan 
+interaksi antarkomponen dapat dipahami oleh pengembang maupun pemangku 
+kepentingan. SWEBOK menjelaskan bahwa pemodelan membantu insinyur perangkat 
+lunak merepresentasikan aspek penting dari perangkat lunak, mendukung pengambilan 
+keputusan, dan mengomunikasikan keputusan tersebut kepada komunitas pemangku 
+kepentingan. Model yang baik tidak harus menggambarkan seluruh detail sistem, tetapi 
+cukup menampilkan aspek yang esensial, memberikan perspektif tertentu, dan 
+memudahkan komunikasi.  
+Dalam konteks proyek MONIKA, model digunakan sebagai jembatan antara 
+kebutuhan 
+pemantauan 
+dashboard 
+BIDICS 
+dan 
+rancangan 
+teknis 
+yang akan 
+diimplementasikan. Karena pengembangan menggunakan pendekatan ICONIX, model 
+yang relevan mencakup model proses, model interaksi, model struktur data, dan model 
+antarmuka. ICONIX Process pada penelitian aplikasi monitoring informasi proyek 
+dijelaskan memiliki dua alur kerja iteratif, yaitu alur dinamis yang menghasilkan use case 
+diagram, robustness diagram, dan sequence diagram, serta alur statis yang menghasilkan 
+domain model yang terus diperbarui hingga menjadi class model.  
+2.3.1​ Unified Modeling Language  
+Unified Modeling Language atau UML merupakan bahasa pemodelan yang 
+umum digunakan dalam pengembangan perangkat lunak berorientasi objek. Dalam 
+SWEBOK, UML disebut memiliki kumpulan diagram yang kaya dan dapat digunakan 
+untuk membentuk dua jenis model umum, yaitu model struktural dan model perilaku. 
+14 
+ 
+
+--- Page 23 ---
+Model struktural menggambarkan komposisi logis atau fisik perangkat lunak, sedangkan 
+model perilaku menggambarkan fungsi, alur kontrol, alur data, keadaan, peristiwa, dan 
+interaksi dalam sistem.  
+UML relevan digunakan pada proyek MONIKA karena sistem dikembangkan 
+sebagai aplikasi berbasis web dengan beberapa komponen utama, seperti pengguna, 
+autentikasi, dashboard, data log, filter, dan laporan. Dengan UML, relasi antara aktor dan 
+fitur dapat divisualisasikan melalui use case diagram, alur interaksi dapat dijelaskan 
+melalui sequence diagram, dan struktur kelas atau objek sistem dapat dijelaskan melalui 
+class diagram. Penggunaan UML juga sejalan dengan ICONIX Process, karena ICONIX 
+memanfaatkan UML secara terbatas namun terarah agar dokumentasi tetap jelas tanpa 
+menjadi terlalu berlebihan.  
+2.3.2​ Use Case Diagram  
+Use case diagram merupakan diagram UML yang digunakan untuk 
+menggambarkan hubungan antara aktor eksternal dan fungsi utama yang disediakan oleh 
+sistem. Dalam pemodelan kebutuhan, SWEBOK menjelaskan bahwa model perilaku dapat 
+mencakup use case modeling, interaction diagrams, state modeling, activity diagrams, dan 
+data-flow modeling. Dengan demikian, use case diagram dapat digunakan untuk 
+memperjelas layanan apa saja yang harus tersedia dari sudut pandang pengguna.  
+Pada proyek MONIKA, use case diagram digunakan untuk menggambarkan 
+fungsi sistem dari sudut pandang aktor, misalnya admin, tim TI, atau manajemen yang 
+mengakses informasi monitoring. Fungsi yang dapat dimodelkan meliputi melihat 
+ringkasan metrik, memantau aktivitas pengguna, memfilter data log, melihat pemanfaatan 
+dashboard, dan mengekspor laporan. Diagram ini penting karena menjadi dasar awal untuk 
+memastikan bahwa fitur yang dikembangkan sesuai dengan kebutuhan pengguna dan dapat 
+ditelusuri ke skenario pengujian.   
+2.3.3​ Robustness Diagram  
+Robustness diagram merupakan diagram yang umum digunakan dalam 
+ICONIX Process untuk menjembatani use case dengan rancangan yang lebih rinci. 
+Diagram ini membantu mengidentifikasi objek-objek yang terlibat dalam suatu skenario, 
+biasanya dibedakan menjadi objek boundary, control, dan entity. Objek boundary 
+merepresentasikan 
+antarmuka 
+atau 
+titik 
+interaksi 
+pengguna, 
+objek 
+control 
+15 
+ 
+
+--- Page 24 ---
+merepresentasikan pengendali alur proses, sedangkan objek entity merepresentasikan data 
+atau objek domain yang dikelola sistem. Pada penelitian aplikasi monitoring informasi 
+proyek, robustness analysis digunakan untuk menerjemahkan kebutuhan ke dalam bentuk 
+entitas objek dan hubungan alurnya; contoh yang diberikan menunjukkan halaman sebagai 
+boundary, akun sebagai entitas, dan controller sebagai pengendali perintah pengguna.   
+Dalam proyek MONIKA, robustness diagram berguna untuk memeriksa 
+apakah skenario pengguna sudah memiliki komponen antarmuka, proses, dan data yang 
+memadai. Misalnya, pada skenario melihat statistik login, diagram ini dapat membantu 
+membedakan halaman dashboard sebagai boundary, proses pengambilan dan agregasi data 
+sebagai control, serta data log pengguna sebagai entity. Dengan pendekatan ini, kebutuhan 
+fungsional tidak langsung diterjemahkan ke kode, tetapi terlebih dahulu dianalisis agar alur 
+sistem lebih konsisten dan mudah divalidasi. .   
+2.3.4​ Sequence Diagram  
+Sequence diagram merupakan diagram interaksi yang menggambarkan urutan 
+pesan antarobjek dalam suatu skenario. SWEBOK menjelaskan bahwa sequence diagram 
+menekankan urutan temporal dari pesan yang dikirim antarobjek, berbeda dari 
+communication diagram yang lebih menekankan hubungan antarobjek dan pesan yang 
+dipertukarkan. Oleh karena itu, sequence diagram cocok digunakan ketika pengembang 
+perlu memahami urutan proses dari awal hingga akhir, terutama pada fitur yang melibatkan 
+interaksi antarmuka, peladen, dan basis data.  
+Pada MONIKA, sequence diagram dapat digunakan untuk menjelaskan alur 
+fitur seperti pengguna masuk ke sistem, sistem memvalidasi sesi, pengguna memilih 
+rentang tanggal, sistem mengirim permintaan data ke backend, backend mengambil dan 
+mengagregasi data log, kemudian frontend menampilkan hasil dalam bentuk grafik atau 
+tabel. Diagram ini membantu memperjelas siapa yang mengirim pesan, komponen mana 
+yang memproses, dan kapan data dikembalikan ke antarmuka pengguna. 
+2.3.5​ Class Diagram  
+Class diagram merupakan diagram struktural UML yang menggambarkan 
+kelas, atribut, operasi, dan relasi antarkelas. Dalam SWEBOK, struktur desain berorientasi 
+objek umumnya direpresentasikan menggunakan class diagram, dan diagram tersebut 
+dapat digunakan untuk menghitung ukuran atau karakteristik tertentu dari desain 
+16 
+ 
+
+--- Page 25 ---
+berorientasi objek. Hal ini menunjukkan bahwa class diagram tidak hanya berfungsi 
+sebagai gambar dokumentasi, tetapi juga sebagai representasi struktur logis sistem yang 
+dapat menjadi acuan implementasi.   
+Dalam 
+konteks 
+MONIKA, 
+class 
+diagram 
+dapat 
+digunakan 
+untuk 
+menggambarkan objek-objek utama yang berkaitan dengan data log dan pemantauan 
+dashboard, seperti pengguna, satuan kerja, kluster dashboard, aktivitas akses, sesi login, 
+filter laporan, dan ekspor laporan. Relasi antarkelas membantu memperjelas bagaimana 
+data saling berhubungan sebelum diterjemahkan menjadi struktur kode maupun tabel basis 
+data. Pada pendekatan ICONIX, model domain atau model kelas juga bersifat iteratif, 
+sehingga dapat diperbarui setelah dilakukan analisis robustness dan penyusunan sequence 
+diagram.   
+2.3.6​ Entity Relationship Diagram dan Physical Data Model  
+Entity Relationship Diagram atau ERD merupakan model data yang digunakan 
+untuk menggambarkan entitas, atribut, dan relasi antarentitas dalam suatu basis data. 
+SWEBOK menempatkan model data konseptual, model data logis, dan entity-relationship 
+diagram sebagai bagian dari model struktural untuk spesifikasi kebutuhan. Model seperti 
+ini membantu pengembang memahami data apa saja yang harus disimpan, bagaimana 
+keterkaitannya, serta batasan relasi yang perlu diperhatikan sebelum implementasi basis 
+data dilakukan.  
+Selain 
+ERD, 
+Physical 
+Data 
+Model 
+atau 
+PDM 
+digunakan 
+untuk 
+menggambarkan rancangan data yang lebih dekat dengan implementasi fisik pada DBMS. 
+Penelitian Mukhlis dan Santoso menjelaskan bahwa ERD digunakan untuk menunjukkan 
+relasi antara entitas dan atribut secara terstruktur, sedangkan PDM merepresentasikan 
+tabel, nama kolom, dan tipe data. Penelitian tersebut juga menunjukkan bahwa rancangan 
+ERD dan PDM membantu memperjelas entitas yang digunakan dalam perancangan basis 
+data sebelum diimplementasikan. 
+Pada proyek MONIKA, ERD dan PDM relevan karena sistem berhubungan 
+dengan pengolahan data log aktivitas pengguna. Data seperti pengguna, dashboard, kluster, 
+riwayat akses, status login, satuan kerja, serta metadata waktu akses perlu dimodelkan 
+secara jelas agar proses agregasi dan pelaporan dapat dilakukan secara konsisten. ERD 
+17 
+ 
+

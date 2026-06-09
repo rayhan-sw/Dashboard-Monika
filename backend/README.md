@@ -206,6 +206,7 @@ Query params: `start_date`, `end_date`, `cluster`, `eselon`, `root_satker_id`.
 |--------|------|------------|
 | GET | `/api/reports/templates` | Daftar template laporan (id, title, description, formats). |
 | POST | `/api/reports/generate` | Generate laporan; body: template_id, format (CSV/Excel/PDF), start_date, end_date. Response: download_url, filename. |
+| POST | `/api/reports/import` | Import aktivitas via multipart field `file` (.csv/.tsv/.txt, maksimal 25 MB). Butuh JWT admin. |
 | GET | `/api/reports/download/:filename` | Download file laporan (filename dari generate). |
 | GET | `/api/reports/downloads` | Riwayat unduhan terbaru. |
 | GET | `/api/reports/access-requests` | Daftar permintaan akses (untuk admin). |
@@ -303,12 +304,15 @@ go run cmd/api/main.go
   cd backend
   go run cmd/migrate/main.go
   ```
-- **Impor data dari CSV:**
+- **Impor data dari CSV/TSV:**
   ```powershell
   cd backend
-  go run cmd/import/main.go <path-file-csv>
+  go run cmd/import/main.go <path-file>
   # Contoh: go run cmd/import/main.go data/aktivitas.csv
   ```
+  Mendukung CSV dengan header nama, CSV/TSV normalized dengan header, dan
+  TSV normalized 12 kolom tanpa header sesuai urutan tabel
+  `activity_logs_normalized`. Duplikat `id_trans` otomatis dilewati.
 
 ---
 

@@ -126,6 +126,19 @@ export interface ReportDownload {
   file_size?: string;
 }
 
+/** Ringkasan hasil import aktivitas dari CSV/TSV */
+export interface ActivityImportResult {
+  format: string;
+  total_rows: number;
+  inserted: number;
+  duplicates: number;
+  skipped: number;
+  errors?: Array<{
+    row: number;
+    message: string;
+  }>;
+}
+
 /** Satu permintaan akses laporan: user, unit, status, alasan opsional */
 export interface ReportAccessRequest {
   id: number;

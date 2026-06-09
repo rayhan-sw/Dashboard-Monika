@@ -23,6 +23,7 @@ import type {
   ReportGenerateResponse,
   ReportDownload,
   ReportAccessRequest,
+  ActivityImportResult,
 } from "@/types/api";
 
 /** Base URL backend: dari env NEXT_PUBLIC_API_URL atau fallback localhost:8080 */
@@ -82,8 +83,10 @@ async function fetchApi<T>(
   }
 
   try {
+    const isFormData =
+      typeof FormData !== "undefined" && options?.body instanceof FormData;
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      ...(!isFormData ? { "Content-Type": "application/json" } : {}),
       ...(options?.headers as Record<string, string> || {}), // gabung header dari options
     };
 
@@ -100,15 +103,25 @@ async function fetchApi<T>(
     });
 
     if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: "Unknown error" })); // jika body bukan JSON
+      const responseText = await response.text();
+      let errorMessage = response.statusText || "Request gagal";
+      if (responseText) {
+        try {
+          const errorBody = JSON.parse(responseText) as {
+            error?: string;
+            message?: string;
+          };
+          errorMessage =
+            errorBody.error || errorBody.message || errorMessage;
+        } catch {
+          errorMessage = responseText.trim() || errorMessage;
+        }
+      }
       const status = response.status;
-      const message = error.error || response.statusText;
       if (status === 401) {
         clearAuthAndRedirectToLogin(); // unauthorized → logout & ke login
       }
-      throw new ApiError(status, message);
+      throw new ApiError(status, errorMessage);
     }
 
     return await response.json();
@@ -491,6 +504,20 @@ export const reportService = {
         }),
       }
     );
+  },
+
+  /** Import aktivitas dari file CSV/TSV. Endpoint ini hanya dapat dipakai admin. */
+  importActivities: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchApi<{
+      success: boolean;
+      message: string;
+      data: ActivityImportResult;
+    }>("/api/reports/import", {
+      method: "POST",
+      body: formData,
+    });
   },
 
   /** Daftar unduhan laporan terbaru (opsional limit & filter tanggal) */

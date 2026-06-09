@@ -97,6 +97,7 @@ func SetupRouter() *gin.Engine {
 		{
 			reports.GET("/templates", handler.GetReportTemplates)
 			reports.POST("/generate", handler.GenerateReport)
+			reports.POST("/import", middleware.AuthMiddleware(), middleware.AdminMiddleware(), handler.ImportActivities)
 			reports.GET("/download/:filename", handler.DownloadFile)
 			reports.GET("/downloads", handler.GetRecentDownloads)
 			reports.GET("/access-requests", handler.GetAccessRequests)

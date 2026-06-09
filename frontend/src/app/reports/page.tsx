@@ -13,6 +13,7 @@ import {
   DownloadHistoryList,
   AccessRequestList,
   AccessLockedView,
+  ActivityImportCard,
   type DownloadHistoryRef,
 } from "./_components";
 
@@ -142,6 +143,9 @@ export default function ReportsPage() {
                 <ReportTemplateCards
                   onReportGenerated={handleReportGenerated}
                 />
+
+                {/* Activity Data Import - Admin Only */}
+                {isAdmin && <ActivityImportCard />}
 
                 {/* Download History */}
                 <DownloadHistoryList ref={downloadHistoryRef} limit={5} />

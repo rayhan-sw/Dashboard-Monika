@@ -5,6 +5,7 @@ package handler
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,6 +21,8 @@ import (
 	"github.com/bpk-ri/dashboard-monitoring/pkg/database"
 	"github.com/gin-gonic/gin"
 )
+
+const maxActivityImportSize = 25 << 20
 
 // ReportTemplate dipakai untuk response daftar template laporan (id, judul, deskripsi, format yang didukung).
 type ReportTemplate struct {
@@ -72,6 +75,61 @@ func GetReportTemplates(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": templates})
+}
+
+// ImportActivities menerima file CSV/TSV aktivitas dan memasukkannya ke
+// activity_logs_normalized. Route ini dilindungi middleware admin.
+func ImportActivities(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxActivityImportSize)
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File CSV/TSV wajib dipilih"})
+		return
+	}
+	if fileHeader.Size <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File import kosong"})
+		return
+	}
+	if fileHeader.Size > maxActivityImportSize {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Ukuran file maksimal 25 MB"})
+		return
+	}
+
+	extension := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	if extension != ".csv" && extension != ".tsv" && extension != ".txt" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format file harus .csv, .tsv, atau .txt"})
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		response.Internal(c, err)
+		return
+	}
+	defer file.Close()
+
+	result, err := service.NewActivityImporter(database.GetDB()).Import(file)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.Printf(
+		"activity import by user %v: file=%s total=%d inserted=%d duplicates=%d skipped=%d",
+		c.MustGet("user_id"),
+		fileHeader.Filename,
+		result.TotalRows,
+		result.Inserted,
+		result.Duplicates,
+		result.Skipped,
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "File selesai diproses",
+		"data":    result,
+	})
 }
 
 // GenerateReport membuat laporan berdasarkan template_id, format (CSV/Excel/PDF), dan rentang tanggal. Menyimpan file di generated_reports, mencatat di report_downloads, mengembalikan URL unduh.

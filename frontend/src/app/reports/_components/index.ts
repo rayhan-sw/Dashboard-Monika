@@ -9,3 +9,4 @@ export { default as AllDownloadsModal } from "./AllDownloadsModal";
 export { default as AccessRequestList } from "./AccessRequestList";
 export { default as ReportHeaderBanner } from "./ReportHeaderBanner";
 export { default as AccessLockedView } from "./AccessLockedView";
+export { default as ActivityImportCard } from "./ActivityImportCard";

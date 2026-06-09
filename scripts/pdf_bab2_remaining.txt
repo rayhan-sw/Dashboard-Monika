@@ -1,0 +1,329 @@
+--- Page 25 ---
+berorientasi objek. Hal ini menunjukkan bahwa class diagram tidak hanya berfungsi 
+sebagai gambar dokumentasi, tetapi juga sebagai representasi struktur logis sistem yang 
+dapat menjadi acuan implementasi.   
+Dalam 
+konteks 
+MONIKA, 
+class 
+diagram 
+dapat 
+digunakan 
+untuk 
+menggambarkan objek-objek utama yang berkaitan dengan data log dan pemantauan 
+dashboard, seperti pengguna, satuan kerja, kluster dashboard, aktivitas akses, sesi login, 
+filter laporan, dan ekspor laporan. Relasi antarkelas membantu memperjelas bagaimana 
+data saling berhubungan sebelum diterjemahkan menjadi struktur kode maupun tabel basis 
+data. Pada pendekatan ICONIX, model domain atau model kelas juga bersifat iteratif, 
+sehingga dapat diperbarui setelah dilakukan analisis robustness dan penyusunan sequence 
+diagram.   
+2.3.6​ Entity Relationship Diagram dan Physical Data Model  
+Entity Relationship Diagram atau ERD merupakan model data yang digunakan 
+untuk menggambarkan entitas, atribut, dan relasi antarentitas dalam suatu basis data. 
+SWEBOK menempatkan model data konseptual, model data logis, dan entity-relationship 
+diagram sebagai bagian dari model struktural untuk spesifikasi kebutuhan. Model seperti 
+ini membantu pengembang memahami data apa saja yang harus disimpan, bagaimana 
+keterkaitannya, serta batasan relasi yang perlu diperhatikan sebelum implementasi basis 
+data dilakukan.  
+Selain 
+ERD, 
+Physical 
+Data 
+Model 
+atau 
+PDM 
+digunakan 
+untuk 
+menggambarkan rancangan data yang lebih dekat dengan implementasi fisik pada DBMS. 
+Penelitian Mukhlis dan Santoso menjelaskan bahwa ERD digunakan untuk menunjukkan 
+relasi antara entitas dan atribut secara terstruktur, sedangkan PDM merepresentasikan 
+tabel, nama kolom, dan tipe data. Penelitian tersebut juga menunjukkan bahwa rancangan 
+ERD dan PDM membantu memperjelas entitas yang digunakan dalam perancangan basis 
+data sebelum diimplementasikan. 
+Pada proyek MONIKA, ERD dan PDM relevan karena sistem berhubungan 
+dengan pengolahan data log aktivitas pengguna. Data seperti pengguna, dashboard, kluster, 
+riwayat akses, status login, satuan kerja, serta metadata waktu akses perlu dimodelkan 
+secara jelas agar proses agregasi dan pelaporan dapat dilakukan secara konsisten. ERD 
+17 
+ 
+
+--- Page 26 ---
+membantu menjelaskan hubungan konseptual antardata, sedangkan PDM membantu 
+mempersiapkan rancangan tabel yang akan digunakan dalam implementasi basis data.  
+2.3.7​ Wireframe dan Prototipe Antarmuka  
+Wireframe 
+merupakan 
+model 
+visual 
+awal 
+yang 
+digunakan 
+untuk 
+menggambarkan struktur halaman, susunan komponen, dan alur interaksi antarmuka 
+sebelum sistem diimplementasikan. Dalam penelitian Darmawan dkk., metode wireframe 
+prototyping digunakan dari tingkat low-fidelity hingga high-fidelity untuk membantu 
+merealisasikan kebutuhan pengguna secara lebih realistis. Penelitian tersebut menghasilkan 
+use case diagram, flowchart, rancangan antarmuka low-fidelity, rancangan antarmuka 
+high-fidelity, serta interkoneksi antarantarmuka.  
+Pada pengembangan aplikasi modern, prototipe antarmuka juga dapat 
+digunakan sebagai artefak kolaboratif antara perancang, pengembang, dan pemangku 
+kepentingan. Green dan Brandon menjelaskan bahwa Figma dapat digunakan dalam proses 
+UX untuk membuat artefak seperti flow diagram, journey diagram, persona, wireframe, 
+prototipe interaktif, dokumentasi UX, hingga developer handoff. Dengan demikian, 
+prototipe antarmuka berperan sebagai model komunikasi visual yang membantu 
+memastikan bahwa rancangan halaman sesuai dengan kebutuhan pengguna sebelum masuk 
+ke tahap implementasi. 
+Dalam konteks MONIKA, wireframe dan prototipe antarmuka digunakan 
+untuk memodelkan tampilan dashboard monitoring, susunan metrik, grafik, tabel, filter 
+tanggal, filter satuan kerja, serta tombol ekspor laporan. Model antarmuka ini penting 
+karena sistem monitoring sangat bergantung pada keterbacaan informasi. Dengan adanya 
+prototipe, pemangku kepentingan dapat menilai apakah visualisasi log aktivitas pengguna 
+sudah mudah dipahami sebelum sistem dikembangkan secara penuh.    
+2.3.8​ Flowchart atau Activity Diagram  
+Flowchart dan activity diagram digunakan untuk menggambarkan alur proses 
+secara runtut. SWEBOK menjelaskan bahwa model perilaku dapat mencakup model aliran 
+kontrol dan aliran data, sedangkan diagram perilaku UML mencakup use case, activity, 
+state machine, dan diagram interaksi. Dalam konteks desain perangkat lunak, flowchart 
+juga dapat digunakan untuk merepresentasikan aliran proses atau aktivitas secara lebih 
+sederhana.   
+18 
+ 
+
+--- Page 27 ---
+Pada proyek MONIKA, flowchart atau activity diagram dapat digunakan untuk 
+menjelaskan alur umum pemantauan, misalnya proses pengguna membuka dashboard, 
+memilih filter, sistem memuat data log, sistem melakukan agregasi, dan hasil ditampilkan 
+sebagai grafik atau laporan. Model ini berguna untuk memberi gambaran proses yang 
+mudah dipahami, terutama ketika pembaca belum perlu melihat detail objek dan pesan 
+seperti pada sequence diagram.  
+Berdasarkan uraian tersebut, model yang digunakan dalam proyek MONIKA 
+mencakup pemodelan proses, interaksi, struktur data, dan antarmuka. Use case diagram 
+digunakan untuk memetakan fungsi sistem dari sudut pandang aktor, robustness diagram 
+digunakan untuk memvalidasi hubungan antara antarmuka, kontrol, dan entitas, sequence 
+diagram digunakan untuk menggambarkan urutan interaksi, class diagram digunakan 
+untuk menggambarkan struktur objek, ERD dan PDM digunakan untuk memodelkan basis 
+data, sedangkan wireframe dan prototipe antarmuka digunakan untuk memvalidasi 
+rancangan tampilan dashboard. Kombinasi model tersebut mendukung karakter proyek 
+MONIKA sebagai sistem monitoring berbasis web yang membutuhkan keterlacakan dari 
+kebutuhan pengguna sampai rancangan teknis.    
+2.4​
+Teknologi 
+Teknologi yang digunakan dalam proyek MONIKA dipilih untuk mendukung 
+kebutuhan sistem monitoring berbasis web yang mampu menampilkan data log aktivitas 
+pengguna secara terpusat, interaktif, dan efisien. Karena sistem berperan sebagai single 
+view dashboard, teknologi frontend perlu mampu menampilkan visualisasi data secara 
+responsif, sedangkan teknologi backend perlu mampu menangani pengolahan data log, 
+agregasi metrik, dan penyediaan layanan data kepada antarmuka pengguna. Selain itu, 
+sistem juga membutuhkan teknologi penyimpanan data, komunikasi API, ekspor laporan, 
+dan perancangan antarmuka agar proses pemantauan dapat dilakukan secara terstruktur.  
+2.4.1.​ Next.js 
+Next.js merupakan framework berbasis React yang digunakan pada sisi 
+frontend untuk membangun aplikasi web. Dalam proyek MONIKA, Next.js relevan karena 
+sistem yang dikembangkan berbentuk dashboard web yang membutuhkan tampilan 
+antarmuka responsif, pemuatan data dinamis, dan integrasi dengan layanan backend. 
+Dokumentasi Next.js menjelaskan bahwa fungsi getServerSideProps dapat digunakan 
+untuk mengambil data dan merender isi halaman pada saat permintaan pengguna 
+19 
+ 
+
+--- Page 28 ---
+berlangsung, sehingga sesuai untuk halaman yang bergantung pada data yang hanya dapat 
+diketahui pada waktu permintaan, seperti informasi terautentikasi atau data yang terus 
+berubah. 
+Konsep Server-Side Rendering atau SSR menjadi salah satu alasan pemilihan 
+Next.js. Pada pendekatan SSR, sebagian proses pembentukan halaman dilakukan di sisi 
+server sebelum hasilnya dikirimkan ke browser. Pendekatan ini berguna untuk halaman 
+dashboard yang membutuhkan data awal agar pengguna tidak menunggu terlalu lama pada 
+layar kosong. Dalam konteks MONIKA, SSR mendukung penyajian metrik awal seperti 
+statistik login, ringkasan akses, dan data aktivitas pengguna secara lebih siap ketika 
+halaman pertama kali dimuat. Dokumentasi Next.js juga menjelaskan bahwa 
+getServerSideProps berjalan di server, mengembalikan data JSON, dan data tersebut 
+digunakan untuk merender HTML awal halaman. 
+Next.js juga berhubungan erat dengan React sebagai pustaka pembangun 
+antarmuka. React menyediakan konsep component-based interface, sehingga bagian 
+dashboard seperti kartu metrik, grafik, tabel, filter, dan panel laporan dapat disusun sebagai 
+komponen yang terpisah dan dapat digunakan kembali. Dokumentasi React menjelaskan 
+bahwa hooks memungkinkan komponen menggunakan fitur React, misalnya state untuk 
+menyimpan masukan pengguna dan effect untuk menyinkronkan komponen dengan sistem 
+eksternal. Konsep ini relevan untuk fitur dashboard yang membutuhkan filter tanggal, 
+pembaruan visualisasi, dan pengambilan data dari API. 
+Selain React, penggunaan TypeScript pada ekosistem Next.js dapat 
+mendukung keandalan kode frontend. TypeScript berfungsi sebagai static typechecker 
+untuk program JavaScript, sehingga kesalahan tipe data dapat dideteksi sebelum kode 
+dijalankan. Pada aplikasi dashboard yang memproses banyak struktur data, seperti data 
+pengguna, data satuan kerja, data aktivitas, dan data laporan, TypeScript membantu 
+menjaga konsistensi bentuk data antara frontend dan backend. 
+2.4.2.​ Golang 
+Golang atau Go merupakan bahasa pemrograman yang digunakan pada sisi 
+backend. Go dirancang sebagai bahasa pemrograman umum yang mendukung 
+pemrograman sistem, memiliki tipe data statis, garbage collection, dan dukungan eksplisit 
+untuk pemrograman konkuren. Karakteristik tersebut sesuai untuk sistem backend yang 
+20 
+ 
+
+--- Page 29 ---
+harus melayani permintaan data, melakukan agregasi log, dan mengolah data dalam jumlah 
+besar secara efisien. 
+Salah satu fitur penting Go adalah goroutine. Spesifikasi Go menjelaskan 
+bahwa pernyataan go memulai eksekusi sebuah pemanggilan fungsi sebagai alur kendali 
+konkuren yang independen dalam ruang alamat yang sama. Dengan kata lain, proses 
+tertentu dapat dijalankan secara bersamaan tanpa harus menunggu proses lain selesai 
+terlebih dahulu. Fitur ini relevan bagi MONIKA karena backend perlu melakukan 
+pemrosesan data log, perhitungan metrik, pengambilan data, dan penyusunan respons API 
+secara efisien. 
+Go juga menyediakan mekanisme channel sebagai sarana komunikasi antar 
+fungsi yang berjalan konkuren. Spesifikasi Go menjelaskan bahwa channel menyediakan 
+mekanisme bagi fungsi yang berjalan secara konkuren untuk saling berkomunikasi melalui 
+pengiriman dan penerimaan nilai. Pada sistem yang mengolah log dalam volume besar, 
+konsep ini dapat digunakan untuk mendistribusikan pekerjaan, mengatur hasil pemrosesan 
+paralel, dan menjaga koordinasi antar proses backend. 
+Dalam konteks MONIKA, Golang berperan sebagai lapisan backend yang 
+menyediakan API, memproses permintaan dari frontend, mengambil data dari 
+penyimpanan, melakukan agregasi data log, dan menghasilkan data yang siap 
+divisualisasikan. Pemilihan Go mendukung kebutuhan sistem yang menuntut performa, 
+kestabilan, dan kemampuan pemrosesan paralel untuk menangani volume data log yang 
+besar. 
+2.4.3.​ API dan Pertukaran Data 
+Komunikasi antara frontend Next.js dan backend Golang membutuhkan 
+mekanisme API. API berfungsi sebagai penghubung antara antarmuka pengguna dan 
+layanan backend, misalnya untuk mengambil data statistik login, daftar aktivitas pengguna, 
+ringkasan pemanfaatan dashboard, atau hasil filter berdasarkan periode tertentu. Dalam 
+pengembangan sistem modern, API biasanya didokumentasikan agar kontrak data antara 
+frontend dan backend jelas. 
+OpenAPI Specification mendefinisikan standar deskripsi antarmuka HTTP API 
+yang bersifat netral terhadap bahasa pemrograman. Spesifikasi tersebut memungkinkan 
+manusia maupun komputer memahami kemampuan suatu layanan tanpa harus membaca 
+21 
+ 
+
+--- Page 30 ---
+kode sumber, dokumentasi tambahan, atau inspeksi lalu lintas jaringan. Dalam konteks 
+MONIKA, prinsip dokumentasi API semacam ini penting agar endpoint yang digunakan 
+untuk dashboard, filter, dan ekspor laporan memiliki struktur parameter, respons, dan status 
+kesalahan yang jelas. 
+Keamanan API juga menjadi perhatian karena dashboard monitoring dapat 
+memuat data operasional yang sensitif. OWASP API Security Top 10 tahun 2023 
+menempatkan beberapa risiko utama pada API, seperti broken object level authorization, 
+broken authentication, broken object property level authorization, unrestricted resource 
+consumption, dan security misconfiguration. Oleh karena itu, API pada sistem monitoring 
+perlu memperhatikan autentikasi, otorisasi, pembatasan akses data, validasi parameter, 
+serta pembatasan konsumsi sumber daya agar layanan tetap aman dan stabil. 
+2.4.4.​ DBMS Relasional 
+DBMS atau Database Management System digunakan untuk menyimpan, 
+mengelola, dan menyediakan data yang dibutuhkan sistem. Pada proyek monitoring log 
+seperti MONIKA, DBMS berperan penting karena data aktivitas pengguna perlu disimpan 
+dalam struktur yang dapat dicari, difilter, dan diagregasi. Data seperti identitas pengguna, 
+satuan kerja, waktu akses, status login, dashboard yang diakses, dan metadata aktivitas 
+membutuhkan struktur penyimpanan yang konsisten agar dapat diolah menjadi metrik 
+pemantauan. 
+Secara konseptual, DBMS relasional sesuai untuk kebutuhan tersebut karena 
+data log dan referensi organisasi dapat dimodelkan dalam bentuk tabel yang saling berelasi. 
+Dokumentasi PostgreSQL sebagai salah satu DBMS relasional modern menunjukkan 
+dukungan terhadap bahasa SQL, definisi data, manipulasi data, kueri, tipe data, indeks, 
+kontrol konkurensi, serta pemantauan aktivitas basis data. Fitur-fitur semacam ini relevan 
+untuk sistem dashboard yang membutuhkan kueri agregasi, pencarian berdasarkan filter, 
+dan pengambilan data secara efisien. 
+Dalam konteks MONIKA, DBMS digunakan sebagai sumber data bagi 
+backend. Backend kemudian melakukan query, agregasi, dan transformasi data sebelum 
+hasilnya dikirim ke frontend. Nama DBMS spesifik dapat disesuaikan dengan lingkungan 
+implementasi aktual pada Bab IV, tetapi pada tinjauan pustaka ini DBMS dipahami sebagai 
+teknologi inti untuk mengelola data log secara terstruktur dan mendukung penyajian 
+informasi monitoring. 
+22 
+ 
+
+--- Page 31 ---
+2.4.5.​ Teknologi Visualisasi Data 
+Visualisasi data digunakan untuk mengubah data log dan hasil agregasi 
+menjadi informasi yang mudah dibaca. Pada sistem monitoring, data mentah yang berisi 
+ribuan hingga jutaan baris aktivitas tidak efektif jika dibaca langsung sebagai teks. Oleh 
+karena itu, visualisasi dalam bentuk grafik garis, diagram batang, kartu metrik, tabel 
+ringkasan, dan peta distribusi dapat membantu pengguna memahami pola penggunaan 
+sistem secara cepat. 
+Pustaka visualisasi berbasis JavaScript dapat digunakan pada frontend untuk 
+membangun grafik interaktif. Apache ECharts, misalnya, merupakan pustaka visualisasi 
+JavaScript terbuka yang menyediakan berbagai jenis grafik, mendukung kombinasi 
+komponen, serta mendukung transformasi data seperti filtering, clustering, dan regression 
+untuk analisis data multidimensi. ECharts juga mendukung desain responsif serta 
+kemampuan rendering yang dapat digunakan pada aplikasi web analitik. 
+Pada MONIKA, teknologi visualisasi data berperan untuk menampilkan metrik 
+pemantauan seperti jumlah login berhasil dan gagal, tren akses berdasarkan waktu, 
+dashboard yang paling sering digunakan, dashboard yang jarang digunakan, distribusi 
+akses berdasarkan satuan kerja, serta ringkasan aktivitas pengguna. Dengan visualisasi 
+yang tepat, tim TI dan manajemen dapat memahami kondisi penggunaan BIDICS tanpa 
+harus membaca log mentah secara manual. 
+ 
+2.4.6.​ Teknologi Ekspor Laporan 
+Fitur ekspor laporan menjadi bagian penting dari MONIKA karena laporan 
+monitoring perlu dibagikan, diarsipkan, atau dianalisis lebih lanjut di luar sistem. Pada 
+ruang lingkup proyek, sistem direncanakan memiliki fitur ekspor laporan dalam format 
+CSV, Microsoft Excel (.xlsx), dan PDF. 
+Format CSV sesuai untuk pertukaran data tabular yang sederhana dan mudah 
+diproses oleh berbagai aplikasi. Format XLSX sesuai untuk laporan berbasis spreadsheet 
+yang membutuhkan struktur lembar kerja, kolom, baris, dan kemungkinan pemformatan. 
+Pada ekosistem Go, pustaka Excelize menyediakan fungsi untuk membaca dan menulis 
+berbagai format spreadsheet, termasuk XLSX, serta menyediakan streaming API untuk 
+membaca atau menghasilkan worksheet dengan jumlah data besar. Kemampuan ini relevan 
+23 
+ 
+
+--- Page 32 ---
+untuk sistem monitoring yang perlu mengekspor hasil agregasi atau daftar aktivitas 
+pengguna dalam volume besar. 
+Format PDF digunakan ketika laporan perlu disajikan dalam bentuk dokumen 
+yang lebih stabil untuk dibaca, dicetak, atau dikirim kepada pihak lain. Dalam MONIKA, 
+ekspor PDF dapat digunakan untuk menyajikan ringkasan pemantauan, grafik utama, tabel 
+ringkasan, dan metadata periode laporan. Dengan adanya beberapa format ekspor, sistem 
+dapat mendukung kebutuhan pengguna yang berbeda, baik untuk analisis lanjutan, 
+dokumentasi, maupun pelaporan manajerial. 
+2.4.7.​ Teknologi UI/UX dan Prototyping 
+Teknologi UI/UX digunakan untuk merancang tampilan dan pengalaman 
+pengguna sebelum sistem diimplementasikan secara penuh. Pada aplikasi dashboard, 
+perancangan UI/UX penting karena keberhasilan sistem tidak hanya ditentukan oleh 
+kemampuan backend memproses data, tetapi juga oleh kemampuan antarmuka menyajikan 
+informasi secara jelas, ringkas, dan mudah digunakan. 
+Figma merupakan salah satu kakas desain antarmuka yang mendukung 
+kolaborasi antara perancang dan pengembang. Figma menyediakan fitur Dev Mode yang 
+memungkinkan pengembang menginspeksi desain, membandingkan perubahan, melihat 
+spesifikasi, mengambil informasi ukuran dan gaya, serta menghasilkan potongan kode atau 
+mengekspor aset. Fitur semacam ini membantu proses design handoff, yaitu proses 
+penyerahan rancangan dari perancang UI/UX kepada pengembang agar implementasi 
+antarmuka lebih konsisten dengan rancangan. 
+Dalam konteks MONIKA, teknologi UI/UX digunakan untuk merancang 
+susunan halaman dashboard, kartu metrik, grafik, tabel, filter, navigasi, dan fitur ekspor 
+laporan. Perancangan antarmuka perlu memperhatikan keterbacaan data, prioritas 
+informasi, konsistensi komponen, serta kemudahan pengguna dalam menemukan indikator 
+penting. Hal ini penting karena pengguna MONIKA tidak hanya berasal dari tim teknis, 
+tetapi juga dapat mencakup pihak manajemen yang membutuhkan informasi ringkas untuk 
+evaluasi. 
+2.4.8.​ Keamanan dan Pembatasan Akses 
+Karena MONIKA mengolah data log aktivitas pengguna, aspek keamanan 
+perlu diperhatikan sejak pemilihan teknologi. Sistem monitoring harus memastikan bahwa 
+24 
+ 
+
+--- Page 33 ---
+hanya pengguna yang berwenang yang dapat mengakses dashboard dan laporan. Selain itu, 
+API perlu menerapkan validasi parameter, pembatasan hak akses berdasarkan peran, serta 
+perlindungan terhadap penyalahgunaan endpoint. OWASP API Security Top 10 tahun 2023 
+menunjukkan bahwa kesalahan otorisasi, autentikasi, konsumsi sumber daya yang tidak 
+dibatasi, dan konfigurasi keamanan yang keliru merupakan risiko penting pada layanan 
+API. 
+Pembatasan akses juga sejalan dengan ruang lingkup MONIKA sebagai sistem 
+analitik pasif atau read-only. Sistem tidak dirancang untuk melakukan tindakan remediasi 
+otomatis seperti memblokir IP address, mematikan sesi pengguna, atau melakukan 
+self-healing. Dengan demikian, teknologi yang digunakan perlu mendukung pemantauan 
+dan pelaporan, tetapi tetap menjaga batasan agar sistem tidak melakukan perubahan 
+langsung pada sistem BIDICS. 
+Berdasarkan uraian tersebut, teknologi utama dalam proyek MONIKA terdiri 
+atas Next.js untuk frontend, Golang untuk backend, API sebagai mekanisme komunikasi 
+data, DBMS relasional sebagai pengelola data log, teknologi visualisasi data untuk 
+penyajian dashboard, teknologi ekspor laporan untuk keluaran CSV/XLSX/PDF, serta 
+Figma atau kakas sejenis untuk perancangan UI/UX. Kombinasi teknologi tersebut 
+mendukung karakter MONIKA sebagai sistem monitoring dashboard analitik yang 
+terpusat, berbasis web, berorientasi data, dan bersifat read-only. 
+ 
+ 
+25 
+ 
+
